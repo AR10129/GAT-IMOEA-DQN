@@ -58,6 +58,8 @@ class DQNConfig:
     use_graph: bool = True              # False: ablation, g_t is always zero (GAT unused)
     reward_scaling: str = "none"        # "running": standardize rewards by running mean / sd when training
     eps_floor: float = 0.0              # epsilon never drops below this (keeps exploring)
+    n_step: int = 1                     # n-step returns: sum of n discounted rewards, then bootstrap
+    loss: str = "mse"                   # "mse" (the PDF's squared TD error) or "huber"
 
 
 class QNetwork(nn.Module):
@@ -85,18 +87,22 @@ class ReplayBuffer:
         self.r = np.zeros(capacity, np.float32)
         self.s2 = np.zeros((capacity, STATE_POP_DIM), np.float32)
         self.done = np.zeros(capacity, np.float32)
+        self.gsum = np.ones(capacity, np.float32)     # sum of gamma^k over the k steps summed into r
+        self.disc = np.zeros(capacity, np.float32)    # gamma^k applied to the bootstrap Q(s2, .)
         self.size = 0
         self._next = 0
 
-    def add(self, graph_id, s, a, r, s2, done) -> None:
+    def add(self, graph_id, s, a, r, s2, done, gsum: float = 1.0, disc: float = 0.9) -> None:
         i = self._next
         self.graph[i], self.s[i], self.a[i], self.r[i], self.s2[i], self.done[i] = graph_id, s, a, r, s2, done
+        self.gsum[i], self.disc[i] = gsum, disc
         self._next = (i + 1) % self.capacity
         self.size = min(self.size + 1, self.capacity)
 
     def sample(self, n: int, rng: np.random.Generator):
         idx = rng.integers(0, self.size, size=n)
-        return self.graph[idx], self.s[idx], self.a[idx], self.r[idx], self.s2[idx], self.done[idx]
+        return (self.graph[idx], self.s[idx], self.a[idx], self.r[idx], self.s2[idx], self.done[idx],
+                self.gsum[idx], self.disc[idx])
 
     def __len__(self) -> int:
         return self.size
@@ -123,6 +129,7 @@ class DQNAgent:
         self.zero_graph_at_inference = False
         # running reward statistics (Welford), used when reward_scaling == "running"
         self.r_count, self.r_mean, self.r_m2 = 0, 0.0, 0.0
+        self._pending: list = []         # (gid, s, a, r) waiting to be folded into n-step transitions
 
     # ------------------------------------------------------------ graphs --
     def register_graph(self, key: str, wf) -> int:
@@ -162,23 +169,45 @@ class DQNAgent:
         return int(np.argmax(self.q_values(gid, pop_feats))), False
 
     # ---------------------------------------------------------- learning --
+    def begin_episode(self) -> None:
+        """Drop unfinished n-step windows from an earlier run (call at the start of each run)."""
+        self._pending.clear()
+
+    def _emit(self, s2, done: bool) -> None:
+        """Fold the pending window into one transition from its oldest step."""
+        g = self.cfg.gamma
+        gid, s, a, _ = self._pending[0]
+        R = sum(g ** k * p[3] for k, p in enumerate(self._pending))
+        k = len(self._pending)
+        self.buffer.add(gid, s, a, R, s2, float(done), gsum=sum(g ** j for j in range(k)), disc=g ** k)
+        self._pending.pop(0)
+
     def store(self, gid, s, a, r, s2, done) -> None:
-        self.buffer.add(gid, s, a, r, s2, float(done))
+        """One generation's transition. With n_step > 1 the buffer receives
+        (s_t, a_t, sum_k gamma^k r_{t+k}, s_{t+n}); at the end of a run the
+        remaining shorter windows are flushed as terminal transitions."""
         self.lifetime_steps += 1
         self.r_count += 1
         delta = r - self.r_mean
         self.r_mean += delta / self.r_count
         self.r_m2 += delta * (r - self.r_mean)
+        self._pending.append((gid, s, a, float(r)))
+        if len(self._pending) >= self.cfg.n_step:
+            self._emit(s2, done)
+        if done:
+            while self._pending:
+                self._emit(s2, True)
 
     def reward_stats(self) -> Tuple[float, float]:
         sd = (self.r_m2 / (self.r_count - 1)) ** 0.5 if self.r_count > 1 else 1.0
         return self.r_mean, max(sd, 1e-8)
 
-    def _scale(self, r: torch.Tensor) -> torch.Tensor:
+    def _scale(self, r: torch.Tensor, gsum: Optional[torch.Tensor] = None) -> torch.Tensor:
+        """Standardize each per-step reward: sum_k g^k (r_k - mean) / sd = (R - mean * gsum) / sd."""
         if self.cfg.reward_scaling != "running" or self.r_count < 2:
             return r
         mean, sd = self.reward_stats()
-        return (r - mean) / sd
+        return (r - mean * (gsum if gsum is not None else 1.0)) / sd
 
     def maybe_train(self) -> Optional[float]:
         """Train if the buffer is warm and an update period has elapsed."""
@@ -197,17 +226,18 @@ class DQNAgent:
         c = self.cfg
         losses = []
         for _ in range(c.grad_steps):
-            gid, s, a, r, s2, done = self.buffer.sample(c.batch_size, self.rng)
+            gid, s, a, r, s2, done, gsum, disc = self.buffer.sample(c.batch_size, self.rng)
             s, s2 = torch.from_numpy(s), torch.from_numpy(s2)
-            a, r, done = torch.from_numpy(a), self._scale(torch.from_numpy(r)), torch.from_numpy(done)
+            a, done, disc = torch.from_numpy(a), torch.from_numpy(done), torch.from_numpy(disc)
+            r = self._scale(torch.from_numpy(r), torch.from_numpy(gsum))
             g = self._embed_batch(self.online, gid)
             q = self.online.q(g, s).gather(1, a.unsqueeze(1)).squeeze(1)
             with torch.no_grad():
                 a_star = self.online.q(g.detach(), s2).argmax(dim=1, keepdim=True)
                 g_t = self._embed_batch(self.target, gid)
                 q_next = self.target.q(g_t, s2).gather(1, a_star).squeeze(1)
-                y = r + c.gamma * (1.0 - done) * q_next
-            loss = torch.mean((y - q) ** 2)
+                y = r + disc * (1.0 - done) * q_next
+            loss = nn.functional.smooth_l1_loss(q, y) if c.loss == "huber" else torch.mean((y - q) ** 2)
             self.opt.zero_grad()
             loss.backward()
             nn.utils.clip_grad_norm_(self.online.parameters(), c.grad_clip)

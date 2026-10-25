@@ -28,6 +28,13 @@ PIBI (penalty-based interval boundary intersection), lower is better:
   (PIBI_{t+1} - PIBI_t) / PIBI_t; the sign is flipped so that an improvement
   (smaller PIBI) earns a positive reward, matching "relative improvement".
 
+Normalization (normalization=...):
+  "running" (default, as above): ideal and nadir follow every solution evaluated so
+      far, so the same population can score differently later in the run.
+  "fixed": ideal = 0 (every objective here is >= 0) and nadir = max upper bound of
+      the FIRST population observed (the initial population), never updated. The
+      reward and features then mean the same thing at every generation of a run.
+
 Alternative reward (reward="hv", not in the PDF): relative improvement of
 HV = (HV(midpoints) + HV(upper bounds)) / 2 on normalized objectives, with
 reference point 1.1, r_t = (HV_{t+1} - HV_t) / HV_t clipped to [-1, 1].
@@ -89,10 +96,13 @@ def pibi(F_lo_n: np.ndarray, F_hi_n: np.ndarray, weights: np.ndarray, theta: flo
 
 class PopulationTracker:
     def __init__(self, g_max: int, cluster_threshold: float = 0.1, theta: float = 5.0,
-                 k_neighbors: Optional[int] = None, reward: str = "pibi"):
+                 k_neighbors: Optional[int] = None, reward: str = "pibi", normalization: str = "running"):
         if reward not in REWARDS:
             raise ValueError(f"reward must be one of {REWARDS}, got {reward!r}")
+        if normalization not in ("running", "fixed"):
+            raise ValueError(f"normalization must be 'running' or 'fixed', got {normalization!r}")
         self.reward_kind = reward
+        self.normalization = normalization
         self.g_max = max(int(g_max), 1)
         self.cluster_threshold = cluster_threshold
         self.theta = theta
@@ -105,6 +115,11 @@ class PopulationTracker:
     # ------------------------------------------------------------ bounds --
     def observe(self, F_lo: np.ndarray, F_hi: np.ndarray) -> None:
         lo, hi = np.asarray(F_lo).min(axis=0), np.asarray(F_hi).max(axis=0)
+        if self.normalization == "fixed":
+            if self.ideal is None:                       # set once, from the first population
+                self.ideal = np.zeros_like(hi, dtype=float)
+                self.nadir = hi.astype(float)
+            return
         self.ideal = lo if self.ideal is None else np.minimum(self.ideal, lo)
         self.nadir = hi if self.nadir is None else np.maximum(self.nadir, hi)
 
@@ -113,13 +128,14 @@ class PopulationTracker:
         return (np.asarray(F_lo) - self.ideal) / span, (np.asarray(F_hi) - self.ideal) / span
 
     # ---------------------------------------------------------- features --
-    def _summary(self, X, F_lo, F_hi) -> dict:
+    def _summary(self, X, F_lo, F_hi, labels: Optional[np.ndarray] = None) -> dict:
         lo, hi = self.normalize(F_lo, F_hi)
         mid = (lo + hi) / 2.0
-        labels = decision_clusters(X, self.cluster_threshold)
+        if labels is None:                               # decision-space clusters do not depend on bounds
+            labels = decision_clusters(X, self.cluster_threshold)
         cents = np.stack([mid[labels == c].mean(axis=0) for c in range(labels.max() + 1)])
         w = hi - lo
-        return {"centroid": mid.mean(axis=0), "clusters": cents, "n_clusters": len(cents),
+        return {"labels": labels, "centroid": mid.mean(axis=0), "clusters": cents, "n_clusters": len(cents),
                 "icd": float(np.mean(interval_crowding(lo, hi, self.k))) if len(lo) > 1 else 0.0,
                 "u1": float(w.sum(axis=1).sum()), "u2": float(w.prod(axis=1).sum())}
 
@@ -131,13 +147,13 @@ class PopulationTracker:
         if self._prev is None:
             feats = [0.0, 0.0, now["n_clusters"] / len(X), 0.0, 0.0, 0.0, alpha]
         else:
-            before = self._summary(*self._prev["raw"])      # re-normalized with current bounds
+            before = self._summary(*self._prev["raw"], labels=self._prev["labels"])   # current bounds
             c1 = float(np.linalg.norm(now["centroid"] - before["centroid"]))
             dist = np.linalg.norm(now["clusters"][:, None, :] - before["clusters"][None, :, :], axis=2)
             c2 = float(dist.min(axis=1).mean())
             feats = [c1, c2, now["n_clusters"] / len(X), _rel_change(now["icd"], before["icd"]),
                      _rel_change(now["u1"], before["u1"]), _rel_change(now["u2"], before["u2"]), alpha]
-        self._prev = {"raw": (X.copy(), np.asarray(F_lo).copy(), np.asarray(F_hi).copy())}
+        self._prev = {"raw": (X.copy(), np.asarray(F_lo).copy(), np.asarray(F_hi).copy()), "labels": now["labels"]}
         return np.asarray(feats, dtype=np.float32)
 
     # ------------------------------------------------------------ reward --

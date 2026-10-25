@@ -13,6 +13,10 @@ Policies (same eval seed = same initial population for every policy):
   trained_nogat_hv  like `trained_nogat`, with the hypervolume-improvement reward
   trained_fix     like `trained`, trained with running reward standardization and an epsilon floor of 0.1
   trained_nogat_fix like `trained_nogat`, with the same two learner fixes
+  trained_stable  GAT agent with the L3/L4 stabilisation: fixes above + fixed per-run
+                  normalisation, 5-step returns, Huber loss, lr 5e-4, 50k buffer, and
+                  (with --val-set) the best validation checkpoint kept
+  trained_nogat_stable  the same without the GAT
   schedule        hand-made: linear from (1, 0, 0) to (1/6, 5/6, 0) over the run, snapped to the grid
   fresh           new DQN learning online from scratch (the PDF's single-run setting)
   random          uniform random action each generation
@@ -63,6 +67,8 @@ POLICIES = {
     "trained_nogat_hv": {"kind": "greedy", "variant": "nogat_hv"},
     "trained_fix":    {"kind": "greedy", "variant": "gat_fix"},
     "trained_nogat_fix": {"kind": "greedy", "variant": "nogat_fix"},
+    "trained_stable": {"kind": "greedy", "variant": "gat_stable"},
+    "trained_nogat_stable": {"kind": "greedy", "variant": "nogat_stable"},
     "schedule":       {"kind": "schedule"},
     "fresh":          {"kind": "fresh"},
     "random":         {"kind": "random"},
@@ -109,41 +115,90 @@ def _retry(fn, attempts: int = 5, wait_s: float = 2.0):
             time.sleep(wait_s * (i + 1))
 
 
+def _variant(variant: str, tseed: int):
+    """(DQNConfig, extra RunConfig kwargs, reward) for an agent variant name."""
+    from gat_imoea_dqn.dqn import DQNConfig
+    graph = not variant.startswith("nogat")
+    reward = "hv" if "_hv" in variant else "pibi"
+    if variant.endswith("_stable"):
+        return (DQNConfig(seed=tseed, use_graph=graph, reward_scaling="running", eps_floor=0.1, n_step=5,
+                          loss="huber", lr=5e-4, buffer_capacity=50_000),
+                {"tracker_normalization": "fixed"}, reward)
+    fix = variant.endswith("_fix")
+    return (DQNConfig(seed=tseed, use_graph=graph, reward_scaling="running" if fix else "none",
+                      eps_floor=0.1 if fix else 0.0), {}, reward)
+
+
+def _val_score(agent, val_data, env, run_kw, generations: int, pop: int) -> float:
+    """Greedy, frozen run on each validation workflow; score = HV (Jin) of the final front,
+    normalised with ideal 0 and nadir = the initial population's max upper bound. Higher is better."""
+    import numpy as np
+    from gat_imoea_dqn import DagIndex, IntervalEvaluator, init_population
+    from gat_imoea_dqn.algorithm import RunConfig, run
+    from gat_imoea_dqn.metrics import hv_jin
+    scores = []
+    for i, (name, (wf, sc)) in enumerate(sorted(val_data.items())):
+        seed = 90_000 + i
+        pop0 = init_population(wf, sc, pop, np.random.default_rng(seed), DagIndex(wf))   # same as run()'s
+        nadir = IntervalEvaluator(wf, sc, _ecfg(env)).evaluate_population(pop0.X, pop0.O)[1].max(axis=0)
+        nadir = np.where(nadir > 0, nadir, 1.0)
+        res = run(wf, sc, RunConfig(pop_size=pop, generations=generations, seed=seed, policy="dqn", greedy=True,
+                                    learn=False, evaluator=_ecfg(env), **run_kw), agent=agent, graph_key=name)
+        lo, hi = res.front_objectives()
+        scores.append(hv_jin(lo / nadir, hi / nadir, [1.1] * 3))
+    return float(np.mean(scores))
+
+
 def agent_path(out: pathlib.Path, variant: str, tseed: int) -> pathlib.Path:
     return out / f"agent_{variant}_t{tseed}.pt"
 
 
 # ---------------------------------------------------------------- train ---
 def train(out_dir: str, variant: str, tseed: int, workflows, episodes: int, generations: int, pop: int,
-          env=None) -> None:
+          env=None, val_set=None, val_every: int = 10, val_generations: int = 300) -> None:
+    """Train one agent. With val_set, the agent is scored on the validation workflows every
+    val_every episodes (and after the last); the best-scoring checkpoint becomes the final agent."""
     _limit_threads()
     import numpy as np
     from gat_imoea_dqn.algorithm import RunConfig, run
-    from gat_imoea_dqn.dqn import DQNAgent, DQNConfig
+    from gat_imoea_dqn.dqn import DQNAgent
 
     out = pathlib.Path(out_dir)
-    fix = variant.endswith("_fix")
-    agent = DQNAgent(DQNConfig(seed=tseed, use_graph=not variant.startswith("nogat"),
-                               reward_scaling="running" if fix else "none", eps_floor=0.1 if fix else 0.0))
-    reward = "hv" if variant.endswith("_hv") else "pibi"
+    dcfg, run_kw, reward = _variant(variant, tseed)
+    agent = DQNAgent(dcfg)
     data = {w: _load(w, env) for w in workflows}
+    val_data = {w: _load(w, env) for w in (val_set or [])}
     log_path = out / f"train_log_{variant}_t{tseed}.json"
     tmp = out / f"agent_{variant}_t{tseed}.tmp.pt"
+    best_path = out / f"agent_{variant}_t{tseed}.best.pt"
+    best = -np.inf
     log = []
     for ep in range(episodes):
         name = workflows[ep % len(workflows)]
         wf, sc = data[name]
         t0 = time.time()
         res = run(wf, sc, RunConfig(pop_size=pop, generations=generations, seed=10_000 + tseed * 1000 + ep,
-                                    reward=reward, evaluator=_ecfg(env)),
+                                    reward=reward, evaluator=_ecfg(env), **run_kw),
                   agent=agent, graph_key=name)
-        log.append({"episode": ep, "workflow": name, "seconds": round(time.time() - t0, 1),
-                    "mean_reward": float(np.mean(res.history["reward"])),
-                    "train_rounds": agent.train_rounds,
-                    "last_loss": next((x for x in reversed(res.history["loss"]) if x is not None), None)})
+        entry = {"episode": ep, "workflow": name, "seconds": round(time.time() - t0, 1),
+                 "mean_reward": float(np.mean(res.history["reward"])),
+                 "train_rounds": agent.train_rounds,
+                 "last_loss": next((x for x in reversed(res.history["loss"]) if x is not None), None)}
+        if val_data and ((ep + 1) % val_every == 0 or ep == episodes - 1):
+            score = _val_score(agent, val_data, env, run_kw, val_generations, pop)
+            entry["val_score"] = score
+            if score > best:
+                best = score
+                entry["val_best"] = True
+                _retry(lambda: agent.save(best_path))
+        log.append(entry)
         _retry(lambda: agent.save(tmp))           # Windows can fail a write transiently under load
         _retry(lambda: log_path.write_text(json.dumps(log, indent=2)))
-    os.replace(tmp, agent_path(out, variant, tseed))
+    if val_data and best_path.exists():
+        os.replace(best_path, agent_path(out, variant, tseed))
+        tmp.unlink(missing_ok=True)
+    else:
+        os.replace(tmp, agent_path(out, variant, tseed))
 
 
 # ------------------------------------------------------------------ job ---
@@ -163,7 +218,7 @@ def job(spec) -> str:
     if d["kind"] == "greedy":
         agent = DQNAgent.load(spec["agent"])
         agent.zero_graph_at_inference = d.get("zero_graph", False)
-        cfg = RunConfig(**base, policy="dqn", greedy=True, learn=False)
+        cfg = RunConfig(**base, policy="dqn", greedy=True, learn=False, **_variant(d["variant"], 0)[1])
     elif d["kind"] == "fresh":
         cfg = RunConfig(**base, policy="dqn")
     elif d["kind"] == "random":
@@ -421,6 +476,10 @@ def main() -> int:
                     help="rescale workflows into Jin et al.'s ranges and multiply data by this (CCR level)")
     ap.add_argument("--energy-scope", choices=["all", "device"], default="all")
     ap.add_argument("--train-generations", type=int, default=None, help="default: --generations")
+    ap.add_argument("--val-set", nargs="*", default=None,
+                    help="validation workflows; the best-scoring checkpoint becomes the final agent")
+    ap.add_argument("--val-every", type=int, default=10, help="validate every N training episodes")
+    ap.add_argument("--val-generations", type=int, default=300)
     ap.add_argument("--rank-metric", default="PIBI", help="metric used for mean ranks and table order")
     ap.add_argument("--summary-only", action="store_true")
     args = ap.parse_args()
@@ -451,7 +510,8 @@ def main() -> int:
         for t in args.train_seeds:
             if not agent_path(out, v, t).exists():
                 pr = mp.Process(target=train, args=(str(out), v, t, args.train_set, args.train_episodes,
-                                                    train_gens, args.pop, env))
+                                                    train_gens, args.pop, env, args.val_set, args.val_every,
+                                                    args.val_generations))
                 pr.start()
                 trainers.append((v, t, pr))
                 print(f"training {v} agent, seed {t} (pid {pr.pid})", flush=True)

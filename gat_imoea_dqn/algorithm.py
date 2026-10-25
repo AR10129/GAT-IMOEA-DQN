@@ -45,6 +45,7 @@ class RunConfig:
     learn: bool = True                          # dqn: store transitions and train
     greedy: bool = False                        # dqn: no exploration (evaluation runs)
     reward: str = "pibi"                        # "pibi" (PDF) or "hv" (hypervolume improvement)
+    tracker_normalization: str = "running"      # "running" or "fixed" (bounds from the initial population)
     evaluator: EvaluatorConfig = EvaluatorConfig()
     variation: VariationConfig = VariationConfig()
     selection: SelectionConfig = SelectionConfig()
@@ -82,12 +83,13 @@ def run(wf, sc, cfg: RunConfig = RunConfig(), agent: Optional[DQNAgent] = None,
     ev = IntervalEvaluator(wf, sc, cfg.evaluator)
     allowed = sc.allowed_targets()
     actions = selection_actions()
-    tracker = PopulationTracker(cfg.generations, reward=cfg.reward)
+    tracker = PopulationTracker(cfg.generations, reward=cfg.reward, normalization=cfg.tracker_normalization)
     N = cfg.pop_size
 
     gid = None
     if cfg.policy == "dqn":
         agent = agent if agent is not None else DQNAgent()
+        agent.begin_episode()
         if agent.cfg.n_actions != len(actions):
             raise ValueError("agent action count does not match the Das-Dennis action set")
         gid = agent.register_graph(graph_key or wf.name, wf)

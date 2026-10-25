@@ -121,6 +121,53 @@ def test_epsilon_power_decay():
     assert ag.epsilon(200) == pytest.approx(0.09)
 
 
+def test_fixed_normalization_keeps_initial_bounds():
+    tr = PopulationTracker(g_max=10, normalization="fixed")
+    lo = np.array([[2.0, 4.0, 1.0], [3.0, 5.0, 2.0]])
+    tr.observe(lo, lo + 1)
+    np.testing.assert_allclose(tr.ideal, 0.0)
+    np.testing.assert_allclose(tr.nadir, [4.0, 6.0, 3.0])
+    tr.observe(lo * 10, lo * 10 + 1)                    # later, worse solutions do not move the bounds
+    np.testing.assert_allclose(tr.nadir, [4.0, 6.0, 3.0])
+    a, b = tr.reward((lo, lo + 1), (lo * 0.5, lo * 0.5 + 0.5)), tr.reward((lo, lo + 1), (lo * 0.5, lo * 0.5 + 0.5))
+    assert a == b > 0                                    # same transition, same reward at any time
+    with pytest.raises(ValueError):
+        PopulationTracker(g_max=10, normalization="sometimes")
+
+
+def test_n_step_transitions_by_hand():
+    ag = DQNAgent(DQNConfig(n_step=3, gamma=0.5, erb_threshold=10 ** 6))
+    gid = ag.register_graph("m", WF)
+    S = [np.full(7, k, np.float32) for k in range(5)]
+    for k, r in enumerate([1.0, 2.0, 3.0, 4.0]):
+        ag.store(gid, S[k], k, r, S[k + 1], k == 3)
+    b = ag.buffer
+    assert len(b) == 4 and not ag._pending
+    np.testing.assert_allclose(b.r[:4], [1 + 0.5 * 2 + 0.25 * 3, 2 + 0.5 * 3 + 0.25 * 4, 3 + 0.5 * 4, 4])
+    np.testing.assert_allclose(b.disc[:4], [0.125, 0.125, 0.25, 0.5])
+    np.testing.assert_allclose(b.gsum[:4], [1.75, 1.75, 1.5, 1.0])
+    np.testing.assert_allclose(b.done[:4], [0, 1, 1, 1])
+    np.testing.assert_allclose(b.s2[0], S[3])            # bootstrap from s_{t+3}
+    np.testing.assert_array_equal(b.a[:4], [0, 1, 2, 3])
+    # standardisation of an n-step sum = sum of standardised per-step rewards
+    mean, sd = ag.reward_stats()
+    assert ag.cfg.reward_scaling == "none"
+    ag2 = DQNAgent(DQNConfig(n_step=3, gamma=0.5, reward_scaling="running", erb_threshold=10 ** 6))
+    ag2.r_count, ag2.r_mean, ag2.r_m2 = ag.r_count, ag.r_mean, ag.r_m2
+    got = ag2._scale(torch.tensor([b.r[0]]), torch.tensor([b.gsum[0]]))
+    want = sum(0.5 ** k * (r - mean) / sd for k, r in enumerate([1.0, 2.0, 3.0]))
+    assert float(got) == pytest.approx(want, rel=1e-5)
+
+
+def test_stable_agent_runs_and_trains():
+    agent = DQNAgent(DQNConfig(n_step=5, loss="huber", reward_scaling="running", eps_floor=0.1,
+                               erb_threshold=10, update_period=5, grad_steps=2))
+    res = run(WF, SC, RunConfig(pop_size=12, generations=20, tracker_normalization="fixed"), agent=agent)
+    # the 5-step buffer lags 4 steps: 6 transitions at generation 10 (< 10), so rounds at 15 and 20 only
+    assert agent.train_rounds == 2 and len(agent.buffer) == 20 and np.isfinite(agent.last_loss)
+    assert len(res.front) >= 1
+
+
 def test_epsilon_floor():
     ag = DQNAgent(DQNConfig(eps_floor=0.1))
     assert ag.epsilon(0) == 1.0 and ag.epsilon(1000) == pytest.approx(0.1)
