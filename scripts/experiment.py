@@ -79,11 +79,23 @@ def _limit_threads() -> None:
     torch.set_num_threads(1)
 
 
-def _load(name):
+def _load(name, env=None):
+    """Workflow + scenario for one run. env: scenario name, data_multiplier (None = raw
+    generator sizes; a number = rescale into Jin et al.'s ranges, times that), energy_scope."""
     from dataset_tools.loader import load_manifest, load_scenario, load_workflow
+    env = env or {}
     manifest = load_manifest(ROOT / "datasets")
-    return (load_workflow(ROOT / "datasets" / manifest[name]["path"]),
-            load_scenario(ROOT / "datasets" / "scenarios" / "default.yaml"))
+    wf = load_workflow(ROOT / "datasets" / manifest[name]["path"])
+    if env.get("data_multiplier") is not None:
+        from dataset_tools.rescale import rescale_workflow
+        wf = rescale_workflow(wf, data_multiplier=float(env["data_multiplier"]))
+    sc = load_scenario(ROOT / "datasets" / "scenarios" / f"{env.get('scenario', 'default')}.yaml")
+    return wf, sc
+
+
+def _ecfg(env=None):
+    from gat_imoea_dqn.evaluator import EvaluatorConfig
+    return EvaluatorConfig(energy_scope=(env or {}).get("energy_scope", "all"))
 
 
 def agent_path(out: pathlib.Path, variant: str, tseed: int) -> pathlib.Path:
@@ -91,7 +103,8 @@ def agent_path(out: pathlib.Path, variant: str, tseed: int) -> pathlib.Path:
 
 
 # ---------------------------------------------------------------- train ---
-def train(out_dir: str, variant: str, tseed: int, workflows, episodes: int, generations: int, pop: int) -> None:
+def train(out_dir: str, variant: str, tseed: int, workflows, episodes: int, generations: int, pop: int,
+          env=None) -> None:
     _limit_threads()
     import numpy as np
     from gat_imoea_dqn.algorithm import RunConfig, run
@@ -102,7 +115,7 @@ def train(out_dir: str, variant: str, tseed: int, workflows, episodes: int, gene
     agent = DQNAgent(DQNConfig(seed=tseed, use_graph=not variant.startswith("nogat"),
                                reward_scaling="running" if fix else "none", eps_floor=0.1 if fix else 0.0))
     reward = "hv" if variant.endswith("_hv") else "pibi"
-    data = {w: _load(w) for w in workflows}
+    data = {w: _load(w, env) for w in workflows}
     log_path = out / f"train_log_{variant}_t{tseed}.json"
     tmp = out / f"agent_{variant}_t{tseed}.tmp.pt"
     log = []
@@ -111,7 +124,7 @@ def train(out_dir: str, variant: str, tseed: int, workflows, episodes: int, gene
         wf, sc = data[name]
         t0 = time.time()
         res = run(wf, sc, RunConfig(pop_size=pop, generations=generations, seed=10_000 + tseed * 1000 + ep,
-                                    reward=reward),
+                                    reward=reward, evaluator=_ecfg(env)),
                   agent=agent, graph_key=name)
         log.append({"episode": ep, "workflow": name, "seconds": round(time.time() - t0, 1),
                     "mean_reward": float(np.mean(res.history["reward"])),
@@ -131,9 +144,10 @@ def job(spec) -> str:
     path = pathlib.Path(spec["out"])
     if path.exists():
         return f"skip {path.name}"
-    wf, sc = _load(spec["workflow"])
+    env = spec.get("env")
+    wf, sc = _load(spec["workflow"], env)
     d = POLICIES[spec["policy"]]
-    base = dict(pop_size=spec["pop"], generations=spec["generations"], seed=spec["seed"])
+    base = dict(pop_size=spec["pop"], generations=spec["generations"], seed=spec["seed"], evaluator=_ecfg(env))
     agent = None
     if d["kind"] == "greedy":
         agent = DQNAgent.load(spec["agent"])
@@ -160,16 +174,41 @@ def job(spec) -> str:
 
 
 # -------------------------------------------------------------- summary ---
-METRICS = ("PIBI", "HV_mid", "HV_hi", "U1")
-LOWER_BETTER = {"PIBI": True, "HV_mid": False, "HV_hi": False, "U1": True}
+METRICS = ("IGD", "HV_jin", "Imprecision", "PIBI", "HV_mid", "HV_hi", "U1")
+LOWER_BETTER = {"IGD": True, "HV_jin": False, "Imprecision": True, "PIBI": True, "HV_mid": False, "HV_hi": False,
+                "U1": True}
+SHOWN = ("IGD", "HV_jin", "Imprecision", "PIBI", "HV_hi")   # columns in the markdown tables
 
 
-def summarize(out_dir: pathlib.Path, test_set, policies, seeds: int, reference: str = "trained") -> None:
+def _wilcoxon_symbol(a, b, lower_better: bool, alpha: float = 0.05) -> str:
+    """Jin et al.'s convention, paired by seed: '+' = this policy significantly better than
+    the reference, '-' = significantly worse, '=' = no significant difference."""
     import numpy as np
-    from gat_imoea_dqn.metrics import hypervolume_3d
+    from scipy.stats import wilcoxon
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    k = min(len(a), len(b))
+    a, b = a[:k], b[:k]
+    if k < 2 or np.allclose(a, b):
+        return "="
+    try:
+        p = wilcoxon(a, b).pvalue
+    except ValueError:
+        return "="
+    if p >= alpha:
+        return "="
+    better = a.mean() < b.mean() if lower_better else a.mean() > b.mean()
+    return "+" if better else "-"
+
+
+def summarize(out_dir: pathlib.Path, test_set, policies, seeds: int, reference: str = "trained",
+              rank_metric: str = "PIBI") -> None:
+    import numpy as np
+    from gat_imoea_dqn.metrics import hv_jin, hypervolume_3d, igd, imprecision, pooled_reference
     from gat_imoea_dqn.selection import das_dennis, selection_actions
     from gat_imoea_dqn.state import pibi
 
+    if rank_metric not in METRICS:
+        raise ValueError(f"rank metric must be one of {METRICS}")
     W = das_dennis(6, 3)
     A = selection_actions()
     runs = []
@@ -189,11 +228,15 @@ def summarize(out_dir: pathlib.Path, test_set, policies, seeds: int, reference: 
         ideal = np.min([np.min(r["front_lo"], axis=0) for r in rs], axis=0)
         nadir = np.max([np.max(r["front_hi"], axis=0) for r in rs], axis=0)
         span = np.where(nadir - ideal > 0, nadir - ideal, 1.0)
-        for r in rs:
-            lo = (np.asarray(r["front_lo"]) - ideal) / span
-            hi = (np.asarray(r["front_hi"]) - ideal) / span
+        norm = [((np.asarray(r["front_lo"]) - ideal) / span, (np.asarray(r["front_hi"]) - ideal) / span) for r in rs]
+        ref_front = pooled_reference([(lo + hi) / 2 for lo, hi in norm])
+        for r, (lo, hi) in zip(rs, norm):
+            mid = (lo + hi) / 2
+            r["IGD"] = igd(mid, ref_front)
+            r["HV_jin"] = hv_jin(lo, hi, [1.1] * 3)
+            r["Imprecision"] = imprecision(lo, hi)
             r["PIBI"] = pibi(lo, hi, W)
-            r["HV_mid"] = hypervolume_3d((lo + hi) / 2, [1.1] * 3)
+            r["HV_mid"] = hypervolume_3d(mid, [1.1] * 3)
             r["HV_hi"] = hypervolume_3d(hi, [1.1] * 3)
             r["U1"] = float(np.mean((hi - lo).sum(axis=1)))
             r["front_size"] = len(lo)
@@ -205,8 +248,8 @@ def summarize(out_dir: pathlib.Path, test_set, policies, seeds: int, reference: 
         v = [r[m] for r in runs if r["policy"] == pol and r["workflow"] == wf and r["seed"] == s]
         return float(np.mean(v)) if v else None
 
-    summary = {"policies": present, "reference": reference, "per_workflow": {}, "overall": {},
-               "per_training_seed": {}}
+    summary = {"policies": present, "reference": reference, "rank_metric": rank_metric,
+               "per_workflow": {}, "overall": {}, "per_training_seed": {}}
     ranks = {p: [] for p in present}
     for wf in wfs:
         per = {}
@@ -216,7 +259,7 @@ def summarize(out_dir: pathlib.Path, test_set, policies, seeds: int, reference: 
                 vals = [value(pol, wf, s, m) for s in range(seeds)]
                 vals = [v for v in vals if v is not None]
                 per[pol][m] = {"mean": float(np.mean(vals)), "sd": float(np.std(vals)), "values": vals}
-        if reference in per:                 # paired by eval seed: does this policy beat the reference?
+        if reference in per:
             for pol in per:
                 if pol == reference:
                     continue
@@ -225,28 +268,31 @@ def summarize(out_dir: pathlib.Path, test_set, policies, seeds: int, reference: 
                     k = min(len(a), len(b))
                     wins = sum((x < y) if LOWER_BETTER[m] else (x > y) for x, y in zip(a[:k], b[:k]))
                     per[pol][m]["beats_ref"] = f"{wins}/{k}"
+                    per[pol][m]["wilcoxon"] = _wilcoxon_symbol(a, b, LOWER_BETTER[m])
         wf_ranks = {p: [] for p in present}
         for s in range(seeds):
-            vals = {p: value(p, wf, s, "PIBI") for p in present}
+            vals = {p: value(p, wf, s, rank_metric) for p in present}
             vals = {p: v for p, v in vals.items() if v is not None}
-            for i, p in enumerate(sorted(vals, key=vals.get)):
+            order = sorted(vals, key=vals.get, reverse=not LOWER_BETTER[rank_metric])
+            for i, p in enumerate(order):
                 wf_ranks[p].append(i + 1)
         for p in present:
-            per[p]["mean_rank_PIBI"] = float(np.mean(wf_ranks[p])) if wf_ranks[p] else None
+            per[p]["mean_rank"] = float(np.mean(wf_ranks[p])) if wf_ranks[p] else None
             ranks[p] += wf_ranks[p]
         summary["per_workflow"][wf] = per
 
     for pol in present:
-        summary["overall"][pol] = {"mean_rank_PIBI": float(np.mean(ranks[pol])),
-                                   **{f"mean_{m}": float(np.mean([summary["per_workflow"][w][pol][m]["mean"]
-                                                                  for w in wfs])) for m in METRICS}}
+        o = {"mean_rank": float(np.mean(ranks[pol])),
+             **{f"mean_{m}": float(np.mean([summary["per_workflow"][w][pol][m]["mean"] for w in wfs]))
+                for m in METRICS}}
         for m in METRICS:
-            if "beats_ref" in summary["per_workflow"][wfs[0]][pol][m]:
+            if "wilcoxon" in summary["per_workflow"][wfs[0]][pol][m]:
+                syms = [summary["per_workflow"][w][pol][m]["wilcoxon"] for w in wfs]
+                o[f"wilcoxon_{m}"] = f"{syms.count('+')}/{syms.count('-')}/{syms.count('=')}"
                 tot = [summary["per_workflow"][w][pol][m]["beats_ref"].split("/") for w in wfs]
-                summary["overall"][pol][f"beats_ref_{m}"] = \
-                    f"{sum(int(a) for a, _ in tot)}/{sum(int(b) for _, b in tot)}"
+                o[f"beats_ref_{m}"] = f"{sum(int(a) for a, _ in tot)}/{sum(int(b) for _, b in tot)}"
+        summary["overall"][pol] = o
 
-    # robustness across training seeds: each agent alone vs the baselines
     for pol in present:
         tseeds = sorted({r["train_seed"] for r in runs if r["policy"] == pol and r["train_seed"] is not None})
         if not tseeds:
@@ -255,19 +301,18 @@ def summarize(out_dir: pathlib.Path, test_set, policies, seeds: int, reference: 
         for t in tseeds:
             sel = [r for r in runs if r["policy"] == pol and r["train_seed"] == t]
             beats = {}
-            for base in ("fixed_fav", "fixed", "random"):
+            for base in ("fixed_fav", "fixed", "random", "fresh"):
                 if base not in present:
                     continue
                 n = w = 0
                 for r in sel:
-                    b = value(base, r["workflow"], r["seed"], "PIBI")
+                    b = value(base, r["workflow"], r["seed"], rank_metric)
                     if b is not None:
                         n += 1
-                        w += r["PIBI"] < b
+                        w += (r[rank_metric] < b) if LOWER_BETTER[rank_metric] else (r[rank_metric] > b)
                 beats[base] = f"{w}/{n}"
-            rows[t] = {"mean_PIBI": float(np.mean([r["PIBI"] for r in sel])),
-                       "mean_HV_mid": float(np.mean([r["HV_mid"] for r in sel])),
-                       "beats_PIBI": beats}
+            rows[t] = {f"mean_{m}": float(np.mean([r[m] for r in sel])) for m in SHOWN}
+            rows[t]["beats"] = beats
             acts = np.bincount([a for r in sel for a in r["actions"] if a >= 0], minlength=len(A))
             if acts.sum():
                 top = np.argsort(acts)[::-1][:3]
@@ -275,49 +320,52 @@ def summarize(out_dir: pathlib.Path, test_set, policies, seeds: int, reference: 
                                           for i in top if acts[i]]
             log = out_dir / f"train_log_{POLICIES[pol]['variant']}_t{t}.json"
             if log.exists():
-                L = json.loads(log.read_text())
-                rew = [e["mean_reward"] for e in L]
+                Lg = json.loads(log.read_text())
+                rew = [e["mean_reward"] for e in Lg]
                 q = max(1, len(rew) // 4)
                 rows[t]["train_reward_first_vs_last_quarter"] = [float(np.mean(rew[:q])), float(np.mean(rew[-q:]))]
         summary["per_training_seed"][pol] = rows
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2))
 
     # ------------------------------------------------------------ markdown
+    arrow = {m: "↓" if LOWER_BETTER[m] else "↑" for m in METRICS}
     L = [f"# Experiment `{out_dir.name}`", "",
-         "One shared normalization per workflow across all policies below. PIBI and U1: lower is better; "
-         "HV: higher is better. Agent policies: each eval seed is averaged over training seeds. "
-         f"`beats` = eval seeds where that policy beats the reference *{reference}* (paired by seed).", "",
-         "## Overall (mean over workflows)", "",
-         f"| Policy | mean PIBI rank | PIBI | HV_mid | HV_hi | U1 | beats {reference}: PIBI / HV_mid / HV_hi / U1 |",
-         "|---|---|---|---|---|---|---|"]
-    for pol in sorted(present, key=lambda p: summary["overall"][p]["mean_rank_PIBI"]):
+         "One shared normalization per workflow across all policies below. "
+         + " · ".join(f"{m} {arrow[m]}" for m in SHOWN) + ". Agent policies: each eval seed is averaged over "
+         f"training seeds. Symbols: Wilcoxon signed-rank test (paired by seed, 5%) against *{reference}* — "
+         "`+` better, `−` worse, `=` no significant difference.", "",
+         f"## Overall (mean over workflows; rank by {rank_metric})", "",
+         f"| Policy | mean rank | " + " | ".join(SHOWN) + " | +/−/= vs " + reference + " (" + ", ".join(SHOWN[:3]) + ") |",
+         "|---|---|" + "---|" * len(SHOWN) + "---|"]
+    for pol in sorted(present, key=lambda p: summary["overall"][p]["mean_rank"]):
         o = summary["overall"][pol]
-        beats = " / ".join(o.get(f"beats_ref_{m}", "–") for m in METRICS) if pol != reference else "(reference)"
-        L.append(f"| {pol} | {o['mean_rank_PIBI']:.2f} | {o['mean_PIBI']:.4f} | {o['mean_HV_mid']:.4f} | "
-                 f"{o['mean_HV_hi']:.4f} | {o['mean_U1']:.4f} | {beats} |")
+        sym = " · ".join(o.get(f"wilcoxon_{m}", "–") for m in SHOWN[:3]) if pol != reference else "(reference)"
+        L.append(f"| {pol} | {o['mean_rank']:.2f} | " + " | ".join(f"{o[f'mean_{m}']:.4g}" for m in SHOWN)
+                 + f" | {sym} |")
     if summary["per_training_seed"]:
-        L += ["", "## Each training seed on its own", "",
-              "| Policy | train seed | PIBI | HV_mid | beats fixed_fav | beats fixed | beats random | "
-              "train reward (first → last quarter) | top action |", "|---|---|---|---|---|---|---|---|---|"]
+        bases = [b for b in ("fixed_fav", "fixed", "random", "fresh") if b in present]
+        L += ["", f"## Each training seed on its own ({rank_metric})", "",
+              "| Policy | train seed | " + " | ".join(SHOWN[:3]) + " | "
+              + " | ".join(f"beats {b}" for b in bases) + " | train reward (first → last quarter) | top action |",
+              "|---|---|" + "---|" * (3 + len(bases)) + "---|---|"]
         for pol, rows in summary["per_training_seed"].items():
             for t, r in rows.items():
-                b = r["beats_PIBI"]
                 tr = r.get("train_reward_first_vs_last_quarter")
                 ta = r.get("top_actions", [{}])[0]
-                L.append(f"| {pol} | {t} | {r['mean_PIBI']:.4f} | {r['mean_HV_mid']:.4f} | {b.get('fixed_fav', '–')} | "
-                         f"{b.get('fixed', '–')} | {b.get('random', '–')} | "
-                         f"{'%.4f → %.4f' % tuple(tr) if tr else '–'} | "
+                L.append(f"| {pol} | {t} | " + " | ".join(f"{r[f'mean_{m}']:.4g}" for m in SHOWN[:3]) + " | "
+                         + " | ".join(r["beats"].get(b, "–") for b in bases)
+                         + f" | {'%.4f → %.4f' % tuple(tr) if tr else '–'} | "
                          f"{ta.get('action', '–')} ({ta.get('share', 0):.0%}) |")
     for wf in wfs:
         per = summary["per_workflow"][wf]
-        L += ["", f"## {wf}", "", "| Policy | PIBI | HV_mid | HV_hi | U1 | front | rank |",
-              "|---|---|---|---|---|---|---|"]
-        for pol in sorted(per, key=lambda p: per[p]["mean_rank_PIBI"]):
+        L += ["", f"## {wf}", "", "| Policy | " + " | ".join(SHOWN) + " | front | rank |",
+              "|---|" + "---|" * len(SHOWN) + "---|---|"]
+        for pol in sorted(per, key=lambda p: per[p]["mean_rank"]):
             d = per[pol]
-            cell = lambda m: (f"{d[m]['mean']:.4f} ± {d[m]['sd']:.4f}"  # noqa: E731
-                              + (f" (beats {d[m]['beats_ref']})" if "beats_ref" in d[m] else ""))
-            L.append(f"| {pol} | {cell('PIBI')} | {cell('HV_mid')} | {cell('HV_hi')} | {cell('U1')} | "
-                     f"{d['front_size']['mean']:.0f} | {d['mean_rank_PIBI']:.2f} |")
+            cell = lambda m: (f"{d[m]['mean']:.4g} ± {d[m]['sd']:.2g}"  # noqa: E731
+                              + (f" {d[m]['wilcoxon'].replace('-', '−')}" if "wilcoxon" in d[m] else ""))
+            L.append(f"| {pol} | " + " | ".join(cell(m) for m in SHOWN)
+                     + f" | {d['front_size']['mean']:.0f} | {d['mean_rank']:.2f} |")
     (out_dir / "summary.md").write_text("\n".join(L) + "\n", encoding="utf-8")
     print("\n".join(L))
 
@@ -357,18 +405,33 @@ def main() -> int:
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) * 3 // 4))
     ap.add_argument("--reuse-from", help="copy finished runs and agents from this experiment name")
     ap.add_argument("--reference", default="trained", help="policy that paired 'beats' counts compare against")
+    ap.add_argument("--scenario", default="default", help="datasets/scenarios/<name>.yaml")
+    ap.add_argument("--data-multiplier", type=float, default=None,
+                    help="rescale workflows into Jin et al.'s ranges and multiply data by this (CCR level)")
+    ap.add_argument("--energy-scope", choices=["all", "device"], default="all")
+    ap.add_argument("--train-generations", type=int, default=None, help="default: --generations")
+    ap.add_argument("--rank-metric", default="PIBI", help="metric used for mean ranks and table order")
     ap.add_argument("--summary-only", action="store_true")
     args = ap.parse_args()
+    env = {"scenario": args.scenario, "data_multiplier": args.data_multiplier, "energy_scope": args.energy_scope}
+    train_gens = args.train_generations or args.generations
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # Windows consoles default to cp1252
 
     out = ROOT / "results" / "experiments" / args.name
     (out / "runs").mkdir(parents=True, exist_ok=True)
-    (out / "config.json").write_text(json.dumps(vars(args), indent=2))
+    import subprocess
+    try:
+        commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
+        dirty = bool(subprocess.run(["git", "status", "--porcelain"], cwd=ROOT, capture_output=True,
+                                    text=True).stdout.strip())
+    except OSError:
+        commit, dirty = None, None
+    (out / "config.json").write_text(json.dumps({**vars(args), "git_commit": commit, "git_dirty": dirty}, indent=2))
     if args.reuse_from:
         print(f"reused {reuse(ROOT / 'results' / 'experiments' / args.reuse_from, out)} runs from {args.reuse_from}")
     if args.summary_only:
-        summarize(out, args.test_set, args.policies, args.seeds, args.reference)
+        summarize(out, args.test_set, args.policies, args.seeds, args.reference, args.rank_metric)
         return 0
 
     variants = sorted({POLICIES[p]["variant"] for p in args.policies if POLICIES[p]["kind"] == "greedy"})
@@ -377,7 +440,7 @@ def main() -> int:
         for t in args.train_seeds:
             if not agent_path(out, v, t).exists():
                 pr = mp.Process(target=train, args=(str(out), v, t, args.train_set, args.train_episodes,
-                                                    args.generations, args.pop))
+                                                    train_gens, args.pop, env))
                 pr.start()
                 trainers.append((v, t, pr))
                 print(f"training {v} agent, seed {t} (pid {pr.pid})", flush=True)
@@ -391,7 +454,7 @@ def main() -> int:
                     continue
                 for s in range(args.seeds):
                     common = {"workflow": w, "policy": p, "seed": s, "generations": args.generations,
-                              "pop": args.pop}
+                              "pop": args.pop, "env": env}
                     if agent_jobs:
                         for t in args.train_seeds:
                             out_specs.append({**common, "train_seed": t,
@@ -417,7 +480,7 @@ def main() -> int:
             if not msg.startswith("skip"):
                 print(f"[{time.time() - t0:6.0f}s] {msg}", flush=True)
     print(f"[{time.time() - t0:6.0f}s] all jobs finished", flush=True)
-    summarize(out, args.test_set, args.policies, args.seeds, args.reference)
+    summarize(out, args.test_set, args.policies, args.seeds, args.reference, args.rank_metric)
     return 0
 
 
