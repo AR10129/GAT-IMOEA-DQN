@@ -97,7 +97,26 @@ setting for comparability and three-tier energy as a sensitivity study.
 - [ ] B0. Reference heuristics: all-local, all-edge, all-cloud, HEFT-style list scheduling
 
 ### P1 — Core claims
-- [ ] L0. Re-run trained vs fresh vs fixed at G_max = 1000 under Jin et al.'s metrics (risk check for C3)
+- [x] L0. Re-run trained vs fresh vs fixed at G_max = 1000 under Jin et al.'s metrics (risk check for C3).
+  `results/experiments/l0` (Jin scenario, data ×20, device energy, five 200-task workflows,
+  10 paired seeds, agents averaged over 3 training seeds; Wilcoxon +/−/= over the 5 workflows):
+
+  | Policy | Mean IGD rank | IGD | HV (Jin) | vs fresh: IGD · HV | vs fixed_fav: IGD · HV · Imprecision |
+  |---|---|---|---|---|---|
+  | trained (GAT + fixes) | 1.82 | 0.051 | 0.835 | 4/0/1 · 5/0/0 | 3/1/1 · 3/0/2 · 5/0/0 |
+  | fixed_fav (5/6, 1/6, 0) | 2.40 | 0.053 | 0.803 | 5/0/0 · 3/0/2 | reference |
+  | fixed (⅓, ⅓, ⅓) | 3.10 | 0.064 | 0.813 | 4/0/1 · 4/0/1 | 0/2/3 · 1/0/4 · 5/0/0 |
+  | trained_nogat (+ fixes) | 3.36 | 0.065 | 0.822 | 4/0/1 · 4/0/1 | 0/3/2 · 3/0/2 · 5/0/0 |
+  | fresh (Jin-style online) | 4.72 | 0.168 | 0.764 | reference | 0/5/0 · 0/3/2 · 5/0/0 |
+  | random | 5.60 | 0.221 | 0.736 | 0/0/5 · 0/1/4 | 0/5/0 · 0/5/0 · 5/0/0 |
+
+  Verdict: C3 risk retired. Even with 1000 generations, the fresh online agent is
+  significantly worse than every policy except random on IGD. The trained GAT agent
+  leads overall, and for the first time beats fixed_fav (IGD 3 of 5 workflows, HV 3 of 5,
+  never worse on HV). Still open:
+  - training-seed variance: no-GAT seed 1 collapsed (beats fixed_fav 0/50 runs), which drags the no-GAT average down; L3/L4 must fix this before the GAT-vs-no-GAT claim is safe;
+  - Imprecision is a sum over the front, so it grows with front size (fixed_fav keeps 90 solutions); also report it per solution;
+  - training reward still barely rises (0.0009 → 0.0010).
 - [ ] L1. Dynamic structure-aware state (per-task placement shares, critical-path frequency, slack)
 - [ ] L2. Training distribution: about 250 graphs; leave-one-family-out tests
 - [ ] L3. Stable reward: fixed per-run normalisation, 5-step returns

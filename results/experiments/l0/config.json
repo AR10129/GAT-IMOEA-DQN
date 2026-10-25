@@ -1,0 +1,45 @@
+{
+  "name": "l0",
+  "policies": [
+    "trained_fix",
+    "trained_nogat_fix",
+    "fresh",
+    "fixed_fav",
+    "fixed",
+    "random"
+  ],
+  "train_seeds": [
+    0,
+    1,
+    2
+  ],
+  "train_set": [
+    "montage_100",
+    "epigenomics_100",
+    "cybershake_100",
+    "inspiral_100",
+    "sipht_100"
+  ],
+  "test_set": [
+    "montage_200",
+    "epigenomics_200",
+    "cybershake_200",
+    "inspiral_200",
+    "sipht_200"
+  ],
+  "train_episodes": 40,
+  "generations": 300,
+  "pop": 105,
+  "seeds": 10,
+  "workers": 12,
+  "reuse_from": null,
+  "reference": "fixed_fav",
+  "scenario": "default",
+  "data_multiplier": null,
+  "energy_scope": "all",
+  "train_generations": null,
+  "rank_metric": "IGD",
+  "summary_only": true,
+  "git_commit": "888deb11e7c01d363c4b4354d4f21438378f4181",
+  "git_dirty": true
+}

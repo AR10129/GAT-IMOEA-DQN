@@ -98,6 +98,17 @@ def _ecfg(env=None):
     return EvaluatorConfig(energy_scope=(env or {}).get("energy_scope", "all"))
 
 
+def _retry(fn, attempts: int = 5, wait_s: float = 2.0):
+    """Call fn, retrying transient OS / torch file errors with a short pause."""
+    for i in range(attempts):
+        try:
+            return fn()
+        except (OSError, RuntimeError):
+            if i == attempts - 1:
+                raise
+            time.sleep(wait_s * (i + 1))
+
+
 def agent_path(out: pathlib.Path, variant: str, tseed: int) -> pathlib.Path:
     return out / f"agent_{variant}_t{tseed}.pt"
 
@@ -130,8 +141,8 @@ def train(out_dir: str, variant: str, tseed: int, workflows, episodes: int, gene
                     "mean_reward": float(np.mean(res.history["reward"])),
                     "train_rounds": agent.train_rounds,
                     "last_loss": next((x for x in reversed(res.history["loss"]) if x is not None), None)})
-        agent.save(tmp)
-        log_path.write_text(json.dumps(log, indent=2))
+        _retry(lambda: agent.save(tmp))           # Windows can fail a write transiently under load
+        _retry(lambda: log_path.write_text(json.dumps(log, indent=2)))
     os.replace(tmp, agent_path(out, variant, tseed))
 
 
