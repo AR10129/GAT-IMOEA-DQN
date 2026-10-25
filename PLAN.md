@@ -76,11 +76,22 @@ setting for comparability and three-tier energy as a sensitivity study.
 ## Checklist (in order; each phase depends on the one before)
 
 ### P0 — Aligned model
-- [ ] R0. Project under git; every result folder records its commit
-- [ ] M1. Jin et al. scenario (`datasets/scenarios/jin.yaml`) + fixed channel gain option
-- [ ] M2. Load-time rescaling of workloads and data into Jin et al.'s ranges; CCR multiplier for sweeps
-- [ ] M3. Energy-scope switch (device-only / three-tier)
-- [ ] M4. Re-measure how much communication moves the objectives (target at CCR = 1: ≥ 10%)
+- [x] R0. Project under git (tag `pre-paper`); still to do: every result folder records its commit
+- [x] M1. Jin et al. scenario (`datasets/scenarios/jin.yaml`) + fixed channel gain + downlink = uplink option
+- [x] M2. Load-time rescaling into Jin et al.'s ranges (`dataset_tools/rescale.py`) + data multiplier for CCR sweeps
+- [x] M3. Energy-scope switch (`EvaluatorConfig(energy_scope="device" | "all")`)
+- [x] M4. Re-measured with `scripts/comm_share.py` (five 200-task workflows, 100 generations):
+
+  | Data multiplier | Fast-end makespan increase from communication | Median energy increase |
+  |---|---|---|
+  | ×1 (Jin et al.'s exact sizes) | 0.4–6.7% | 0.5–1.7% |
+  | ×20 | 15–116% | 4.5–23% |
+  | ×100 | 33–181% | 29–82% |
+
+  Decision: CCR levels = data ×1 / ×20 / ×100 (low / medium / high). At ×1 the DAG model
+  differs from Jin et al. mainly through precedence and makespan, not transfer time;
+  say so in the paper. Magnitudes are now realistic: makespans of 3–180 s, energy of
+  30–160 J, costs of a few cents.
 - [ ] M5. Multi-device, multi-DAG evaluator (one queue per device; x = 0 means the task's own device)
 - [ ] M6. Suite A generator (layered random DAGs) + instances at the three scales
 - [ ] B0. Reference heuristics: all-local, all-edge, all-cloud, HEFT-style list scheduling

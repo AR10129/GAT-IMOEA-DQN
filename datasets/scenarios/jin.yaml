@@ -1,0 +1,49 @@
+# Environment aligned with Jin et al. (2026), EAAI 178, 115043, Table 1 and Section 5.1.
+# Values marked "(Jin)" are taken from the paper; the rest are needed by the DAG model
+# (data passed between tasks) and are not defined there; they are marked "(ours)".
+# Workloads and data sizes are mapped into Jin et al.'s ranges at load time
+# (1-5 Gcycles, 500-3000 KB); see dataset_tools/rescale.py.
+
+name: jin
+description: >
+  Small scale of Jin et al.: 3 edge servers, 6 heterogeneous mobile devices
+  (origin device 2 reaches all three edges), 1 cloud data center.
+
+seed: 2026
+
+mobile_devices:
+  count: 6
+  origin_device: 2
+  cpu_ghz: [[0.45, 0.59], [0.54, 0.71], [0.63, 0.82], [0.72, 0.94], [0.81, 1.06], [0.9, 1.18]]   # (Jin)
+  energy_per_gcycle_j: [[0.9, 1.1], [0.9, 1.1], [0.9, 1.1], [0.9, 1.1], [0.9, 1.1], [0.9, 1.1]] # (ours; Jin give e_i as an interval without values)
+  tx_power_w: [0.1, 0.2, 0.4, 0.5, 0.1, 0.2]          # (Jin) {0.1, 0.2, 0.4, 0.5} W, cycled
+  idle_power_w: [0.02, 0.02, 0.02, 0.02, 0.02, 0.02]  # (Jin)
+  positions_m: [[150, 300], [350, 320], [500, 300], [650, 320], [850, 300], [500, 520]]
+
+edge_servers:
+  count: 3
+  cpu_ghz: [[78.5, 90.0], [102.0, 120.0], [127.5, 150.0]]   # (Jin) aggregate, shared equally by its tasks
+  kappa_j_per_gcycle_ghz2: 0.00005    # (ours) only used when energy_scope = "all"
+  static_power_w: [15.0, 18.0, 20.0]  # (ours) only used when energy_scope = "all"
+  positions_m: [[200, 200], [500, 200], [800, 200]]
+  coverage_radius_m: 400
+
+cloud:
+  cpu_ghz: [18.0, 22.0]               # (Jin) per task
+  kappa_j_per_gcycle_ghz2: 0.002      # (ours) only used when energy_scope = "all"
+  static_power_w: 0.0
+
+links:
+  wireless_uplink:
+    bandwidth_mhz: [9.0, 12.0]        # (Jin)
+    noise_power_w: 1.0e-13            # (Jin) -100 dBm
+    channel_gain: 0.001               # (Jin) fixed gain; replaces the path-loss model
+    path_loss_exponent: 4.0           # unused when channel_gain is set
+  wireless_downlink_mbps: uplink      # (ours) edge -> device at the device's uplink rate
+  backhaul_mbps: [408.0, 624.0]       # (Jin) wired edge <-> cloud, W_C
+  edge_to_edge_mbps: [408.0, 624.0]   # (ours) edge <-> edge, same wired range as W_C
+  device_cloud_route: via_nearest_edge  # (Jin) device -> edge -> cloud
+
+pricing:
+  edge_usd_per_ghz_s: 0.001           # (Jin)
+  cloud_usd_per_s: 0.01               # (Jin)

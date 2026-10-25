@@ -188,13 +188,22 @@ class Scenario:
         hi = np.zeros((n + 2, n + 2))
         np.fill_diagonal(lo, np.inf)
         np.fill_diagonal(hi, np.inf)
-        down = _iv(L["wireless_downlink_mbps"])
+        # "uplink" = the edge -> device downlink runs at that device-edge uplink rate
+        down_spec = L["wireless_downlink_mbps"]
+        same_as_up = isinstance(down_spec, str)
+        if same_as_up and down_spec != "uplink":
+            raise ValueError(f"wireless_downlink_mbps must be an interval or 'uplink', got {down_spec!r}")
+        down_fixed = None if same_as_up else _iv(down_spec)
         bh = _iv(L["backhaul_mbps"])
         e2e = _iv(L["edge_to_edge_mbps"])
+
+        def down_rate(u: int) -> Tuple[float, float]:
+            return tuple(self.uplink_mbps[u - 1]) if same_as_up else down_fixed
+
         for u in range(1, n + 1):
             if self.edge_in_range[u - 1]:
                 lo[0, u], hi[0, u] = self.uplink_mbps[u - 1]
-                lo[u, 0], hi[u, 0] = down
+                lo[u, 0], hi[u, 0] = down_rate(u)
             lo[u, c], hi[u, c] = bh
             lo[c, u], hi[c, u] = bh
             for v in range(1, n + 1):
@@ -204,6 +213,7 @@ class Scenario:
             up = self.uplink_mbps[self.nearest_edge - 1]
             series = lambda a, b: 1.0 / (1.0 / a + 1.0 / b)  # noqa: E731
             lo[0, c], hi[0, c] = series(up[0], bh[0]), series(up[1], bh[1])
+            down = down_rate(self.nearest_edge)
             lo[c, 0], hi[c, 0] = series(down[0], bh[0]), series(down[1], bh[1])
         return lo, hi
 
@@ -235,7 +245,10 @@ def load_scenario(path, origin_device: Optional[int] = None) -> Scenario:
 
     up = L["wireless_uplink"]
     B = _iv(up["bandwidth_mhz"])
-    gain = np.maximum(dist, 1.0) ** (-float(up["path_loss_exponent"]))
+    if up.get("channel_gain") is not None:            # fixed gain g_{i,u}, as in Jin et al.
+        gain = np.full(n, float(up["channel_gain"]))
+    else:                                             # distance path loss d^-alpha
+        gain = np.maximum(dist, 1.0) ** (-float(up["path_loss_exponent"]))
     se = np.log2(1.0 + float(md["tx_power_w"][i]) * gain / float(up["noise_power_w"]))
     uplink = np.stack([B[0] * se, B[1] * se], axis=1)          # MHz * bit/s/Hz = Mbps
 

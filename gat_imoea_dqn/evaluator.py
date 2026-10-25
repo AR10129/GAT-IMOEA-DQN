@@ -108,6 +108,9 @@ class EvaluatorConfig:
     external_io: str = "pdf"            # "pdf" or "device"
     edge_queue: bool = False
     validate: bool = True               # check X is reachable and O is topological
+    # "all": device + edge + cloud energy (the workflow PDF); "device": device-side
+    # energy only (local compute, uploads, idle), as in Jin et al. (2026)
+    energy_scope: str = "all"
 
 
 @dataclass
@@ -136,6 +139,8 @@ class IntervalEvaluator:
     def __init__(self, wf: WorkflowDAG, sc: Scenario, config: EvaluatorConfig = EvaluatorConfig()):
         if config.external_io not in ("pdf", "device"):
             raise ValueError("external_io must be 'pdf' or 'device'")
+        if config.energy_scope not in ("all", "device"):
+            raise ValueError("energy_scope must be 'all' or 'device'")
         self.wf, self.sc, self.cfg = wf, sc, config
         K, n = wf.num_tasks, sc.n_edge
         self.K, self.n, self.N = K, n, n + 2
@@ -270,6 +275,8 @@ class IntervalEvaluator:
                          + self.P_static[e_sl] * busy_hi[e_sl]).sum()))
         e_cloud = (self.kappa_C * self.f_lo[cloud] ** 2 * work_lo[cloud] + self.P_static[cloud] * busy_lo[cloud],
                    self.kappa_C * self.f_hi[cloud] ** 2 * work_hi[cloud] + self.P_static[cloud] * busy_hi[cloud])
+        if self.cfg.energy_scope == "device":
+            e_edge = e_cloud = (0.0, 0.0)
         energy = [e_comp[b] + e_tx[b] + e_idle[b] + e_edge[b] + e_cloud[b] for b in (0, 1)]
 
         # F3: monetary cost
