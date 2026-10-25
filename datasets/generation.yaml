@@ -1,0 +1,21 @@
+# Settings used by scripts/generate_datasets.py to build datasets/workflows/.
+# Re-running with the same file reproduces the same datasets exactly.
+
+base_seed: 20261022
+instances_per_size: 1          # >1 writes <family>_<size>_i<k>.json variants
+
+# Requested task counts. WfCommons recipes return a close but not always exact
+# count (e.g. Montage 1000 -> 991); the real count is in each file's num_tasks.
+# Montage needs >= 60 tasks; Inspiral needs an even count > 20.
+sizes: [60, 100, 200, 400, 600, 800, 1000, 2000]
+
+families:
+  montage:     wfcommons      # WfChef recipe built from real Pegasus traces
+  epigenomics: wfcommons
+  cybershake:  pegasus        # port of the Pegasus WorkflowGenerator (Bharathi et al.)
+  inspiral:    pegasus        # LIGO Inspiral
+  sipht:       pegasus
+
+conversion:
+  reference_ghz: 2.0          # workload [Gcycles] = runtime_ref_s * reference_ghz
+  interval_half_width: [0.05, 0.30]   # relative half-width d of every interval

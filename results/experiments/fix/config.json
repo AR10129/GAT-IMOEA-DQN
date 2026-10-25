@@ -1,0 +1,40 @@
+{
+  "name": "fix",
+  "policies": [
+    "trained",
+    "trained_nogat",
+    "trained_fix",
+    "trained_nogat_fix",
+    "schedule",
+    "fixed_fav",
+    "fixed",
+    "random"
+  ],
+  "train_seeds": [
+    0,
+    1,
+    2
+  ],
+  "train_set": [
+    "montage_100",
+    "epigenomics_100",
+    "cybershake_100",
+    "inspiral_100",
+    "sipht_100"
+  ],
+  "test_set": [
+    "montage_200",
+    "epigenomics_200",
+    "cybershake_200",
+    "inspiral_200",
+    "sipht_200"
+  ],
+  "train_episodes": 40,
+  "generations": 300,
+  "pop": 105,
+  "seeds": 5,
+  "workers": 12,
+  "reuse_from": "hv",
+  "reference": "fixed_fav",
+  "summary_only": false
+}

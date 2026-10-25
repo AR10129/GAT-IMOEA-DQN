@@ -1,0 +1,322 @@
+[
+  {
+    "episode": 0,
+    "workflow": "montage_100",
+    "seconds": 28.5,
+    "mean_reward": 0.0024717174323464416,
+    "train_rounds": 2,
+    "last_loss": 0.001338070960046025
+  },
+  {
+    "episode": 1,
+    "workflow": "epigenomics_100",
+    "seconds": 28.1,
+    "mean_reward": 0.0011796260526319646,
+    "train_rounds": 8,
+    "last_loss": 0.00034962855621415654
+  },
+  {
+    "episode": 2,
+    "workflow": "cybershake_100",
+    "seconds": 29.2,
+    "mean_reward": 0.0027698278014855154,
+    "train_rounds": 14,
+    "last_loss": 0.0002832944322290132
+  },
+  {
+    "episode": 3,
+    "workflow": "inspiral_100",
+    "seconds": 29.6,
+    "mean_reward": 0.004423722555597867,
+    "train_rounds": 20,
+    "last_loss": 0.0004501833088579588
+  },
+  {
+    "episode": 4,
+    "workflow": "sipht_100",
+    "seconds": 29.9,
+    "mean_reward": 0.002365000084856388,
+    "train_rounds": 26,
+    "last_loss": 0.0005079583174665459
+  },
+  {
+    "episode": 5,
+    "workflow": "montage_100",
+    "seconds": 29.6,
+    "mean_reward": 0.003617522366062793,
+    "train_rounds": 32,
+    "last_loss": 0.00029292289153090676
+  },
+  {
+    "episode": 6,
+    "workflow": "epigenomics_100",
+    "seconds": 29.1,
+    "mean_reward": 0.0013329889991726743,
+    "train_rounds": 38,
+    "last_loss": 0.0003518044592055958
+  },
+  {
+    "episode": 7,
+    "workflow": "cybershake_100",
+    "seconds": 29.9,
+    "mean_reward": 0.0030824764860982244,
+    "train_rounds": 44,
+    "last_loss": 0.0002928818693908397
+  },
+  {
+    "episode": 8,
+    "workflow": "inspiral_100",
+    "seconds": 29.8,
+    "mean_reward": 0.003725777211406384,
+    "train_rounds": 50,
+    "last_loss": 0.000254635189921828
+  },
+  {
+    "episode": 9,
+    "workflow": "sipht_100",
+    "seconds": 28.5,
+    "mean_reward": 0.0013584352546400042,
+    "train_rounds": 56,
+    "last_loss": 0.000249186655273661
+  },
+  {
+    "episode": 10,
+    "workflow": "montage_100",
+    "seconds": 28.9,
+    "mean_reward": 0.0032920198127954605,
+    "train_rounds": 62,
+    "last_loss": 0.0002443884553213138
+  },
+  {
+    "episode": 11,
+    "workflow": "epigenomics_100",
+    "seconds": 29.2,
+    "mean_reward": 0.001796287476597816,
+    "train_rounds": 68,
+    "last_loss": 0.0003766379655280616
+  },
+  {
+    "episode": 12,
+    "workflow": "cybershake_100",
+    "seconds": 29.4,
+    "mean_reward": 0.0030926706206205355,
+    "train_rounds": 74,
+    "last_loss": 0.0003225274110445753
+  },
+  {
+    "episode": 13,
+    "workflow": "inspiral_100",
+    "seconds": 29.6,
+    "mean_reward": 0.003628635452374832,
+    "train_rounds": 80,
+    "last_loss": 0.0003862208103237208
+  },
+  {
+    "episode": 14,
+    "workflow": "sipht_100",
+    "seconds": 29.2,
+    "mean_reward": 0.0027451631250342717,
+    "train_rounds": 86,
+    "last_loss": 0.00033826313563622534
+  },
+  {
+    "episode": 15,
+    "workflow": "montage_100",
+    "seconds": 29.6,
+    "mean_reward": 0.003400348224904326,
+    "train_rounds": 92,
+    "last_loss": 0.00026857475168071685
+  },
+  {
+    "episode": 16,
+    "workflow": "epigenomics_100",
+    "seconds": 28.6,
+    "mean_reward": 0.001350116243057855,
+    "train_rounds": 98,
+    "last_loss": 0.0002645204796863254
+  },
+  {
+    "episode": 17,
+    "workflow": "cybershake_100",
+    "seconds": 29.6,
+    "mean_reward": 0.0023389927166083736,
+    "train_rounds": 104,
+    "last_loss": 0.00033745648644980977
+  },
+  {
+    "episode": 18,
+    "workflow": "inspiral_100",
+    "seconds": 29.5,
+    "mean_reward": 0.004378323868444316,
+    "train_rounds": 110,
+    "last_loss": 0.00027120018894493113
+  },
+  {
+    "episode": 19,
+    "workflow": "sipht_100",
+    "seconds": 28.9,
+    "mean_reward": 0.002304845308035052,
+    "train_rounds": 116,
+    "last_loss": 0.0002735563280293718
+  },
+  {
+    "episode": 20,
+    "workflow": "montage_100",
+    "seconds": 28.6,
+    "mean_reward": 0.0029676784297134238,
+    "train_rounds": 122,
+    "last_loss": 0.00023492469706980047
+  },
+  {
+    "episode": 21,
+    "workflow": "epigenomics_100",
+    "seconds": 28.6,
+    "mean_reward": 0.0014921466259291763,
+    "train_rounds": 128,
+    "last_loss": 0.0001471370852959808
+  },
+  {
+    "episode": 22,
+    "workflow": "cybershake_100",
+    "seconds": 28.4,
+    "mean_reward": 0.0023780330915349123,
+    "train_rounds": 134,
+    "last_loss": 0.00026181682231253946
+  },
+  {
+    "episode": 23,
+    "workflow": "inspiral_100",
+    "seconds": 29.1,
+    "mean_reward": 0.0036488165584761295,
+    "train_rounds": 140,
+    "last_loss": 0.00023462954130081925
+  },
+  {
+    "episode": 24,
+    "workflow": "sipht_100",
+    "seconds": 29.3,
+    "mean_reward": 0.002147647818604728,
+    "train_rounds": 146,
+    "last_loss": 0.00029567265752120873
+  },
+  {
+    "episode": 25,
+    "workflow": "montage_100",
+    "seconds": 29.7,
+    "mean_reward": 0.0026819622371437955,
+    "train_rounds": 152,
+    "last_loss": 0.0002959189122339012
+  },
+  {
+    "episode": 26,
+    "workflow": "epigenomics_100",
+    "seconds": 29.1,
+    "mean_reward": 0.0013735255209080255,
+    "train_rounds": 158,
+    "last_loss": 0.0002451149563421495
+  },
+  {
+    "episode": 27,
+    "workflow": "cybershake_100",
+    "seconds": 29.2,
+    "mean_reward": 0.002826228401980713,
+    "train_rounds": 164,
+    "last_loss": 0.00023439805656380486
+  },
+  {
+    "episode": 28,
+    "workflow": "inspiral_100",
+    "seconds": 29.3,
+    "mean_reward": 0.004301266160349831,
+    "train_rounds": 170,
+    "last_loss": 0.0002079179001157172
+  },
+  {
+    "episode": 29,
+    "workflow": "sipht_100",
+    "seconds": 29.3,
+    "mean_reward": 0.001985555503660094,
+    "train_rounds": 176,
+    "last_loss": 0.0003195269062416628
+  },
+  {
+    "episode": 30,
+    "workflow": "montage_100",
+    "seconds": 28.5,
+    "mean_reward": 0.0037768800463120005,
+    "train_rounds": 182,
+    "last_loss": 0.00022515876102261246
+  },
+  {
+    "episode": 31,
+    "workflow": "epigenomics_100",
+    "seconds": 28.3,
+    "mean_reward": 0.000761249484899225,
+    "train_rounds": 188,
+    "last_loss": 0.00031481446741963735
+  },
+  {
+    "episode": 32,
+    "workflow": "cybershake_100",
+    "seconds": 28.6,
+    "mean_reward": 0.0030105461598468755,
+    "train_rounds": 194,
+    "last_loss": 0.00025744863494765014
+  },
+  {
+    "episode": 33,
+    "workflow": "inspiral_100",
+    "seconds": 28.9,
+    "mean_reward": 0.004426219057636395,
+    "train_rounds": 200,
+    "last_loss": 0.000216260739180143
+  },
+  {
+    "episode": 34,
+    "workflow": "sipht_100",
+    "seconds": 29.6,
+    "mean_reward": 0.003123556002232372,
+    "train_rounds": 206,
+    "last_loss": 0.00033382490742951633
+  },
+  {
+    "episode": 35,
+    "workflow": "montage_100",
+    "seconds": 29.4,
+    "mean_reward": 0.0035468547258910147,
+    "train_rounds": 212,
+    "last_loss": 0.0003889408001850825
+  },
+  {
+    "episode": 36,
+    "workflow": "epigenomics_100",
+    "seconds": 28.5,
+    "mean_reward": 0.001247937066849314,
+    "train_rounds": 218,
+    "last_loss": 0.00030314404088130684
+  },
+  {
+    "episode": 37,
+    "workflow": "cybershake_100",
+    "seconds": 29.3,
+    "mean_reward": 0.0029151313398912766,
+    "train_rounds": 224,
+    "last_loss": 0.0001814300546539016
+  },
+  {
+    "episode": 38,
+    "workflow": "inspiral_100",
+    "seconds": 32.3,
+    "mean_reward": 0.0036127318785962263,
+    "train_rounds": 230,
+    "last_loss": 0.0002584974172350485
+  },
+  {
+    "episode": 39,
+    "workflow": "sipht_100",
+    "seconds": 29.0,
+    "mean_reward": 0.0022314485818328857,
+    "train_rounds": 236,
+    "last_loss": 0.00020690763973107095
+  }
+]

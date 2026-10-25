@@ -1,0 +1,23 @@
+{
+  "name": "main",
+  "agents_from": "fix",
+  "workflows": [
+    "montage_200",
+    "epigenomics_200",
+    "cybershake_200",
+    "inspiral_200",
+    "sipht_200"
+  ],
+  "snap_gens": [
+    10,
+    100,
+    250
+  ],
+  "generations": 300,
+  "pop": 105,
+  "replicates": 8,
+  "return_replicates": 3,
+  "horizon": 10,
+  "workers": 12,
+  "summary_only": false
+}

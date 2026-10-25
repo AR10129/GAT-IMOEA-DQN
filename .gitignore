@@ -1,0 +1,20 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.nbi
+*.nbc
+
+# old HEFT-style files, kept locally only
+datasets/legacy/
+
+# raw experiment outputs are large and reproducible; keep only the summaries
+results/**
+!results/**/
+!results/**/summary.md
+!results/**/summary.json
+!results/**/config.json
+!results/**/train_log*.json
+checkpoints/
+*.pt
+*.log

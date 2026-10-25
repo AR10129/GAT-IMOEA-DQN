@@ -1,0 +1,55 @@
+# Three-tier computing continuum used by GAT-IMOEA-DQN (workflow PDF, section 2).
+#
+# Every uncertain quantity is a closed interval [lower, upper].
+# Units are fixed and listed next to each field. Workflow files carry only
+# the application (DAG) side; this file carries the environment side, so the
+# same workflow can be evaluated under several environments.
+
+name: default
+description: >
+  Baseline continuum: 1 originating mobile device (of 5), 4 edge servers,
+  1 cloud data center. Values follow common MEC/DAG-offloading settings.
+
+seed: 2026                      # used for anything derived at load time
+
+# ---------------------------------------------------------------- tiers ----
+mobile_devices:
+  count: 5                      # m
+  origin_device: 2              # device i that submits the workflow (x_k = 0);
+                                # device 2 reaches edges 1-3, device 0 only edge 1
+  cpu_ghz: [[1.0, 1.5], [0.8, 1.2], [1.2, 1.8], [1.0, 1.4], [0.9, 1.3]]   # f~_i
+  energy_per_gcycle_j: [[0.9, 1.1], [0.7, 0.9], [1.1, 1.4], [0.9, 1.2], [0.8, 1.0]]  # e~_i
+  tx_power_w: [0.5, 0.5, 0.6, 0.5, 0.4]       # p_i  (transmit power)
+  idle_power_w: [0.1, 0.08, 0.12, 0.1, 0.09]  # p_i^idle (waiting while offloaded)
+  positions_m: [[120, 80], [300, 260], [450, 120], [620, 340], [780, 150]]
+
+edge_servers:
+  count: 4                      # n
+  cpu_ghz: [[8.0, 10.0], [10.0, 12.0], [6.0, 8.0], [9.0, 11.0]]   # f~_u (aggregate, shared)
+  kappa_j_per_gcycle_ghz2: 0.005  # kappa_E in E = kappa_E * f_u^2 * sum(C_k)
+  static_power_w: [15.0, 18.0, 12.0, 16.0]   # P_u^static (while busy)
+  positions_m: [[200, 200], [400, 300], [600, 150], [800, 300]]
+  coverage_radius_m: 300        # device i can offload to edge u only if within range
+
+cloud:
+  cpu_ghz: [20.0, 25.0]         # f~_C (per task, no sharing)
+  kappa_j_per_gcycle_ghz2: 0.002  # kappa_C (E_cloud is not defined in the PDF;
+  static_power_w: 0.0             #  this mirrors E_edge and is an assumption)
+
+# ---------------------------------------------------------------- links ----
+links:
+  wireless_uplink:              # r~_{i,u} = B~ log2(1 + p_i g_{i,u} / v0)
+    bandwidth_mhz: [10.0, 20.0] # B~
+    noise_power_w: 1.0e-13      # v0  (-100 dBm)
+    path_loss_exponent: 4.0     # g_{i,u} = d_{i,u}^-alpha, d in metres
+  wireless_downlink_mbps: [40.0, 80.0]   # edge -> device (not defined in PDF; assumption)
+  backhaul_mbps: [100.0, 150.0]          # W~_C  edge <-> cloud (wired)
+  edge_to_edge_mbps: [50.0, 100.0]       # W~_E2E edge <-> edge (crosshaul)
+  # device <-> cloud traffic is relayed through the device's nearest
+  # in-range edge server: wireless hop + backhaul hop (assumption).
+  device_cloud_route: via_nearest_edge
+
+# --------------------------------------------------------------- pricing ---
+pricing:
+  edge_usd_per_ghz_s: 0.001     # eta_E
+  cloud_usd_per_s: 0.01         # eta_C
