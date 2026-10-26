@@ -23,7 +23,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from .chromosome import DagIndex, Population, init_population
+from .chromosome import DagIndex, Population, allowed_for, init_population
 from .dqn import DQNAgent
 from .evaluator import EvaluatorConfig, IntervalEvaluator
 from .intervals import interval_dominance_matrix, nondominated_fronts
@@ -81,7 +81,7 @@ def run(wf, sc, cfg: RunConfig = RunConfig(), agent: Optional[DQNAgent] = None,
     rng = np.random.default_rng(cfg.seed)
     dag = DagIndex(wf)
     ev = IntervalEvaluator(wf, sc, cfg.evaluator)
-    allowed = sc.allowed_targets()
+    allowed = allowed_for(wf, sc)
     actions = selection_actions()
     tracker = PopulationTracker(cfg.generations, reward=cfg.reward, normalization=cfg.tracker_normalization)
     N = cfg.pop_size

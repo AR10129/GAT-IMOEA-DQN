@@ -1,5 +1,6 @@
 """GAT-IMOEA-DQN: interval multi-objective DAG workflow offloading."""
-from .chromosome import (DagIndex, Population, init_population, is_topological, random_topological_order,
+from .chromosome import (DagIndex, Population, allowed_for, init_population, is_allowed, is_topological,
+                         random_topological_order,
                          repair_allocation, repair_order)
 from .evaluator import EvalResult, EvaluatorConfig, IntervalEvaluator, InvalidIndividual, OBJECTIVES
 from .intervals import (front_ranks, interval_dominance_matrix, nondominated_fronts, normalize_intervals,
@@ -10,7 +11,8 @@ from .selection import (SelectionConfig, SelectionInfo, das_dennis, dominance_de
                         interval_crowding, rankings, selection_actions)
 
 __all__ = [
-    "DagIndex", "Population", "init_population", "is_topological", "random_topological_order",
+    "DagIndex", "Population", "allowed_for", "init_population", "is_allowed", "is_topological",
+    "random_topological_order",
     "repair_allocation", "repair_order",
     "EvalResult", "EvaluatorConfig", "IntervalEvaluator", "InvalidIndividual", "OBJECTIVES",
     "front_ranks", "interval_dominance_matrix", "nondominated_fronts", "normalize_intervals",

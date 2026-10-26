@@ -51,6 +51,18 @@ def _rescale_interval(i_lo: np.ndarray, i_hi: np.ndarray, rng: Tuple[float, floa
     return new_mid * (1.0 - rel), new_mid * (1.0 + rel)
 
 
+def multiply_data(wf: WorkflowDAG, data_multiplier: float) -> WorkflowDAG:
+    """Scale every data size (DAG edges and external files) without remapping; for Suite A,
+    whose sizes are already in Jin et al.'s ranges."""
+    if data_multiplier < 0:
+        raise ValueError("data_multiplier must be >= 0")
+    out = copy.deepcopy(wf)
+    out.D_lo, out.D_hi = wf.D_lo * data_multiplier, wf.D_hi * data_multiplier
+    out.ext_input_kb, out.ext_output_kb = wf.ext_input_kb * data_multiplier, wf.ext_output_kb * data_multiplier
+    out.meta = {**wf.meta, "data_multiplier": data_multiplier}
+    return out
+
+
 def rescale_workflow(wf: WorkflowDAG,
                      workload_range: Tuple[float, float] = JIN_WORKLOAD_GCYCLES,
                      data_range: Tuple[float, float] = JIN_DATA_KB,

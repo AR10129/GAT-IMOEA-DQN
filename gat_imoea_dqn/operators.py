@@ -38,7 +38,7 @@ from typing import Optional
 
 import numpy as np
 
-from .chromosome import DagIndex, Population, is_topological, repair_allocation, repair_order
+from .chromosome import DagIndex, Population, is_allowed, is_topological, repair_allocation, repair_order
 from .intervals import (front_ranks, interval_dominance_matrix, nondominated_fronts, normalize_intervals,
                         pareto_dominance_matrix, uncertainty_metrics)
 
@@ -117,12 +117,22 @@ def daec(x_better: np.ndarray, x_other: np.ndarray, rng: np.random.Generator,
 # ------------------------------------------------------------- mutation ---
 def mutate_allocation(x: np.ndarray, allowed: np.ndarray, rng: np.random.Generator,
                       rate: float) -> np.ndarray:
-    """Resample each gene with probability `rate` to a different reachable node."""
+    """Resample each gene with probability `rate` to a different reachable node.
+    `allowed`: 1-D targets shared by all tasks, or a (K, n+2) bool mask per task."""
     x = x.copy()
     hit = np.flatnonzero(rng.random(len(x)) < rate)
-    if hit.size and len(allowed) > 1:
-        for k in hit:
-            choices = allowed[allowed != x[k]]
+    if not hit.size:
+        return x
+    if allowed.ndim == 1:
+        if len(allowed) > 1:
+            for k in hit:
+                choices = allowed[allowed != x[k]]
+                x[k] = choices[rng.integers(len(choices))]
+        return x
+    for k in hit:
+        choices = np.flatnonzero(allowed[k])
+        choices = choices[choices != x[k]]
+        if len(choices):
             x[k] = choices[rng.integers(len(choices))]
     return x
 
@@ -163,7 +173,8 @@ def make_offspring(pop: Population, F_lo: np.ndarray, F_hi: np.ndarray, dag: Dag
     N, K = pop.X.shape
     if N < 2:
         raise ValueError("need at least 2 individuals to mate")
-    allowed = np.asarray(allowed, dtype=np.int64)
+    allowed = np.asarray(allowed)
+    allowed = allowed.astype(bool) if allowed.ndim == 2 else allowed.astype(np.int64)
     rate_x = cfg.p_m_alloc if cfg.p_m_alloc is not None else 1.0 / K
     rate_o = cfg.p_m_order if cfg.p_m_order is not None else 1.0 / K
 
@@ -195,7 +206,7 @@ def make_offspring(pop: Population, F_lo: np.ndarray, F_hi: np.ndarray, dag: Dag
             o = pox(pop.O[i], pop.O[j], rng, cfg.pox_mode)
         x = mutate_allocation(x, allowed, rng, rate_x)
         o = mutate_order(o.copy(), dag, rng, rate_o)
-        if not np.isin(x, allowed).all():
+        if not is_allowed(x, allowed).all():
             x = repair_allocation(x, allowed, rng)
         if not is_topological(o, dag):
             o = repair_order(o, dag)

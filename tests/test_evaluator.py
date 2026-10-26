@@ -185,9 +185,9 @@ def test_real_workflows_numba_matches_python(name):
         Ord = wf.random_topological_order(rng)
         r = ev.evaluate(X, Ord, detail=True)
         assert r.feasible and np.all(np.isfinite(r.F_hi)) and np.all(r.F_lo <= r.F_hi)
-        ref = evmod._schedule_py(Ord, X, ev.pred_ptr, ev.pred_edge, ev.src,
+        ref = evmod._schedule_py(Ord, ev.internal(X), ev.pred_ptr, ev.pred_edge, ev.src,
                                  *_tt_tc(ev, X), np.zeros(wf.num_tasks), np.zeros(wf.num_tasks),
-                                 ev.queued, ev.N)
+                                 ev.queued, ev.NI)
         np.testing.assert_allclose(r.FT[0], ref[2])
         np.testing.assert_allclose(r.FT[1], ref[3])
         # every task starts after all parents finish
@@ -195,7 +195,8 @@ def test_real_workflows_numba_matches_python(name):
 
 
 def _tt_tc(ev, X):
-    share = np.where(ev.is_edge, np.maximum(np.bincount(X, minlength=ev.N), 1), 1)
-    xs, xd = X[ev.src], X[ev.dst]
+    I = ev.internal(X)
+    share = np.where(ev.is_edge, np.maximum(np.bincount(I, minlength=ev.NI), 1), 1)
+    xs, xd = I[ev.src], I[ev.dst]
     return (ev.D_lo * ev.spk_lo[xs, xd], ev.D_hi * ev.spk_hi[xs, xd],
-            ev.C_lo / (ev.f_hi / share)[X], ev.C_hi / (ev.f_lo / share)[X])
+            ev.C_lo / (ev.f_hi / share)[I], ev.C_hi / (ev.f_lo / share)[I])

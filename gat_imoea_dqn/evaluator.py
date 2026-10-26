@@ -111,6 +111,12 @@ class EvaluatorConfig:
     # "all": device + edge + cloud energy (the workflow PDF); "device": device-side
     # energy only (local compute, uploads, idle), as in Jin et al. (2026)
     energy_scope: str = "all"
+    # F1: "max" = latest finish over all exit tasks (the PDF); "sum_apps" = sum over
+    # applications of each application's makespan (Suite A, many devices). With one
+    # application they are the same; with single-task applications and no device queue,
+    # "sum_apps" is exactly Jin et al.'s summed task latency.
+    makespan: str = "max"
+    device_queue: bool = True           # a device runs one task at a time (False: unlimited, as in Jin et al.)
 
 
 @dataclass
@@ -141,10 +147,22 @@ class IntervalEvaluator:
             raise ValueError("external_io must be 'pdf' or 'device'")
         if config.energy_scope not in ("all", "device"):
             raise ValueError("energy_scope must be 'all' or 'device'")
+        if config.makespan not in ("max", "sum_apps"):
+            raise ValueError("makespan must be 'max' or 'sum_apps'")
         self.wf, self.sc, self.cfg = wf, sc, config
-        K, n = wf.num_tasks, sc.n_edge
-        self.K, self.n, self.N = K, n, n + 2
+        K, n, m = wf.num_tasks, sc.n_edge, sc.num_devices
+        self.K, self.n, self.m = K, n, m
+        self.N = n + 2                  # allocation genes 0..n+1 (0 = the task's own device)
+        self.NI = n + 2 + m             # internal nodes: 1..n edges, n+1 cloud, n+2+d device d
         self.cloud = n + 1
+        self.owner = (np.asarray(wf.owner, dtype=np.int64) if wf.owner is not None
+                      else np.full(K, sc.origin, dtype=np.int64))
+        if self.owner.min() < 0 or self.owner.max() >= m:
+            raise ValueError(f"task owners must be devices 0..{m - 1}")
+        self.dev_node = n + 2 + self.owner          # internal node of each task's own device
+        app = np.asarray(wf.app, dtype=np.int64) if wf.app is not None else np.zeros(K, dtype=np.int64)
+        _, self.app = np.unique(app, return_inverse=True)
+        self.n_apps = int(self.app.max()) + 1 if K else 0
 
         self.C_lo, self.C_hi = wf.C_lo.astype(float), wf.C_hi.astype(float)
         self.src = wf.edge_index[0].astype(np.int64)
@@ -157,31 +175,36 @@ class IntervalEvaluator:
         self.pred_ptr = np.concatenate([[0], np.cumsum(np.bincount(self.dst, minlength=K))]).astype(np.int64)
         self.is_exit = wf.out_degree == 0
 
-        # per-node capacity [GHz]
-        self.f_lo = np.empty(self.N)
-        self.f_hi = np.empty(self.N)
-        self.f_lo[0], self.f_hi[0] = sc.f_dev
+        # per internal node capacity [GHz]
+        NI = self.NI
+        self.f_lo = np.ones(NI)
+        self.f_hi = np.ones(NI)
         self.f_lo[1:n + 1], self.f_hi[1:n + 1] = sc.f_edge[:, 0], sc.f_edge[:, 1]
         self.f_lo[self.cloud], self.f_hi[self.cloud] = sc.f_cloud
-        self.is_edge = np.zeros(self.N, dtype=bool)
+        self.f_lo[n + 2:], self.f_hi[n + 2:] = sc.dev_f[:, 0], sc.dev_f[:, 1]
+        self.is_edge = np.zeros(NI, dtype=bool)
         self.is_edge[1:n + 1] = True
-        self.queued = np.zeros(self.N, dtype=np.bool_)
-        self.queued[0] = True
+        self.queued = np.zeros(NI, dtype=np.bool_)
+        self.queued[n + 2:] = config.device_queue
         self.queued[1:n + 1] = config.edge_queue
 
-        R_lo, R_hi = sc.rate_matrix_mbps()
+        R_lo, R_hi = sc.internal_rate_matrix_mbps()
         # transfer seconds per KB, interval [1/R_hi, 1/R_lo]; 0 on the diagonal, inf if unreachable
         with np.errstate(divide="ignore"):
             self.spk_lo = np.where(np.isinf(R_hi), 0.0, KB_TO_MBIT / R_hi)
             self.spk_hi = np.where(np.isinf(R_lo), 0.0, KB_TO_MBIT / R_lo)
-        self.allowed = np.zeros(self.N, dtype=bool)
-        self.allowed[sc.allowed_targets()] = True
+        self.allowed_mask = sc.allowed_mask(self.owner)            # (K, n+2)
+        # device -> cloud traffic is relayed by the device's nearest in-range edge; for
+        # energy the wireless leg costs transmit power and the wired leg idle power
+        # (Jin et al. 2026, eq. 11). Internal node of that edge per task (0 = none).
+        self.near_node = sc.dev_nearest[self.owner].astype(np.int64)
 
         raw = sc.raw
-        self.e_dev = sc.e_dev
-        self.p_tx, self.p_idle = sc.p_tx, sc.p_idle
+        # per-task device parameters (the task's own device)
+        self.e_lo_t, self.e_hi_t = sc.dev_e[self.owner, 0], sc.dev_e[self.owner, 1]
+        self.p_tx_t, self.p_idle_t = sc.dev_ptx[self.owner], sc.dev_pidle[self.owner]
         self.kappa_E = float(raw["edge_servers"]["kappa_j_per_gcycle_ghz2"])
-        self.P_static = np.zeros(self.N)
+        self.P_static = np.zeros(NI)
         self.P_static[1:n + 1] = np.asarray(raw["edge_servers"]["static_power_w"], dtype=float)
         self.kappa_C = float(raw["cloud"]["kappa_j_per_gcycle_ghz2"])
         self.P_static[self.cloud] = float(raw["cloud"].get("static_power_w", 0.0))
@@ -195,10 +218,10 @@ class IntervalEvaluator:
             raise InvalidIndividual(f"X and O must have shape ({K},)")
         if X.min() < 0 or X.max() >= self.N:
             raise InvalidIndividual(f"allocation genes must be in 0..{self.N - 1}")
-        bad = np.flatnonzero(~self.allowed[X])
+        bad = np.flatnonzero(~self.allowed_mask[np.arange(K), X])
         if bad.size:
             raise InvalidIndividual(f"tasks {bad[:5].tolist()} use node(s) {np.unique(X[bad]).tolist()} "
-                                    f"the origin device cannot reach")
+                                    f"their device cannot reach")
         pos = np.full(K, -1, dtype=np.int64)
         pos[O] = np.arange(K)
         if (pos < 0).any():
@@ -209,22 +232,43 @@ class IntervalEvaluator:
             raise InvalidIndividual(f"O is not topological: task {self.dst[e]} is placed before its "
                                     f"parent {self.src[e]}")
 
+    def _upload_energy(self, sender, dest_node, kb, spk, mask) -> float:
+        """Device energy to send kb from each sender task's device to dest_node.
+        To an edge: transmit power x wireless time. To the cloud: transmit power x the
+        wireless leg to the nearest edge + idle power x the wired leg (Jin et al. eq. 11)."""
+        if not np.any(mask):
+            return 0.0
+        s, dst, kb = sender[mask], dest_node[mask], kb[mask]
+        dev = self.dev_node[s]
+        near = self.near_node[s]
+        to_cloud = (dst == self.cloud) & (near > 0)
+        wireless_node = np.where(to_cloud, near, dst)
+        t_wireless = _xfer(kb, spk[dev, wireless_node])
+        t_wired = np.where(to_cloud, _xfer(kb, spk[near, self.cloud]), 0.0)
+        return float((self.p_tx_t[s] * t_wireless + self.p_idle_t[s] * t_wired).sum())
+
+    def internal(self, X) -> np.ndarray:
+        """Internal node of each task: its own device for gene 0, else the edge / cloud node."""
+        X = np.asarray(X, dtype=np.int64)
+        return np.where(X == 0, self.dev_node, X)
+
     def evaluate(self, X, O, detail: bool = False) -> EvalResult:
         X = np.asarray(X, dtype=np.int64)
         O = np.asarray(O, dtype=np.int64)
         if self.cfg.validate:
             self.check(X, O)
         n, cloud = self.n, self.cloud
+        I = self.internal(X)
 
         # effective capacity and compute time
-        share = np.where(self.is_edge, np.maximum(np.bincount(X, minlength=self.N), 1), 1)
-        feff_lo = (self.f_lo / share)[X]
-        feff_hi = (self.f_hi / share)[X]
+        share = np.where(self.is_edge, np.maximum(np.bincount(I, minlength=self.NI), 1), 1)
+        feff_lo = (self.f_lo / share)[I]
+        feff_hi = (self.f_hi / share)[I]
         tc_lo = self.C_lo / feff_hi
         tc_hi = self.C_hi / feff_lo
 
         # inter-node transfers
-        xs, xd = X[self.src], X[self.dst]
+        xs, xd = I[self.src], I[self.dst]
         tt_lo = _xfer(self.D_lo, self.spk_lo[xs, xd])
         tt_hi = _xfer(self.D_hi, self.spk_hi[xs, xd])
         feasible = bool(np.all(np.isfinite(tt_hi)))
@@ -235,39 +279,47 @@ class IntervalEvaluator:
         ret_lo = ret_hi = None
         if self.cfg.external_io == "device":
             # the diagonal is 0 s/KB, so local tasks get 0 automatically
-            ready_lo = _xfer(self.ext_in, self.spk_lo[0, X])
-            ready_hi = _xfer(self.ext_in, self.spk_hi[0, X])
-            ret_lo = _xfer(self.ext_out, self.spk_lo[X, 0])
-            ret_hi = _xfer(self.ext_out, self.spk_hi[X, 0])
+            ready_lo = _xfer(self.ext_in, self.spk_lo[self.dev_node, I])
+            ready_hi = _xfer(self.ext_in, self.spk_hi[self.dev_node, I])
+            ret_lo = _xfer(self.ext_out, self.spk_lo[I, self.dev_node])
+            ret_hi = _xfer(self.ext_out, self.spk_hi[I, self.dev_node])
             feasible &= bool(np.all(np.isfinite(ready_hi)) and np.all(np.isfinite(ret_hi)))
 
         ST_lo, ST_hi, FT_lo, FT_hi = _schedule(
-            O, X, self.pred_ptr, self.pred_edge, self.src, tt_lo, tt_hi, tc_lo, tc_hi,
-            ready_lo, ready_hi, self.queued, self.N)
+            O, I, self.pred_ptr, self.pred_edge, self.src, tt_lo, tt_hi, tc_lo, tc_hi,
+            ready_lo, ready_hi, self.queued, self.NI)
 
-        # F1: makespan
-        mk_lo, mk_hi = FT_lo[self.is_exit].max(), FT_hi[self.is_exit].max()
-        if ret_lo is not None:
-            mk_lo = max(mk_lo, (FT_lo + ret_lo).max())
-            mk_hi = max(mk_hi, (FT_hi + ret_hi).max())
+        # F1: makespan (latest finish incl. returning results), overall or summed per application
+        end_lo = FT_lo + ret_lo if ret_lo is not None else FT_lo
+        end_hi = FT_hi + ret_hi if ret_hi is not None else FT_hi
+        if self.cfg.makespan == "sum_apps":
+            app_lo = np.zeros(self.n_apps)
+            app_hi = np.zeros(self.n_apps)
+            np.maximum.at(app_lo, self.app, end_lo)
+            np.maximum.at(app_hi, self.app, end_hi)
+            mk_lo, mk_hi = float(app_lo.sum()), float(app_hi.sum())
+        else:
+            mk_lo, mk_hi = float(end_lo.max()), float(end_hi.max())
 
-        # F2: energy
+        # F2: energy (each task's own device parameters)
         local = ~offloaded
-        e_comp = (self.C_lo[local].sum() * self.e_dev[0], self.C_hi[local].sum() * self.e_dev[1])
-        from_dev = (xs == 0) & (xd != 0)
-        up_lo, up_hi = tt_lo[from_dev].sum(), tt_hi[from_dev].sum()
+        e_comp = ((self.C_lo * self.e_lo_t)[local].sum(), (self.C_hi * self.e_hi_t)[local].sum())
+        from_dev = (X[self.src] == 0) & offloaded[self.dst]        # sent from the parent's device
+        e_tx_lo = self._upload_energy(self.src, I[self.dst], self.D_lo, self.spk_lo, from_dev)
+        e_tx_hi = self._upload_energy(self.src, I[self.dst], self.D_hi, self.spk_hi, from_dev)
         if self.cfg.external_io == "device":
-            up_lo += ready_lo.sum()
-            up_hi += ready_hi.sum()
-        e_tx = (self.p_tx * up_lo, self.p_tx * up_hi)
-        e_idle = (self.p_idle * tc_lo[offloaded].sum(), self.p_idle * tc_hi[offloaded].sum())
+            tasks = np.arange(self.K)
+            e_tx_lo += self._upload_energy(tasks, I, self.ext_in, self.spk_lo, offloaded)
+            e_tx_hi += self._upload_energy(tasks, I, self.ext_in, self.spk_hi, offloaded)
+        e_tx = (float(e_tx_lo), float(e_tx_hi))
+        e_idle = ((self.p_idle_t * tc_lo)[offloaded].sum(), (self.p_idle_t * tc_hi)[offloaded].sum())
 
-        work_lo = np.bincount(X, weights=self.C_lo, minlength=self.N)
-        work_hi = np.bincount(X, weights=self.C_hi, minlength=self.N)
-        busy_lo = np.zeros(self.N)
-        busy_hi = np.zeros(self.N)
-        np.maximum.at(busy_lo, X, FT_lo)
-        np.maximum.at(busy_hi, X, FT_hi)
+        work_lo = np.bincount(I, weights=self.C_lo, minlength=self.NI)
+        work_hi = np.bincount(I, weights=self.C_hi, minlength=self.NI)
+        busy_lo = np.zeros(self.NI)
+        busy_hi = np.zeros(self.NI)
+        np.maximum.at(busy_lo, I, FT_lo)
+        np.maximum.at(busy_hi, I, FT_hi)
         e_sl = slice(1, n + 1)
         e_edge = (float((self.kappa_E * self.f_lo[e_sl] ** 2 * work_lo[e_sl]
                          + self.P_static[e_sl] * busy_lo[e_sl]).sum()),
@@ -280,8 +332,8 @@ class IntervalEvaluator:
         energy = [e_comp[b] + e_tx[b] + e_idle[b] + e_edge[b] + e_cloud[b] for b in (0, 1)]
 
         # F3: monetary cost
-        on_edge = self.is_edge[X]
-        on_cloud = X == cloud
+        on_edge = self.is_edge[I]
+        on_cloud = I == cloud
         c_edge = (self.eta_E * (feff_lo * tc_lo)[on_edge].sum(), self.eta_E * (feff_hi * tc_hi)[on_edge].sum())
         c_cloud = (self.eta_C * tc_lo[on_cloud].sum(), self.eta_C * tc_hi[on_cloud].sum())
         cost = [c_edge[b] + c_cloud[b] for b in (0, 1)]

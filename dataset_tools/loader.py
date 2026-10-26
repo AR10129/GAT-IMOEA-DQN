@@ -39,6 +39,11 @@ class WorkflowDAG:
     depth: np.ndarray              # (K,) topological depth, entry tasks = 0
     task_types: List[str]
     meta: Dict = field(default_factory=dict)
+    # Multi-device instances (Suite A): the mobile device that submits each task and the
+    # application (one DAG) it belongs to. None = every task belongs to the scenario's
+    # origin device, as one application.
+    owner: Optional[np.ndarray] = None
+    app: Optional[np.ndarray] = None
 
     @property
     def num_tasks(self) -> int:
@@ -128,13 +133,16 @@ def load_workflow(path) -> WorkflowDAG:
     D = np.array([x["data_kb"] for x in e], dtype=float).reshape(-1, 2)
     ei = np.array([[x["src"] for x in e], [x["dst"] for x in e]], dtype=np.int64).reshape(2, -1)
     meta = {k: v for k, v in rec.items() if k not in ("tasks", "edges")}
+    has_owner = bool(t) and "device" in t[0]
     return WorkflowDAG(
         name=rec["name"], family=rec["family"],
         C_lo=W[:, 0], C_hi=W[:, 1], edge_index=ei, D_lo=D[:, 0], D_hi=D[:, 1],
         ext_input_kb=np.array([x["ext_input_kb"] for x in t], dtype=float),
         ext_output_kb=np.array([x["ext_output_kb"] for x in t], dtype=float),
         depth=np.array([x["depth"] for x in t], dtype=np.int64),
-        task_types=[x["type"] for x in t], meta=meta)
+        task_types=[x["type"] for x in t], meta=meta,
+        owner=np.array([x["device"] for x in t], dtype=np.int64) if has_owner else None,
+        app=np.array([x["app"] for x in t], dtype=np.int64) if has_owner else None)
 
 
 def load_manifest(root="datasets") -> Dict[str, Dict]:
@@ -163,25 +171,68 @@ class Scenario:
     edge_in_range: np.ndarray             # (n,) bool, for the origin device
     uplink_mbps: np.ndarray               # (n, 2) origin device -> edge u
     nearest_edge: int                     # 1-based edge id used to reach the cloud
+    # every device (Suite A: many devices each submit tasks); index d = 0..m-1
+    dev_f: np.ndarray = None              # (m, 2) CPU [GHz]
+    dev_e: np.ndarray = None              # (m, 2) energy per Gcycle [J]
+    dev_ptx: np.ndarray = None            # (m,) transmit power [W]
+    dev_pidle: np.ndarray = None          # (m,) idle power [W]
+    dev_in_range: np.ndarray = None       # (m, n) bool
+    dev_uplink: np.ndarray = None         # (m, n, 2) device d -> edge u [Mbps]
+    dev_nearest: np.ndarray = None        # (m,) 1-based nearest in-range edge, 0 = none
 
     @property
     def num_nodes(self) -> int:
         return self.n_edge + 2
 
-    def allowed_targets(self) -> np.ndarray:
-        """Allocation values x_k the origin device may use (communication range)."""
-        targets = [0] + [u + 1 for u in range(self.n_edge) if self.edge_in_range[u]]
-        if self.nearest_edge > 0:
+    @property
+    def num_devices(self) -> int:
+        return len(self.dev_f)
+
+    def allowed_targets(self, device: Optional[int] = None) -> np.ndarray:
+        """Allocation values x_k a device may use (communication range); default the origin."""
+        d = self.origin if device is None else device
+        in_range, nearest = self.dev_in_range[d], self.dev_nearest[d]
+        targets = [0] + [u + 1 for u in range(self.n_edge) if in_range[u]]
+        if nearest > 0:
             targets.append(self.n_edge + 1)
         return np.asarray(targets, dtype=np.int64)
 
-    def rate_matrix_mbps(self) -> Tuple[np.ndarray, np.ndarray]:
-        """Interval rate R~[a, b] between nodes a, b (0=device, 1..n edge, n+1 cloud).
+    def allowed_mask(self, owner: np.ndarray) -> np.ndarray:
+        """(K, n+2) bool: allocation values each task may take, given its owner device."""
+        per_dev = np.zeros((self.num_devices, self.n_edge + 2), dtype=bool)
+        for d in range(self.num_devices):
+            per_dev[d, self.allowed_targets(d)] = True
+        return per_dev[np.asarray(owner, dtype=np.int64)]
+
+    def internal_rate_matrix_mbps(self) -> Tuple[np.ndarray, np.ndarray]:
+        """Rates between internal nodes: 1..n edges, n+1 cloud, n+2+d device d (index 0 unused).
+
+        Edge/cloud links as in rate_matrix_mbps(); each device row/column is that
+        device's own wireless links. Device <-> another device is unreachable (0).
+        """
+        n, m = self.n_edge, self.num_devices
+        N = n + 2 + m
+        lo, hi = np.zeros((N, N)), np.zeros((N, N))
+        base_lo, base_hi = self.rate_matrix_mbps(self.origin)
+        lo[1:n + 2, 1:n + 2], hi[1:n + 2, 1:n + 2] = base_lo[1:, 1:], base_hi[1:, 1:]
+        for d in range(m):
+            r_lo, r_hi = self.rate_matrix_mbps(d)
+            i = n + 2 + d
+            lo[i, 1:n + 2], hi[i, 1:n + 2] = r_lo[0, 1:], r_hi[0, 1:]
+            lo[1:n + 2, i], hi[1:n + 2, i] = r_lo[1:, 0], r_hi[1:, 0]
+            lo[i, i] = hi[i, i] = np.inf
+        return lo, hi
+
+    def rate_matrix_mbps(self, device: Optional[int] = None) -> Tuple[np.ndarray, np.ndarray]:
+        """Interval rate R~[a, b] between nodes a, b (0=device, 1..n edge, n+1 cloud),
+        for one device (default the origin).
 
         Diagonal is +inf (co-located, no transfer). Unreachable pairs are 0.
         Device<->cloud is relayed via the nearest in-range edge: its rate is the
         series combination 1 / (1/r_wireless + 1/W_C).
         """
+        d = self.origin if device is None else device
+        in_range, uplink, nearest_edge = self.dev_in_range[d], self.dev_uplink[d], int(self.dev_nearest[d])
         L = self.raw["links"]
         n, c = self.n_edge, self.n_edge + 1
         lo = np.zeros((n + 2, n + 2))
@@ -198,22 +249,22 @@ class Scenario:
         e2e = _iv(L["edge_to_edge_mbps"])
 
         def down_rate(u: int) -> Tuple[float, float]:
-            return tuple(self.uplink_mbps[u - 1]) if same_as_up else down_fixed
+            return tuple(uplink[u - 1]) if same_as_up else down_fixed
 
         for u in range(1, n + 1):
-            if self.edge_in_range[u - 1]:
-                lo[0, u], hi[0, u] = self.uplink_mbps[u - 1]
+            if in_range[u - 1]:
+                lo[0, u], hi[0, u] = uplink[u - 1]
                 lo[u, 0], hi[u, 0] = down_rate(u)
             lo[u, c], hi[u, c] = bh
             lo[c, u], hi[c, u] = bh
             for v in range(1, n + 1):
                 if v != u:
                     lo[u, v], hi[u, v] = e2e
-        if self.nearest_edge > 0:
-            up = self.uplink_mbps[self.nearest_edge - 1]
+        if nearest_edge > 0:
+            up = uplink[nearest_edge - 1]
             series = lambda a, b: 1.0 / (1.0 / a + 1.0 / b)  # noqa: E731
             lo[0, c], hi[0, c] = series(up[0], bh[0]), series(up[1], bh[1])
-            down = down_rate(self.nearest_edge)
+            down = down_rate(nearest_edge)
             lo[c, 0], hi[c, 0] = series(down[0], bh[0]), series(down[1], bh[1])
         return lo, hi
 
@@ -238,24 +289,32 @@ def load_scenario(path, origin_device: Optional[int] = None) -> Scenario:
         if len(es[key]) != n:
             raise ValueError(f"edge_servers.{key} has {len(es[key])} entries, expected {n}")
 
-    dev_pos = np.asarray(md["positions_m"][i], dtype=float)
     edge_pos = np.asarray(es["positions_m"], dtype=float)
-    dist = np.linalg.norm(edge_pos - dev_pos, axis=1)
-    in_range = dist <= float(es["coverage_radius_m"])
-
     up = L["wireless_uplink"]
     B = _iv(up["bandwidth_mhz"])
-    if up.get("channel_gain") is not None:            # fixed gain g_{i,u}, as in Jin et al.
-        gain = np.full(n, float(up["channel_gain"]))
-    else:                                             # distance path loss d^-alpha
-        gain = np.maximum(dist, 1.0) ** (-float(up["path_loss_exponent"]))
-    se = np.log2(1.0 + float(md["tx_power_w"][i]) * gain / float(up["noise_power_w"]))
-    uplink = np.stack([B[0] * se, B[1] * se], axis=1)          # MHz * bit/s/Hz = Mbps
 
-    nearest = int(np.argmin(np.where(in_range, dist, np.inf))) + 1 if in_range.any() else 0
+    def links(d: int):
+        dist = np.linalg.norm(edge_pos - np.asarray(md["positions_m"][d], dtype=float), axis=1)
+        in_range = dist <= float(es["coverage_radius_m"])
+        if up.get("channel_gain") is not None:        # fixed gain g_{i,u}, as in Jin et al.
+            gain = np.full(n, float(up["channel_gain"]))
+        else:                                         # distance path loss d^-alpha
+            gain = np.maximum(dist, 1.0) ** (-float(up["path_loss_exponent"]))
+        se = np.log2(1.0 + float(md["tx_power_w"][d]) * gain / float(up["noise_power_w"]))
+        uplink = np.stack([B[0] * se, B[1] * se], axis=1)      # MHz * bit/s/Hz = Mbps
+        nearest = int(np.argmin(np.where(in_range, dist, np.inf))) + 1 if in_range.any() else 0
+        return in_range, uplink, nearest
+
+    per = [links(d) for d in range(m)]
+    in_range, uplink, nearest = per[i]
     return Scenario(
         raw=raw, n_edge=n, origin=i,
         f_dev=_iv(md["cpu_ghz"][i]), e_dev=_iv(md["energy_per_gcycle_j"][i]),
         p_tx=float(md["tx_power_w"][i]), p_idle=float(md["idle_power_w"][i]),
         f_edge=np.array([_iv(x) for x in es["cpu_ghz"]]), f_cloud=_iv(cl["cpu_ghz"]),
-        edge_in_range=in_range, uplink_mbps=uplink, nearest_edge=nearest)
+        edge_in_range=in_range, uplink_mbps=uplink, nearest_edge=nearest,
+        dev_f=np.array([_iv(x) for x in md["cpu_ghz"]]),
+        dev_e=np.array([_iv(x) for x in md["energy_per_gcycle_j"]]),
+        dev_ptx=np.asarray(md["tx_power_w"], dtype=float), dev_pidle=np.asarray(md["idle_power_w"], dtype=float),
+        dev_in_range=np.stack([p[0] for p in per]), dev_uplink=np.stack([p[1] for p in per]),
+        dev_nearest=np.asarray([p[2] for p in per], dtype=np.int64))

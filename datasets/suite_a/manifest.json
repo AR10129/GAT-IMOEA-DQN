@@ -1,0 +1,242 @@
+{
+  "small_20_i0": {
+    "path": "suite_a/small_20_i0.json",
+    "scenario": "suite_a/small_20",
+    "config": "small_20",
+    "role": "test",
+    "num_tasks": 100,
+    "num_edges": 72,
+    "num_devices": 20,
+    "edge_servers": 3
+  },
+  "small_20_i1": {
+    "path": "suite_a/small_20_i1.json",
+    "scenario": "suite_a/small_20",
+    "config": "small_20",
+    "role": "train",
+    "num_tasks": 100,
+    "num_edges": 74,
+    "num_devices": 20,
+    "edge_servers": 3
+  },
+  "small_20_i2": {
+    "path": "suite_a/small_20_i2.json",
+    "scenario": "suite_a/small_20",
+    "config": "small_20",
+    "role": "train",
+    "num_tasks": 100,
+    "num_edges": 78,
+    "num_devices": 20,
+    "edge_servers": 3
+  },
+  "small_20_i3": {
+    "path": "suite_a/small_20_i3.json",
+    "scenario": "suite_a/small_20",
+    "config": "small_20",
+    "role": "train",
+    "num_tasks": 100,
+    "num_edges": 75,
+    "num_devices": 20,
+    "edge_servers": 3
+  },
+  "small_50_i0": {
+    "path": "suite_a/small_50_i0.json",
+    "scenario": "suite_a/small_50",
+    "config": "small_50",
+    "role": "test",
+    "num_tasks": 100,
+    "num_edges": 35,
+    "num_devices": 50,
+    "edge_servers": 3
+  },
+  "small_50_i1": {
+    "path": "suite_a/small_50_i1.json",
+    "scenario": "suite_a/small_50",
+    "config": "small_50",
+    "role": "train",
+    "num_tasks": 100,
+    "num_edges": 32,
+    "num_devices": 50,
+    "edge_servers": 3
+  },
+  "small_50_i2": {
+    "path": "suite_a/small_50_i2.json",
+    "scenario": "suite_a/small_50",
+    "config": "small_50",
+    "role": "train",
+    "num_tasks": 100,
+    "num_edges": 30,
+    "num_devices": 50,
+    "edge_servers": 3
+  },
+  "small_50_i3": {
+    "path": "suite_a/small_50_i3.json",
+    "scenario": "suite_a/small_50",
+    "config": "small_50",
+    "role": "train",
+    "num_tasks": 100,
+    "num_edges": 39,
+    "num_devices": 50,
+    "edge_servers": 3
+  },
+  "basic_60_i0": {
+    "path": "suite_a/basic_60_i0.json",
+    "scenario": "suite_a/basic_60",
+    "config": "basic_60",
+    "role": "test",
+    "num_tasks": 300,
+    "num_edges": 259,
+    "num_devices": 60,
+    "edge_servers": 6
+  },
+  "basic_60_i1": {
+    "path": "suite_a/basic_60_i1.json",
+    "scenario": "suite_a/basic_60",
+    "config": "basic_60",
+    "role": "train",
+    "num_tasks": 300,
+    "num_edges": 232,
+    "num_devices": 60,
+    "edge_servers": 6
+  },
+  "basic_60_i2": {
+    "path": "suite_a/basic_60_i2.json",
+    "scenario": "suite_a/basic_60",
+    "config": "basic_60",
+    "role": "train",
+    "num_tasks": 300,
+    "num_edges": 239,
+    "num_devices": 60,
+    "edge_servers": 6
+  },
+  "basic_60_i3": {
+    "path": "suite_a/basic_60_i3.json",
+    "scenario": "suite_a/basic_60",
+    "config": "basic_60",
+    "role": "train",
+    "num_tasks": 300,
+    "num_edges": 224,
+    "num_devices": 60,
+    "edge_servers": 6
+  },
+  "basic_100_i0": {
+    "path": "suite_a/basic_100_i0.json",
+    "scenario": "suite_a/basic_100",
+    "config": "basic_100",
+    "role": "test",
+    "num_tasks": 300,
+    "num_edges": 165,
+    "num_devices": 100,
+    "edge_servers": 6
+  },
+  "basic_100_i1": {
+    "path": "suite_a/basic_100_i1.json",
+    "scenario": "suite_a/basic_100",
+    "config": "basic_100",
+    "role": "train",
+    "num_tasks": 300,
+    "num_edges": 165,
+    "num_devices": 100,
+    "edge_servers": 6
+  },
+  "basic_100_i2": {
+    "path": "suite_a/basic_100_i2.json",
+    "scenario": "suite_a/basic_100",
+    "config": "basic_100",
+    "role": "train",
+    "num_tasks": 300,
+    "num_edges": 176,
+    "num_devices": 100,
+    "edge_servers": 6
+  },
+  "basic_100_i3": {
+    "path": "suite_a/basic_100_i3.json",
+    "scenario": "suite_a/basic_100",
+    "config": "basic_100",
+    "role": "train",
+    "num_tasks": 300,
+    "num_edges": 181,
+    "num_devices": 100,
+    "edge_servers": 6
+  },
+  "medium_100_i0": {
+    "path": "suite_a/medium_100_i0.json",
+    "scenario": "suite_a/medium_100",
+    "config": "medium_100",
+    "role": "test",
+    "num_tasks": 500,
+    "num_edges": 405,
+    "num_devices": 100,
+    "edge_servers": 10
+  },
+  "medium_100_i1": {
+    "path": "suite_a/medium_100_i1.json",
+    "scenario": "suite_a/medium_100",
+    "config": "medium_100",
+    "role": "train",
+    "num_tasks": 500,
+    "num_edges": 393,
+    "num_devices": 100,
+    "edge_servers": 10
+  },
+  "medium_100_i2": {
+    "path": "suite_a/medium_100_i2.json",
+    "scenario": "suite_a/medium_100",
+    "config": "medium_100",
+    "role": "train",
+    "num_tasks": 500,
+    "num_edges": 388,
+    "num_devices": 100,
+    "edge_servers": 10
+  },
+  "medium_100_i3": {
+    "path": "suite_a/medium_100_i3.json",
+    "scenario": "suite_a/medium_100",
+    "config": "medium_100",
+    "role": "train",
+    "num_tasks": 500,
+    "num_edges": 404,
+    "num_devices": 100,
+    "edge_servers": 10
+  },
+  "medium_250_i0": {
+    "path": "suite_a/medium_250_i0.json",
+    "scenario": "suite_a/medium_250",
+    "config": "medium_250",
+    "role": "test",
+    "num_tasks": 500,
+    "num_edges": 186,
+    "num_devices": 250,
+    "edge_servers": 10
+  },
+  "medium_250_i1": {
+    "path": "suite_a/medium_250_i1.json",
+    "scenario": "suite_a/medium_250",
+    "config": "medium_250",
+    "role": "train",
+    "num_tasks": 500,
+    "num_edges": 186,
+    "num_devices": 250,
+    "edge_servers": 10
+  },
+  "medium_250_i2": {
+    "path": "suite_a/medium_250_i2.json",
+    "scenario": "suite_a/medium_250",
+    "config": "medium_250",
+    "role": "train",
+    "num_tasks": 500,
+    "num_edges": 174,
+    "num_devices": 250,
+    "edge_servers": 10
+  },
+  "medium_250_i3": {
+    "path": "suite_a/medium_250_i3.json",
+    "scenario": "suite_a/medium_250",
+    "config": "medium_250",
+    "role": "train",
+    "num_tasks": 500,
+    "num_edges": 175,
+    "num_devices": 250,
+    "edge_servers": 10
+  }
+}

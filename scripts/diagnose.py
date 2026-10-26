@@ -70,7 +70,8 @@ class Env:
         self.wf, self.sc = _load(wfname)
         self.dag = DagIndex(self.wf)
         self.ev = IntervalEvaluator(self.wf, self.sc)
-        self.allowed = self.sc.allowed_targets()
+        from gat_imoea_dqn.chromosome import allowed_for
+        self.allowed = allowed_for(self.wf, self.sc)
         self.generations = generations
 
     def offspring(self, pop, F_lo, F_hi, rng):

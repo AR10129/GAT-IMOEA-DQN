@@ -89,11 +89,19 @@ def _load(name, env=None):
     """Workflow + scenario for one run. env: scenario name, data_multiplier (None = raw
     generator sizes; a number = rescale into Jin et al.'s ranges, times that), energy_scope."""
     from dataset_tools.loader import load_manifest, load_scenario, load_workflow
+    from dataset_tools.rescale import multiply_data, rescale_workflow
     env = env or {}
+    suite_a = json.loads((ROOT / "datasets" / "suite_a" / "manifest.json").read_text()) \
+        if (ROOT / "datasets" / "suite_a" / "manifest.json").exists() else {}
+    if name in suite_a:                      # Suite A: its own scenario; sizes already in Jin's ranges
+        wf = load_workflow(ROOT / "datasets" / suite_a[name]["path"])
+        if env.get("data_multiplier") is not None:
+            wf = multiply_data(wf, float(env["data_multiplier"]))
+        sc = load_scenario(ROOT / "datasets" / "scenarios" / f"{suite_a[name]['scenario']}.yaml")
+        return wf, sc
     manifest = load_manifest(ROOT / "datasets")
     wf = load_workflow(ROOT / "datasets" / manifest[name]["path"])
     if env.get("data_multiplier") is not None:
-        from dataset_tools.rescale import rescale_workflow
         wf = rescale_workflow(wf, data_multiplier=float(env["data_multiplier"]))
     sc = load_scenario(ROOT / "datasets" / "scenarios" / f"{env.get('scenario', 'default')}.yaml")
     return wf, sc
@@ -101,7 +109,9 @@ def _load(name, env=None):
 
 def _ecfg(env=None):
     from gat_imoea_dqn.evaluator import EvaluatorConfig
-    return EvaluatorConfig(energy_scope=(env or {}).get("energy_scope", "all"))
+    env = env or {}
+    return EvaluatorConfig(energy_scope=env.get("energy_scope", "all"), external_io=env.get("external_io", "pdf"),
+                           makespan=env.get("makespan", "max"))
 
 
 def _retry(fn, attempts: int = 5, wait_s: float = 2.0):
@@ -475,6 +485,10 @@ def main() -> int:
     ap.add_argument("--data-multiplier", type=float, default=None,
                     help="rescale workflows into Jin et al.'s ranges and multiply data by this (CCR level)")
     ap.add_argument("--energy-scope", choices=["all", "device"], default="all")
+    ap.add_argument("--external-io", choices=["pdf", "device"], default="pdf",
+                    help="device: entry tasks upload their input from the device (use for Suite A)")
+    ap.add_argument("--makespan", choices=["max", "sum_apps"], default="max",
+                    help="sum_apps: sum of application makespans (use for Suite A)")
     ap.add_argument("--train-generations", type=int, default=None, help="default: --generations")
     ap.add_argument("--val-set", nargs="*", default=None,
                     help="validation workflows; the best-scoring checkpoint becomes the final agent")
@@ -483,7 +497,8 @@ def main() -> int:
     ap.add_argument("--rank-metric", default="PIBI", help="metric used for mean ranks and table order")
     ap.add_argument("--summary-only", action="store_true")
     args = ap.parse_args()
-    env = {"scenario": args.scenario, "data_multiplier": args.data_multiplier, "energy_scope": args.energy_scope}
+    env = {"scenario": args.scenario, "data_multiplier": args.data_multiplier, "energy_scope": args.energy_scope,
+           "external_io": args.external_io, "makespan": args.makespan}
     train_gens = args.train_generations or args.generations
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # Windows consoles default to cp1252

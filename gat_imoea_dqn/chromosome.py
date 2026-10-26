@@ -112,13 +112,49 @@ def random_topological_order(dag: DagIndex, rng: np.random.Generator) -> np.ndar
     return _random_kahn(dag.indeg, dag.succ_ptr, dag.succ, rng.random(dag.K))
 
 
+def allowed_for(wf: WorkflowDAG, sc: Scenario) -> np.ndarray:
+    """Allocation values each task may take (communication range of its own device).
+
+    One device (all single-workflow datasets): a 1-D array of targets shared by every
+    task. Several devices (Suite A): a (K, n+2) bool mask, one row per task.
+    """
+    if wf.owner is None or np.all(wf.owner == wf.owner[0]):
+        dev = sc.origin if wf.owner is None else int(wf.owner[0])
+        return sc.allowed_targets(dev)
+    return sc.allowed_mask(wf.owner)
+
+
+def _sample_alloc(allowed: np.ndarray, shape, rng: np.random.Generator) -> np.ndarray:
+    """Uniform draws per task from its allowed values; shape = (rows, K)."""
+    if allowed.ndim == 1:
+        return rng.choice(allowed, size=shape).astype(np.int64)
+    rows, K = shape
+    cum = np.cumsum(allowed, axis=1)                              # (K, n+2)
+    counts = cum[:, -1]
+    pick = (rng.random((rows, K)) * counts).astype(np.int64) + 1  # 1..count per task
+    out = np.empty((rows, K), dtype=np.int64)
+    for k in range(K):
+        out[:, k] = np.searchsorted(cum[k], pick[:, k])
+    return out
+
+
+def is_allowed(x: np.ndarray, allowed: np.ndarray) -> np.ndarray:
+    """Bool per gene: is x[k] an allowed value for task k?"""
+    x = np.asarray(x, dtype=np.int64)
+    if allowed.ndim == 1:
+        return np.isin(x, allowed)
+    ok = (x >= 0) & (x < allowed.shape[1])
+    res = np.zeros(len(x), dtype=bool)
+    res[ok] = allowed[np.flatnonzero(ok), x[ok]]
+    return res
+
+
 def init_population(wf: WorkflowDAG, sc: Scenario, size: int, rng: np.random.Generator,
                     dag: Optional[DagIndex] = None) -> Population:
-    """P0: allocation genes drawn uniformly from the nodes the origin device can
+    """P0: allocation genes drawn uniformly from the nodes each task's device can
     reach (communication range), priority strings from randomized Kahn."""
     dag = dag or DagIndex(wf)
-    targets = sc.allowed_targets()
-    X = rng.choice(targets, size=(size, wf.num_tasks)).astype(np.int64)
+    X = _sample_alloc(allowed_for(wf, sc), (size, wf.num_tasks), rng)
     O = np.stack([random_topological_order(dag, rng) for _ in range(size)])
     return Population(X, O)
 
@@ -151,7 +187,11 @@ def repair_order(O: np.ndarray, dag: DagIndex) -> np.ndarray:
 def repair_allocation(X: np.ndarray, allowed: np.ndarray, rng: np.random.Generator) -> np.ndarray:
     """Replace genes pointing at unreachable nodes with random reachable ones."""
     X = np.asarray(X, dtype=np.int64).copy()
-    ok = np.isin(X, allowed)
+    ok = is_allowed(X, allowed)
     if not ok.all():
-        X[~ok] = rng.choice(allowed, size=int((~ok).sum()))
+        if allowed.ndim == 1:
+            X[~ok] = rng.choice(allowed, size=int((~ok).sum()))
+        else:
+            for k in np.flatnonzero(~ok):
+                X[k] = rng.choice(np.flatnonzero(allowed[k]))
     return X
