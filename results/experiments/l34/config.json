@@ -1,0 +1,48 @@
+{
+  "name": "l34",
+  "policies": [
+    "trained_stable",
+    "trained_nogat_stable",
+    "trained_fix",
+    "trained_nogat_fix",
+    "fixed_fav",
+    "fresh"
+  ],
+  "train_seeds": [
+    0,
+    1,
+    2
+  ],
+  "train_set": [
+    "montage_100",
+    "epigenomics_100",
+    "cybershake_100",
+    "inspiral_100",
+    "sipht_100"
+  ],
+  "test_set": [
+    "montage_200",
+    "epigenomics_200",
+    "cybershake_200",
+    "inspiral_200",
+    "sipht_200"
+  ],
+  "train_episodes": 40,
+  "generations": 300,
+  "pop": 105,
+  "seeds": 10,
+  "workers": 12,
+  "reuse_from": null,
+  "reference": "trained_stable",
+  "scenario": "default",
+  "data_multiplier": null,
+  "energy_scope": "all",
+  "train_generations": null,
+  "val_set": null,
+  "val_every": 10,
+  "val_generations": 300,
+  "rank_metric": "IGD",
+  "summary_only": true,
+  "git_commit": "ab9fbaa01ff9d647ee1f1df3311a3cf5aa8527b7",
+  "git_dirty": true
+}

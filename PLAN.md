@@ -119,8 +119,30 @@ setting for comparability and three-tier energy as a sensitivity study.
   - training reward still barely rises (0.0009 → 0.0010).
 - [ ] L1. Dynamic structure-aware state (per-task placement shares, critical-path frequency, slack)
 - [ ] L2. Training distribution: about 250 graphs; leave-one-family-out tests
-- [ ] L3. Stable reward: fixed per-run normalisation, 5-step returns
-- [ ] L4. Learner tuning + training curves per seed
+- [x] L3. Stable reward: fixed per-run normalisation (ideal 0, nadir from the initial population), 5-step returns
+- [x] L4. Learner tuning: Huber loss, lr 5e-4, 50k buffer, 40 episodes on 10 graphs (*_60 + *_100),
+  validation on the five *_400 workflows every 10 episodes keeping the best checkpoint.
+  `results/experiments/l34` (same setting as L0, 5 training seeds per agent, 10 paired seeds):
+
+  | Policy | Mean IGD rank | IGD | HV (Jin) | vs fixed_fav: IGD · HV · Imprecision | Worst seed vs fixed_fav |
+  |---|---|---|---|---|---|
+  | no-GAT stable | 1.46 | 0.032 | 0.855 | 4/0/1 · 4/0/1 · 5/0/0 | 14/50 runs (seed 0) |
+  | GAT stable | 1.84 | 0.035 | 0.847 | **5/0/0 · 5/0/0 · 5/0/0** | 32/50 runs (seed 3) |
+  | fixed_fav | 3.04 | 0.048 | 0.802 | reference | — |
+  | fixed (⅓, ⅓, ⅓) | 3.98 | 0.074 | 0.811 | 0/4/1 · 1/0/4 · 5/0/0 | — |
+  | fresh (Jin-style online) | 5.08 | 0.199 | 0.762 | 0/5/0 · 0/3/2 · 5/0/0 | — |
+
+  - Stabilisation works: GAT stable beats L0's GAT agent on IGD and HV in 5 of 5 workflows
+    (and both L0 agents likewise).
+  - No collapse: all 10 seeds beat the equal mix in ≥ 34 of 50 runs and the fresh agent in ≥ 42 of 50.
+    The weakest (no-GAT seed 0) beats fixed_fav in only 14 of 50, against 0 of 50 for L0's collapsed seed.
+  - GAT vs no-GAT (Wilcoxon, GAT as reference): no-GAT better on IGD in 2 workflows, worse in 1,
+    tied in 2; HV 3/1/1. No consistent GAT advantage; the GAT is only more even across seeds.
+  - Imprecision per solution: stable agents 0.67–0.69 vs fixed_fav 0.81 (fresh 0.53, but far worse IGD).
+  - Validation score rises during training (≈ 0.65 → 0.70 for every seed): use it as the learning
+    curve in the paper. The per-step training reward stays flat (≈ 0.0005).
+  - Validation on *_400 at 300 generations is an imperfect proxy: no-GAT seed 0 had the best validation
+    score but the weakest test result.
 - [ ] L6. Gate: Q-ranking Spearman ≥ 0.6, greedy regret ≤ 30% of random's, GAT beats no-GAT
 - [ ] B1. Re-implement IP-MOEA, IMOEA/D, IMOEA/D-AWN, IMEA-IED, IMaOEACI (same encoding and evaluator)
 - [ ] B2. Re-implement IMOEA-DQN (Jin et al.) on the DAG model
