@@ -94,7 +94,10 @@ def _load(name, env=None):
     generator sizes; a number = rescale into Jin et al.'s ranges, times that), energy_scope."""
     from dataset_tools.loader import load_manifest, load_scenario, load_workflow
     from dataset_tools.rescale import multiply_data, rescale_workflow
-    env = env or {}
+    env = dict(env or {})
+    if "@x" in name:                         # "small_20_i0@x20": this case's own data multiplier (CCR level)
+        name, mult = name.split("@x", 1)
+        env["data_multiplier"] = float(mult)
     suite_a = json.loads((ROOT / "datasets" / "suite_a" / "manifest.json").read_text()) \
         if (ROOT / "datasets" / "suite_a" / "manifest.json").exists() else {}
     if name in suite_a:                      # Suite A: its own scenario; sizes already in Jin's ranges
