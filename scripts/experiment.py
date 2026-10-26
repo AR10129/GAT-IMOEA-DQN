@@ -18,6 +18,8 @@ Policies (same eval seed = same initial population for every policy):
                   (with --val-set) the best validation checkpoint kept
   trained_nogat_stable  the same without the GAT
   schedule        hand-made: linear from (1, 0, 0) to (1/6, 5/6, 0) over the run, snapped to the grid
+  ip_moea         IP-MOEA (Limbourg & Aponte 2005), re-implemented; see gat_imoea_dqn/baselines.py
+  imoead          IMOEA/D (Gan et al. 2023), re-implemented; see gat_imoea_dqn/baselines.py
   fresh           new DQN learning online from scratch (the PDF's single-run setting)
   random          uniform random action each generation
   fixed           always (1/3, 1/3, 1/3)
@@ -70,6 +72,8 @@ POLICIES = {
     "trained_stable": {"kind": "greedy", "variant": "gat_stable"},
     "trained_nogat_stable": {"kind": "greedy", "variant": "nogat_stable"},
     "schedule":       {"kind": "schedule"},
+    "ip_moea":        {"kind": "baseline", "name": "ip_moea"},
+    "imoead":         {"kind": "baseline", "name": "imoead"},
     "fresh":          {"kind": "fresh"},
     "random":         {"kind": "random"},
     "fixed":          {"kind": "fixed", "action": (1 / 3, 1 / 3, 1 / 3)},
@@ -235,9 +239,16 @@ def job(spec) -> str:
         cfg = RunConfig(**base, policy="random")
     elif d["kind"] == "schedule":
         cfg = RunConfig(**base, policy="schedule")
+    elif d["kind"] == "baseline":
+        from gat_imoea_dqn.baselines import BaselineConfig, run_baseline
+        cfg = None
     else:
         cfg = RunConfig(**base, policy="fixed", fixed_action=tuple(d["action"]))
-    res = run(wf, sc, cfg, agent=agent, graph_key=spec["workflow"])
+    if d["kind"] == "baseline":
+        res = run_baseline(d["name"], wf, sc, BaselineConfig(pop_size=spec["pop"], generations=spec["generations"],
+                                                             seed=spec["seed"], evaluator=_ecfg(env)))
+    else:
+        res = run(wf, sc, cfg, agent=agent, graph_key=spec["workflow"])
     lo, hi = res.front_objectives()
     rec = {"workflow": spec["workflow"], "policy": spec["policy"], "seed": spec["seed"],
            "train_seed": spec.get("train_seed"), "seconds": round(res.seconds, 2),

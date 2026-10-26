@@ -92,8 +92,17 @@ setting for comparability and three-tier energy as a sensitivity study.
   differs from Jin et al. mainly through precedence and makespan, not transfer time;
   say so in the paper. Magnitudes are now realistic: makespans of 3–180 s, energy of
   30–160 J, costs of a few cents.
-- [ ] M5. Multi-device, multi-DAG evaluator (one queue per device; x = 0 means the task's own device)
-- [ ] M6. Suite A generator (layered random DAGs) + instances at the three scales
+- [x] M5. Multi-device, multi-DAG evaluator: one internal node and queue per device; gene 0 = the
+  task's own device; per-device CPU / energy / power / range; `makespan="sum_apps"` (sum of
+  application makespans) and `device_queue` switches. Tested to reduce EXACTLY to Jin et al.'s
+  eqs. (2)-(20) for single-task applications without a device queue (`tests/test_suite_a.py`).
+  Device->cloud uploads now cost transmit power on the wireless leg and idle power on the wired
+  leg (Jin et al. eq. 11); L0 / L34 used transmit power on both legs (small energy difference).
+- [x] M6. Suite A: `scripts/generate_suite_a.py` → `datasets/suite_a/` (24 instances: Jin et al.'s
+  6 configurations × i0 test + i1–i3 train/val) and `datasets/scenarios/suite_a/`. One layered
+  random DAG per device; C ∈ {1..5} Gcycles, entry inputs and edge data U[500, 3000] KB, crisp
+  tasks (uncertainty from resources, as in Jin et al.). Run with
+  `--external-io device --makespan sum_apps --energy-scope device`.
 - [ ] B0. Reference heuristics: all-local, all-edge, all-cloud, HEFT-style list scheduling
 
 ### P1 — Core claims
@@ -145,6 +154,16 @@ setting for comparability and three-tier energy as a sensitivity study.
     score but the weakest test result.
 - [ ] L6. Gate: Q-ranking Spearman ≥ 0.6, greedy regret ≤ 30% of random's, GAT beats no-GAT
 - [ ] B1. Re-implement IP-MOEA, IMOEA/D, IMOEA/D-AWN, IMEA-IED, IMaOEACI (same encoding and evaluator)
+  - [x] IP-MOEA and IMOEA/D in `gat_imoea_dqn/baselines.py`; experiment policies `ip_moea`, `imoead`
+    (same chromosome, initial population, operators, evaluator and evaluation budget as ours).
+  - **Issue — IP-MOEA:** under its strict box relation the whole population is one front in our
+    setting, so it has no convergence pressure (median makespan 159 → 155 s in 100 generations on
+    small_20, vs 60 s for IMOEA/D). Faithful to the relation, but a reviewer may call it a
+    strawman: check the original paper's tie-breaking / crowding before the final runs.
+  - **Risk — IMOEA/D:** in a 40-generation smoke test on Suite A (2 seeds) it beat our selection with
+    fixed_fav clearly (IGD 0.023 vs 0.080; HV 1.00 vs 0.86). Must be checked at G_max = 1000 against
+    the trained agents before building more baselines.
+  - [ ] IMOEA/D-AWN, IMEA-IED, IMaOEACI
 - [ ] B2. Re-implement IMOEA-DQN (Jin et al.) on the DAG model
 - [ ] B3. NSGA-II; tuned fixed-action baseline; ablations (UDR1, UDR2, DAEC, DQN-ES, GAT, POX, static vs dynamic state)
 - [ ] B4. Equal budget for all methods; wall-clock times reported
