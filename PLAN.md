@@ -163,6 +163,33 @@ setting for comparability and three-tier energy as a sensitivity study.
   - **Risk — IMOEA/D:** in a 40-generation smoke test on Suite A (2 seeds) it beat our selection with
     fixed_fav clearly (IGD 0.023 vs 0.080; HV 1.00 vs 0.86). Must be checked at G_max = 1000 against
     the trained agents before building more baselines.
+  - **Result — Suite A at G_max = 1000** (`results/experiments/suite_a`, 2026-10-28; 6 i0 instances
+    × {×1, ×20}; 10 eval seeds; 3 training seeds per agent, trained on i1/i2, validated on i3; summaries
+    `summary_x1.md`, `summary_x20.md`). **The risk is confirmed: IMOEA/D wins IGD and HV on all 12
+    cases (Wilcoxon −, 12/12 for both agents).**
+
+    | ×1 / ×20 | IGD | HV_jin | Imprecision | mean rank |
+    |---|---|---|---|---|
+    | imoead | 0.017 / 0.019 | 0.99 / 0.98 | 20.9 / 26.2 | 1.0 / 1.0 |
+    | trained_stable (GAT) | 0.058 / 0.067 | 0.92 / 0.90 | 16.5 / 20.1 | 2.9 / 2.8 |
+    | trained_nogat_stable | 0.063 / 0.067 | 0.89 / 0.87 | 16.2 / 19.6 | 3.1 / 2.9 |
+    | fixed_fav | 0.064 / 0.086 | 0.79 / 0.77 | 22.5 / 25.4 | 3.3 / 3.6 |
+    | fresh | 0.150 / 0.154 | 0.86 / 0.83 | 10.0 / 14.4 | 4.8 / 4.7 |
+    | ip_moea | 0.274 / 0.287 | 0.62 / 0.62 | 23.1 / 27.7 | 5.9 / 5.9 |
+
+    - What holds: the GAT agent beats fixed_fav (HV on 12/12, IGD on 8/12; fixed_fav wins IGD on
+      small_20/small_50 at both CCRs), fresh and IP-MOEA; no training seed collapsed; GAT > no-GAT on HV (12/12),
+      tie on IGD.
+    - Imprecision "+" vs IMOEA/D is weak evidence: it is a sum over the front, and our fronts are
+      smaller (≈ 75–90 vs ≈ 100 solutions).
+    - fixed_fav also loses by ≈ 4×, so the gap is in the IMOEA backbone (α/β/γ selection and
+      generational mating), not in the learned controller. IMOEA/D's steady-state neighbourhood
+      replacement converges much faster under the same operators and budget.
+    - Jin et al. report IMOEA-DQN beating IMOEA/D; either our backbone is weaker than theirs or our
+      IMOEA/D is stronger than theirs. This must be resolved before any more baselines or the 30-run
+      protocol. Options: (a) audit our Step 4/6 against Jin et al. for missing convergence pressure;
+      (b) hybridise — let the DQN control a decomposition-based backbone; (c) reframe the claim as
+      adaptive control on a fixed backbone and drop IMOEA/D from the headline table (weak for EAAI).
   - [ ] IMOEA/D-AWN, IMEA-IED, IMaOEACI
 - [ ] B2. Re-implement IMOEA-DQN (Jin et al.) on the DAG model
 - [ ] B3. NSGA-II; tuned fixed-action baseline; ablations (UDR1, UDR2, DAEC, DQN-ES, GAT, POX, static vs dynamic state)
