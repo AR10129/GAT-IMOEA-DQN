@@ -149,3 +149,20 @@ def test_icd_tie_break_keeps_spread():
     with pytest.raises(ValueError):
         environmental_selection(lo, hi, 4, (1.0, 0.0, 0.0), np.random.default_rng(0),
                                 cfg=SelectionConfig(tie_break="nope"))
+
+
+def test_tchebycheff_rank_keeps_extremes_and_converges():
+    from gat_imoea_dqn.selection import simplex_weights, tchebycheff_rank
+    assert simplex_weights(105).shape == (105, 3) and np.allclose(simplex_weights(105).sum(1), 1)
+    # a crisp front of 3 points plus 3 dominated points
+    lo = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0], [0.6, 0.6, 0.6], [2, 2, 2], [0.1, 1.2, 1.2]], float)
+    hi = lo.copy()
+    W = np.eye(3)
+    R = tchebycheff_rank(lo / 2, hi / 2, W)
+    assert set(np.flatnonzero(R == 0)) == {0, 1, 2}             # each axis weight's best
+    assert R[4] == R.max()                                        # dominated by all, ranked last
+    keep, _ = environmental_selection(lo, hi, 3, (1.0, 0.0, 0.0), np.random.default_rng(0),
+                                      cfg=SelectionConfig(convergence="tchebycheff", n_weights=3))
+    assert 4 not in keep
+    with pytest.raises(ValueError):
+        rankings(lo, hi, SelectionConfig(convergence="nope"))

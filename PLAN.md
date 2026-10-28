@@ -221,6 +221,29 @@ setting for comparability and three-tier energy as a sensitivity study.
     - Next decision: option (b) — keep Jin et al.'s three rankings but give Rank C a scalarised
       (decomposition) convergence measure, or let the DQN steer a decomposition backbone — or
       accept (c).
+  - **Rank C prototype done, 2026-10-28 — the gap is closed.** `SelectionConfig(convergence="tchebycheff")`:
+    N Das-Dennis weights, objectives normalised over P_M, interval Tchebycheff per weight, and
+    R_TCH(x) = best position of x over the weights' midpoint orders (sorting by possibility degree
+    at 0.5 is sorting by midpoint, i.e. IMOEA/D's own comparison). D and U tiers unchanged; ICD tie-break.
+    Same audit protocol (fixed actions, no learning, 4 seeds, means only):
+
+    | variant | small_20 ×1 IGD / HV | basic_60 ×20 IGD / HV | medium_250 ×20 IGD / HV |
+    |---|---|---|---|
+    | base (fixed_fav, R_IN) | 0.047 / 0.82 | 0.102 / 0.60 | 0.155 / 0.55 |
+    | tch (fixed_fav) | 0.016 / 0.89 | 0.031 / 0.77 | — |
+    | **tch_near** (fixed_fav + neighbourhood mating) | **0.012 / 0.90** | **0.014 / 0.80** | 0.016 / 0.82 |
+    | tch_conv_near (1, 0, 0) | 0.013 / 0.90 | 0.015 / 0.80 | **0.014 / 0.82** |
+    | IMOEA/D | 0.043 / 0.87 | 0.026 / 0.78 | 0.035 / 0.79 |
+
+    - tch_near beats IMOEA/D on IGD (≈ 2–4×) and HV on all three instances, with similar
+      Imprecision (21.2 vs 18.9, 30.9 vs 31.2, 37.1 vs 40.7). The decomposition rank alone does most
+      of it; neighbourhood mating adds the rest.
+    - Paper framing: a decomposition-based convergence ranking inside Jin et al.'s three-tier
+      DQN-ES is a new, defensible contribution (it fixes the loss of pressure of R_IN when most of
+      P_M is non-dominated, measured above).
+    - Open: (1) retrain the DQN on the new backbone — with tch Rank C the best fixed actions
+      (5/6, 1/6, 0) and (1, 0, 0) are close, so the learned controller must show it still adds
+      value; (2) confirm with 10+ seeds on all 12 Suite A cases; (3) ablate tie-break and mating.
   - [ ] IMOEA/D-AWN, IMEA-IED, IMaOEACI
 - [ ] B2. Re-implement IMOEA-DQN (Jin et al.) on the DAG model
 - [ ] B3. NSGA-II; tuned fixed-action baseline; ablations (UDR1, UDR2, DAEC, DQN-ES, GAT, POX, static vs dynamic state)

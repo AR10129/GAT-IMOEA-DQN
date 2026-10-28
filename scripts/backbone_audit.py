@@ -12,6 +12,9 @@ Variants of the fixed-action IMOEA (no learning) at G_max = 1000, N = 105:
   near       fixed_fav with neighbourhood mating (partner among the 20 nearest, p = 0.9)
   near_tie   near + the ICD tie-break
   imoead_global  IMOEA/D with mating restriction off (delta = 0: partners from the whole population)
+  tch        fixed_fav with Rank C = Tchebycheff decomposition rank (+ ICD tie-break)
+  tch_near   tch + neighbourhood mating
+  tch_conv_near  pure convergence (1, 0, 0), Tchebycheff Rank C, neighbourhood mating
   imoead     the IMOEA/D baseline
 base and imoead runs are copied from results/experiments/suite_a (identical code path).
 Scoring matches scripts/experiment.py: one normalization per instance across all
@@ -48,6 +51,10 @@ VARIANTS = {
     "near": dict(action=FAV, tie_break="random", mating="none", partner="neighbours"),
     "near_tie": dict(action=FAV, tie_break="icd", mating="none", partner="neighbours"),
     "imoead_global": dict(baseline="imoead", delta=0.0),
+    "tch": dict(action=FAV, tie_break="icd", mating="none", convergence="tchebycheff"),
+    "tch_near": dict(action=FAV, tie_break="icd", mating="none", partner="neighbours", convergence="tchebycheff"),
+    "tch_conv_near": dict(action=(1.0, 0.0, 0.0), tie_break="icd", mating="none", partner="neighbours",
+                          convergence="tchebycheff"),
 }
 COPIED = {"base": "fixed_fav", "imoead": "imoead"}
 
@@ -71,7 +78,8 @@ def job(spec):
         return f"done {out.name} ({res.seconds:.0f}s)"
     cfg = RunConfig(pop_size=105, generations=spec["generations"], seed=spec["seed"], policy="fixed",
                     fixed_action=v["action"], evaluator=_ecfg(ENV),
-                    selection=SelectionConfig(tie_break=v["tie_break"]),
+                    selection=SelectionConfig(tie_break=v["tie_break"],
+                                              convergence=v.get("convergence", "dominance")),
                     variation=VariationConfig(mating=v["mating"], partner=v.get("partner", "daec")))
     res = run(wf, sc, cfg)
     lo, hi = res.front_objectives()
@@ -81,9 +89,8 @@ def job(spec):
     return f"done {out.name} ({res.seconds:.0f}s)"
 
 
-def score(instances, seeds):
+def score(instances, seeds, variants, stem="summary"):
     from gat_imoea_dqn.metrics import hv_jin, igd, imprecision, pooled_reference
-    names = ["base", *VARIANTS, "imoead"]
     lines = ["# Backbone audit (G_max = 1000, N = 105, fixed actions, no learning)", "",
              "IGD ↓ · HV_jin ↑ · Imprecision ↓ · front size; mean ± std over seeds; "
              "`+`/`−`/`=` Wilcoxon vs base (5%); with 4 seeds the smallest possible p is 0.125, "
@@ -91,6 +98,8 @@ def score(instances, seeds):
     from scipy.stats import wilcoxon
     summary = {}
     for w in instances:
+        names = ["base", *[v for v in VARIANTS if (OUT / "runs" / f"{w}__{v}__s0.json").exists()
+                           and (variants is None or v in variants)], "imoead"]
         fronts = {n: [json.loads((OUT / "runs" / f"{w}__{n}__s{s}.json").read_text()) for s in range(seeds)]
                   for n in names}
         allr = [r for n in names for r in fronts[n]]
@@ -124,8 +133,8 @@ def score(instances, seeds):
                 cells.append(f"{a.mean():.4g} ± {a.std():.2g}{mark}")
             lines.append(f"| {n} | " + " | ".join(cells) + f" | {np.mean(M[n]['size']):.0f} |")
         lines.append("")
-    (OUT / "summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    (OUT / "summary.json").write_text(json.dumps(summary, indent=1))
+    (OUT / f"{stem}.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (OUT / f"{stem}.json").write_text(json.dumps(summary, indent=1))
     print("\n".join(lines))
 
 
@@ -136,6 +145,8 @@ def main():
     ap.add_argument("--generations", type=int, default=1000)
     ap.add_argument("--workers", type=int, default=12)
     ap.add_argument("--score-only", action="store_true")
+    ap.add_argument("--variants", nargs="+", default=None, help="run only these (default: all)")
+    ap.add_argument("--out-name", default="summary", help="summary file stem")
     a = ap.parse_args()
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -149,11 +160,11 @@ def main():
     if not a.score_only:
         specs = [{"workflow": w, "variant": v, "seed": s, "generations": a.generations,
                   "out": str(OUT / "runs" / f"{w}__{v}__s{s}.json")}
-                 for w in a.instances for v in VARIANTS for s in range(a.seeds)]
+                 for w in a.instances for v in (a.variants or VARIANTS) for s in range(a.seeds)]
         with mp.Pool(a.workers) as pool:
             for msg in pool.imap_unordered(job, specs):
                 print(msg, flush=True)
-    score(a.instances, a.seeds)
+    score(a.instances, a.seeds, a.variants, a.out_name)
 
 
 if __name__ == "__main__":

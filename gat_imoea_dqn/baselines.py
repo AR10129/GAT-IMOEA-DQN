@@ -43,7 +43,7 @@ from .chromosome import (DagIndex, Population, allowed_for, init_population, is_
 from .evaluator import EvaluatorConfig, IntervalEvaluator
 from .intervals import interval_dominance_matrix, nondominated_fronts, normalize_intervals, possibility_leq
 from .operators import daec, mutate_allocation, mutate_order, pox
-from .selection import das_dennis, interval_crowding
+from .selection import interval_crowding, simplex_weights
 
 BASELINES = ("ip_moea", "imoead")
 
@@ -163,14 +163,7 @@ def run_ip_moea(wf, sc, cfg: BaselineConfig) -> RunResult:
 
 # -------------------------------------------------------------- IMOEA/D ---
 def _weights(n: int) -> np.ndarray:
-    q = 1
-    while len(das_dennis(q + 1, 3)) <= n:
-        q += 1
-    W = das_dennis(q, 3)
-    if len(W) < n:                                   # top up with random simplex points
-        extra = np.random.default_rng(0).dirichlet(np.ones(3), size=n - len(W))
-        W = np.vstack([W, extra])
-    return W[:n]
+    return simplex_weights(n, 3)
 
 
 def _neighbourhoods(W: np.ndarray, T: int) -> np.ndarray:

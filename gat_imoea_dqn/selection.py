@@ -25,6 +25,12 @@ Choices beyond the PDF (SelectionConfig):
   * dedupe_genotypes=True: an exact copy (same X and O) of an individual already
     chosen is skipped while other candidates remain, so clones do not crowd the
     population. Set False for plain index-based deduplication.
+  * convergence="tchebycheff" replaces R_IN in Rank C with a decomposition rank:
+    n_weights Das-Dennis vectors w (default |P'| = N), objectives normalised over P_M
+    (ideal -> 0), interval Tchebycheff g~(x | w) = [max_j w_j lo_j, max_j w_j hi_j], and
+    R_TCH(x) = min over w of x's position when P_M is sorted by g~(. | w). Sorting
+    intervals by possibility degree at 0.5 equals sorting by midpoint, so each list is
+    the order IMOEA/D's replacement rule uses; every vector's best solution has R = 0.
   * Ties inside a ranking are broken at random (tie_break="random", the default).
     tie_break="icd" breaks ties in Rank C by descending ICD instead (as NSGA-II
     truncates its last front by crowding). Late in a run more than alpha*N pool
@@ -53,6 +59,29 @@ def das_dennis(divisions: int = 6, n_obj: int = 3) -> np.ndarray:
 def selection_actions(divisions: int = 6) -> np.ndarray:
     """The H = 28 discrete DQN actions a = (alpha, beta, gamma)."""
     return das_dennis(divisions, 3)
+
+
+def simplex_weights(n: int, n_obj: int = 3) -> np.ndarray:
+    """n weight vectors: the largest Das-Dennis lattice with at most n points, topped up
+    with fixed-seed random simplex points (q = 13 gives exactly 105 for 3 objectives)."""
+    q = 1
+    while len(das_dennis(q + 1, n_obj)) <= n:
+        q += 1
+    W = das_dennis(q, n_obj)
+    if len(W) < n:
+        W = np.vstack([W, np.random.default_rng(0).dirichlet(np.ones(n_obj), size=n - len(W))])
+    return W[:n]
+
+
+def tchebycheff_rank(G_lo: np.ndarray, G_hi: np.ndarray, W: np.ndarray) -> np.ndarray:
+    """R_TCH: best position of each solution over the weight vectors' midpoint-Tchebycheff orders.
+    G_lo, G_hi: objectives already normalised so the ideal point is 0."""
+    W = np.maximum(W, 1e-6)
+    g = 0.5 * (np.max(W[:, None, :] * G_lo[None], axis=2) + np.max(W[:, None, :] * G_hi[None], axis=2))
+    pos = np.empty_like(g, dtype=np.int64)
+    order = np.argsort(g, axis=1, kind="stable")
+    np.put_along_axis(pos, order, np.arange(g.shape[1])[None, :].repeat(len(W), 0), axis=1)
+    return pos.min(axis=0).astype(float)
 
 
 # ------------------------------------------------------------- rankings ---
@@ -96,6 +125,8 @@ class SelectionConfig:
     dedupe_genotypes: bool = True
     dominance_threshold: float = 0.5
     tie_break: str = "random"              # Rank C ties: "random" or "icd" (descending crowding)
+    convergence: str = "dominance"         # Rank C: "dominance" (R_IN, Jin et al.) or "tchebycheff"
+    n_weights: Optional[int] = None        # tchebycheff: weight vectors; None -> the selection size N
 
 
 @dataclass
@@ -107,10 +138,15 @@ class SelectionInfo:
     tiers: dict = field(default_factory=dict)   # "C" / "D" / "U" -> chosen pool indices
 
 
-def rankings(F_lo, F_hi, cfg: SelectionConfig = SelectionConfig()):
-    D = interval_dominance_matrix(F_lo, F_hi, cfg.dominance_threshold)
-    R_C = dominance_degree(D)
+def rankings(F_lo, F_hi, cfg: SelectionConfig = SelectionConfig(), n_select: Optional[int] = None):
     G_lo, G_hi = normalize_intervals(F_lo, F_hi) if cfg.normalize else (np.asarray(F_lo), np.asarray(F_hi))
+    if cfg.convergence == "dominance":
+        R_C = dominance_degree(interval_dominance_matrix(F_lo, F_hi, cfg.dominance_threshold))
+    elif cfg.convergence == "tchebycheff":
+        n_w = cfg.n_weights or n_select or len(F_lo) // 2
+        R_C = tchebycheff_rank(*normalize_intervals(F_lo, F_hi), simplex_weights(n_w, np.shape(F_lo)[1]))
+    else:
+        raise ValueError(f"unknown convergence ranking {cfg.convergence!r}")
     ICD = interval_crowding(G_lo, G_hi, cfg.k_neighbors)
     U1, U2 = uncertainty_metrics(G_lo, G_hi)
     R_U = dominance_degree(pareto_dominance_matrix(np.stack([U1, U2], axis=1)))
@@ -133,7 +169,7 @@ def environmental_selection(F_lo: np.ndarray, F_hi: np.ndarray, n_select: int, a
     n_D = min(int(round(a[1] * n_select)), n_select - n_C)
     n_U = n_select - n_C - n_D
 
-    R_C, ICD, R_U = rankings(F_lo, F_hi, cfg)
+    R_C, ICD, R_U = rankings(F_lo, F_hi, cfg, n_select)
     if cfg.tie_break == "icd":
         order_C = np.lexsort((rng.random(n_pool), -ICD, R_C))
     elif cfg.tie_break == "random":
