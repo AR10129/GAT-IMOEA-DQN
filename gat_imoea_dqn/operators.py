@@ -12,6 +12,13 @@ Mating procedure (as in the PDF):
   3. Allocation string: DAEC. Priority string: POX.
 Every individual of P is the first parent of exactly one child, so N parents
 give N offspring (merged pool 2N for environmental selection).
+mating="tournament" first draws the parent population by N binary tournaments
+on (interval front, then interval crowding), the "mating selection" step of
+Jin et al.'s framework (Fig. 2); DAEC then runs on that parent population.
+The default "none" uses P itself.
+partner="neighbours" (an ablation borrowed from MOEA/D's mating restriction): with
+probability p_local the partner is one of the T nearest individuals by normalised
+midpoint distance; otherwise the DAEC rule applies.
 
 Operator details the PDF leaves open (choices, all in VariationConfig):
   * DAEC gene operator: uniform crossover where each gene comes from the better
@@ -39,6 +46,7 @@ from typing import Optional
 import numpy as np
 
 from .chromosome import DagIndex, Population, is_allowed, is_topological, repair_allocation, repair_order
+from .selection import interval_crowding
 from .intervals import (front_ranks, interval_dominance_matrix, nondominated_fronts, normalize_intervals,
                         pareto_dominance_matrix, uncertainty_metrics)
 
@@ -82,6 +90,10 @@ class VariationConfig:
     pox_mode: str = "mask"              # "mask" or "one_point"
     dominance_threshold: float = 0.5    # possibility-degree threshold for interval fronts
     normalize: bool = True              # scale objectives to [0, 1] before U1/U2 (as in selection)
+    mating: str = "none"                # "none" (P is the parent population) or "tournament"
+    partner: str = "daec"               # "daec" (TopPI / whole P) or "neighbours" (see make_offspring)
+    neighbours: int = 20                # partner="neighbours": T nearest in normalised objective space
+    p_local: float = 0.9                # partner="neighbours": chance the partner is a neighbour
 
 
 @dataclass
@@ -180,19 +192,41 @@ def make_offspring(pop: Population, F_lo: np.ndarray, F_hi: np.ndarray, dag: Dag
 
     iv_rank = front_ranks(nondominated_fronts(
         interval_dominance_matrix(F_lo, F_hi, cfg.dominance_threshold)), N)
+    if cfg.mating == "tournament":                       # mating selection -> parent population
+        crowd = interval_crowding(*normalize_intervals(F_lo, F_hi))
+        a, b = rng.integers(N, size=(2, N))
+        a_wins = (iv_rank[a] < iv_rank[b]) | ((iv_rank[a] == iv_rank[b]) & (crowd[a] >= crowd[b]))
+        idx = np.where(a_wins, a, b)
+        pop, F_lo, F_hi = pop[idx], F_lo[idx], F_hi[idx]
+        iv_rank = front_ranks(nondominated_fronts(
+            interval_dominance_matrix(F_lo, F_hi, cfg.dominance_threshold)), N)
+    elif cfg.mating != "none":
+        raise ValueError(f"unknown mating {cfg.mating!r}")
     U1, U2 = uncertainty_metrics(*(normalize_intervals(F_lo, F_hi) if cfg.normalize else (F_lo, F_hi)))
     un_rank = front_ranks(nondominated_fronts(pareto_dominance_matrix(np.stack([U1, U2], 1))), N)
 
     elite = _top_half(iv_rank, rng)
     p_c = np.where(_top_half(un_rank, rng), cfg.p_c_low, cfg.p_c_high)
     elite_idx = np.flatnonzero(elite)
+    near = None
+    if cfg.partner == "neighbours":
+        g_lo, g_hi = normalize_intervals(F_lo, F_hi)
+        mid = (g_lo + g_hi) / 2
+        dist = np.linalg.norm(mid[:, None] - mid[None], axis=2)
+        np.fill_diagonal(dist, np.inf)
+        near = np.argsort(dist, axis=1, kind="stable")[:, :max(1, min(cfg.neighbours, N - 1))]
+    elif cfg.partner != "daec":
+        raise ValueError(f"unknown partner rule {cfg.partner!r}")
 
     X_off = np.empty_like(pop.X)
     O_off = np.empty_like(pop.O)
     partner = np.empty(N, dtype=np.int64)
     crossed = np.zeros(N, dtype=bool)
     for i in range(N):
-        pool = elite_idx if (elite[i] and len(elite_idx) > 1) else np.arange(N)
+        if near is not None and rng.random() < cfg.p_local:
+            pool = near[i]
+        else:
+            pool = elite_idx if (elite[i] and len(elite_idx) > 1) else np.arange(N)
         j = i
         while j == i:
             j = int(pool[rng.integers(len(pool))])

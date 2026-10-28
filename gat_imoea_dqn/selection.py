@@ -25,7 +25,11 @@ Choices beyond the PDF (SelectionConfig):
   * dedupe_genotypes=True: an exact copy (same X and O) of an individual already
     chosen is skipped while other candidates remain, so clones do not crowd the
     population. Set False for plain index-based deduplication.
-  * Ties inside a ranking are broken at random.
+  * Ties inside a ranking are broken at random (tie_break="random", the default).
+    tie_break="icd" breaks ties in Rank C by descending ICD instead (as NSGA-II
+    truncates its last front by crowding). Late in a run more than alpha*N pool
+    members share R_IN = 0, so a random cut lets the population drift along the
+    front and lose its extremes.
 """
 from __future__ import annotations
 
@@ -91,6 +95,7 @@ class SelectionConfig:
     k_neighbors: Optional[int] = None      # None -> round(sqrt(|P_M|))
     dedupe_genotypes: bool = True
     dominance_threshold: float = 0.5
+    tie_break: str = "random"              # Rank C ties: "random" or "icd" (descending crowding)
 
 
 @dataclass
@@ -129,7 +134,13 @@ def environmental_selection(F_lo: np.ndarray, F_hi: np.ndarray, n_select: int, a
     n_U = n_select - n_C - n_D
 
     R_C, ICD, R_U = rankings(F_lo, F_hi, cfg)
-    orders = {"C": _order(R_C, rng), "D": _order(ICD, rng, descending=True), "U": _order(R_U, rng)}
+    if cfg.tie_break == "icd":
+        order_C = np.lexsort((rng.random(n_pool), -ICD, R_C))
+    elif cfg.tie_break == "random":
+        order_C = _order(R_C, rng)
+    else:
+        raise ValueError(f"unknown tie_break {cfg.tie_break!r}")
+    orders = {"C": order_C, "D": _order(ICD, rng, descending=True), "U": _order(R_U, rng)}
 
     keys = None
     if cfg.dedupe_genotypes and genotypes is not None:

@@ -190,6 +190,37 @@ setting for comparability and three-tier energy as a sensitivity study.
       protocol. Options: (a) audit our Step 4/6 against Jin et al. for missing convergence pressure;
       (b) hybridise — let the DQN control a decomposition-based backbone; (c) reframe the claim as
       adaptive control on a fixed backbone and drop IMOEA/D from the headline table (weak for EAAI).
+  - **Audit (a) done, 2026-10-28** (`scripts/backbone_audit.py`, `results/experiments/backbone_audit`;
+    fixed actions, G_max = 1000, small_20_i0@x1 and basic_60_i0@x20, 4 seeds — means only, too few
+    seeds for Wilcoxon).
+    - Our code matches Jin et al.'s Algorithms 1 and 2. Gaps found where the paper is silent:
+      (1) Rank C ties are cut at random, and after ≈ gen 100 more than αN pool members have
+      R_IN = 0 (105–123 for 88 slots on basic_60), so the population drifts along the front;
+      (2) the "mating selection" box of Jin et al.'s Fig. 2 is not implemented.
+    - Front analysis of the Suite A runs: our fronts are not mostly dominated by IMOEA/D's; they
+      cover only part of the front (trained agents miss the low-cost end: best normalised cost
+      0.28–0.35 vs 0.03–0.09).
+    - New options (defaults unchanged, so earlier results reproduce): `SelectionConfig.tie_break="icd"`,
+      `VariationConfig.mating="tournament"`, `VariationConfig.partner="neighbours"`.
+
+    | variant | small_20 ×1 IGD / HV | basic_60 ×20 IGD / HV |
+    |---|---|---|
+    | base (fixed_fav) | 0.045 / 0.82 | 0.096 / 0.58 |
+    | + ICD tie-break | 0.032 / 0.80 | 0.097 / 0.56 |
+    | + tournament mating | 0.136 / 0.74 | 0.158 / 0.53 |
+    | + neighbourhood mating | 0.034 / 0.85 | 0.084 / 0.57 |
+    | + neighbourhood + tie-break | **0.021** / 0.87 | 0.078 / 0.59 |
+    | IMOEA/D without mating restriction | 0.059 / 0.88 | 0.045 / 0.73 |
+    | IMOEA/D | 0.049 / **0.89** | **0.023 / 0.76** |
+
+    - Conclusion: tie-break + neighbourhood mating closes the gap on the small instance (better IGD
+      than IMOEA/D) but not on basic_60. IMOEA/D keeps most of its lead without mating restriction,
+      so the remaining gap is its replacement rule: scalarised (Tchebycheff), steady-state updates
+      keep convergence pressure when most of the pool is non-dominated, while a dominance-degree
+      ranking loses it. Tournament mating hurts; drop it.
+    - Next decision: option (b) — keep Jin et al.'s three rankings but give Rank C a scalarised
+      (decomposition) convergence measure, or let the DQN steer a decomposition backbone — or
+      accept (c).
   - [ ] IMOEA/D-AWN, IMEA-IED, IMaOEACI
 - [ ] B2. Re-implement IMOEA-DQN (Jin et al.) on the DAG model
 - [ ] B3. NSGA-II; tuned fixed-action baseline; ablations (UDR1, UDR2, DAEC, DQN-ES, GAT, POX, static vs dynamic state)

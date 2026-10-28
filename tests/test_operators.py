@@ -179,3 +179,19 @@ def test_no_crossover_means_mutated_copies(problem):
     off, info = make_offspring(pop, F, F + 1, dag, SC.allowed_targets(), rng, cfg)
     assert not info.crossed.any()
     assert np.array_equal(off.X, pop.X) and np.array_equal(off.O, pop.O)
+
+
+def test_tournament_mating_valid_and_biased():
+    wf = load_workflow(WF_DIR / "montage/montage_400.json")
+    dag = DagIndex(wf)
+    rng = np.random.default_rng(4)
+    pop = init_population(wf, SC, 40, rng, dag)
+    F_lo, F_hi = IntervalEvaluator(wf, SC).evaluate_population(pop.X, pop.O)
+    cfg = VariationConfig(mating="tournament")
+    off, info = make_offspring(pop, F_lo, F_hi, dag, SC.allowed_targets(), rng, cfg)
+    assert len(off) == 40 and all(is_topological(o, dag) for o in off.O)
+    # info describes the tournament-selected parent population, which is at least as converged
+    base_rank = opmod.front_ranks(nondominated_fronts(interval_dominance_matrix(F_lo, F_hi)), 40)
+    assert len(info.interval_rank) == 40 and info.interval_rank.max() <= base_rank.max()
+    with pytest.raises(ValueError):
+        make_offspring(pop, F_lo, F_hi, dag, SC.allowed_targets(), rng, VariationConfig(mating="x"))

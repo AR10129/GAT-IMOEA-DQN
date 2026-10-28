@@ -132,3 +132,20 @@ def test_evolution_loop_improves(action):
     assert D[:N, N:].any(axis=0).mean() >= 0.9
     if action == (1, 0, 0):
         assert not D[N:, :N].any()                               # nothing initial beats a survivor
+
+
+def test_icd_tie_break_keeps_spread():
+    # 6 mutually non-dominated points on a line (all R_C = 0) plus two near-copies of the middle;
+    # 4 C-tier slots must go to the most isolated non-dominated points, not a random subset
+    lo = np.array([[0, 5, 0], [1, 4, 0], [2, 3, 0], [2.01, 2.99, 0], [2.02, 2.98, 0], [3, 2, 0],
+                   [4, 1, 0], [5, 0, 0]], float)
+    hi = lo + 0.01
+    R_C, ICD, _ = rankings(lo, hi)
+    assert (R_C == 0).all()
+    for seed in range(5):
+        keep, _ = environmental_selection(lo, hi, 4, (1.0, 0.0, 0.0), np.random.default_rng(seed),
+                                          cfg=SelectionConfig(tie_break="icd"))
+        assert set(keep.tolist()) == set(np.argsort(-ICD)[:4].tolist())
+    with pytest.raises(ValueError):
+        environmental_selection(lo, hi, 4, (1.0, 0.0, 0.0), np.random.default_rng(0),
+                                cfg=SelectionConfig(tie_break="nope"))
