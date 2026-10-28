@@ -24,6 +24,10 @@ Policies (same eval seed = same initial population for every policy):
   random          uniform random action each generation
   fixed           always (1/3, 1/3, 1/3)
   fixed_fav       always (5/6, 1/6, 0), the action the first trained agent used most
+  tch_*           the same policy on the decomposition backbone (Rank C = Tchebycheff rank with
+                  ICD tie-break, neighbourhood mating; see scripts/backbone_audit.py):
+                  tch_trained_stable, tch_trained_nogat_stable, tch_fixed_fav, tch_conv (1, 0, 0),
+                  tch_fresh. Untagged policies use Jin et al.'s backbone (Rank C = R_IN).
 
 Agents train in background processes while jobs that need no agent run in a
 worker pool. Finished runs and agents are skipped, so an interrupted run
@@ -78,7 +82,24 @@ POLICIES = {
     "random":         {"kind": "random"},
     "fixed":          {"kind": "fixed", "action": (1 / 3, 1 / 3, 1 / 3)},
     "fixed_fav":      {"kind": "fixed", "action": (5 / 6, 1 / 6, 0.0)},
+    "tch_trained_stable": {"kind": "greedy", "variant": "tch_gat_stable"},
+    "tch_trained_nogat_stable": {"kind": "greedy", "variant": "tch_nogat_stable"},
+    "tch_fixed_fav":  {"kind": "fixed", "action": (5 / 6, 1 / 6, 0.0), "backbone": "tch"},
+    "tch_conv":       {"kind": "fixed", "action": (1.0, 0.0, 0.0), "backbone": "tch"},
+    "tch_fresh":      {"kind": "fresh", "backbone": "tch"},
 }
+
+
+def _backbone(name):
+    """Extra RunConfig kwargs for a backbone: "jin" (defaults) or "tch" (decomposition Rank C)."""
+    if name in (None, "jin"):
+        return {}
+    if name == "tch":
+        from gat_imoea_dqn.operators import VariationConfig
+        from gat_imoea_dqn.selection import SelectionConfig
+        return {"selection": SelectionConfig(convergence="tchebycheff", tie_break="icd"),
+                "variation": VariationConfig(partner="neighbours")}
+    raise ValueError(f"unknown backbone {name!r}")
 TRAIN_SET = ["montage_100", "epigenomics_100", "cybershake_100", "inspiral_100", "sipht_100"]
 TEST_SET = ["montage_200", "epigenomics_200", "cybershake_200", "inspiral_200", "sipht_200"]
 RUN_NAME = re.compile(r"^(?P<wf>.+?)__(?P<pol>[a-z_]+?)(?:__t(?P<t>\d+))?__s(?P<s>\d+)\.json$")
@@ -135,6 +156,9 @@ def _retry(fn, attempts: int = 5, wait_s: float = 2.0):
 def _variant(variant: str, tseed: int):
     """(DQNConfig, extra RunConfig kwargs, reward) for an agent variant name."""
     from gat_imoea_dqn.dqn import DQNConfig
+    if variant.startswith("tch_"):                       # same learner on the decomposition backbone
+        dcfg, kw, reward = _variant(variant[4:], tseed)
+        return dcfg, {**kw, **_backbone("tch")}, reward
     graph = not variant.startswith("nogat")
     reward = "hv" if "_hv" in variant else "pibi"
     if variant.endswith("_stable"):
@@ -237,7 +261,7 @@ def job(spec) -> str:
         agent.zero_graph_at_inference = d.get("zero_graph", False)
         cfg = RunConfig(**base, policy="dqn", greedy=True, learn=False, **_variant(d["variant"], 0)[1])
     elif d["kind"] == "fresh":
-        cfg = RunConfig(**base, policy="dqn")
+        cfg = RunConfig(**base, policy="dqn", **_backbone(d.get("backbone")))
     elif d["kind"] == "random":
         cfg = RunConfig(**base, policy="random")
     elif d["kind"] == "schedule":
@@ -246,7 +270,7 @@ def job(spec) -> str:
         from gat_imoea_dqn.baselines import BaselineConfig, run_baseline
         cfg = None
     else:
-        cfg = RunConfig(**base, policy="fixed", fixed_action=tuple(d["action"]))
+        cfg = RunConfig(**base, policy="fixed", fixed_action=tuple(d["action"]), **_backbone(d.get("backbone")))
     if d["kind"] == "baseline":
         res = run_baseline(d["name"], wf, sc, BaselineConfig(pop_size=spec["pop"], generations=spec["generations"],
                                                              seed=spec["seed"], evaluator=_ecfg(env)))
