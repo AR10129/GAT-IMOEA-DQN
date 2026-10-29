@@ -289,6 +289,29 @@ setting for comparability and three-tier energy as a sensitivity study.
     - Likely cause: too little data for 28 actions — 24 episodes × 20 decisions = 480 transitions
       per agent — and early blocks (clipped large relative gains) dominate the return.
     - Status: the DQN still does not beat the best fixed action after two learner designs.
+  - **L8 learner, short test, 2026-10-29** (same experiment dir and protocol; 48 training episodes):
+    only the 10 actions with α ≥ 1/2 (`RunConfig.action_set="convergent"`), one decision per 25
+    generations, reward = log HV_jin ratio (unclipped; sums to the final HV gain), n-step 5, γ 0.98.
+    Mean over the 4 cases (one normalisation across all 10 policies):
+
+    | policy | IGD | HV_jin | Imprecision |
+    |---|---|---|---|
+    | **tch_fixed_fav** | **0.0130** | **0.791** | 30.8 |
+    | tch_conv (1, 0, 0) | 0.0145 | 0.787 | 33.6 |
+    | tch_trained_nogat_l8 | 0.0149 | 0.789 | 29.2 |
+    | tch_trained_l8 (GAT) | 0.0174 | 0.785 | 31.7 |
+    | tch_random_conv (random among the 10) | 0.0223 | 0.757 | 29.4 |
+    | tch_trained_stable (old) | 0.0311 | 0.772 | 28.3 |
+    | IMOEA/D | 0.0379 | 0.766 | 30.8 |
+
+    - Big step up: IGD halves vs the old agents, beats random choice among the same 10 actions on
+      all 4 cases and IMOEA/D by ~2.5×; the no-GAT agent ties tch_conv and is within ~0.2% of
+      tch_fixed_fav on HV_jin (higher on medium_100). It still trails tch_fixed_fav on IGD in all
+      4 cases (by 10–25%). 4 seeds, so no test is significant; read the means.
+    - Training reward stays flat (0.039 → 0.040), so most of the gain comes from the restricted
+      action set, not from learned adaptation. GAT is again no better than no-GAT.
+    - Conclusion after three learner designs: on the tch backbone the DQN reaches, but does not
+      beat, the best tuned fixed action.
   - [ ] IMOEA/D-AWN, IMEA-IED, IMaOEACI
 - [ ] B2. Re-implement IMOEA-DQN (Jin et al.) on the DAG model
 - [ ] B3. NSGA-II; tuned fixed-action baseline; ablations (UDR1, UDR2, DAEC, DQN-ES, GAT, POX, static vs dynamic state)

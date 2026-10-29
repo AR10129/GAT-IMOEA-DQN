@@ -113,7 +113,7 @@ def _backbone(name):
     raise ValueError(f"unknown backbone {name!r}")
 TRAIN_SET = ["montage_100", "epigenomics_100", "cybershake_100", "inspiral_100", "sipht_100"]
 TEST_SET = ["montage_200", "epigenomics_200", "cybershake_200", "inspiral_200", "sipht_200"]
-RUN_NAME = re.compile(r"^(?P<wf>.+?)__(?P<pol>[a-z_]+?)(?:__t(?P<t>\d+))?__s(?P<s>\d+)\.json$")
+RUN_NAME = re.compile(r"^(?P<wf>.+?)__(?P<pol>[a-z0-9_]+?)(?:__t(?P<t>\d+))?__s(?P<s>\d+)\.json$")
 
 
 def _limit_threads() -> None:

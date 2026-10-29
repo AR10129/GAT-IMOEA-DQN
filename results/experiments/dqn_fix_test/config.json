@@ -1,6 +1,9 @@
 {
   "name": "dqn_fix_test",
   "policies": [
+    "tch_trained_l8",
+    "tch_trained_nogat_l8",
+    "tch_random_conv",
     "tch_trained_blk",
     "tch_trained_nogat_blk",
     "tch_fixed_fav",
@@ -33,12 +36,12 @@
     "medium_100_i0@x1",
     "medium_250_i0@x20"
   ],
-  "train_episodes": 24,
+  "train_episodes": 48,
   "generations": 1000,
   "pop": 105,
   "seeds": 4,
   "workers": 12,
-  "reuse_from": "suite_a_tch",
+  "reuse_from": null,
   "reference": "tch_fixed_fav",
   "scenario": "default",
   "data_multiplier": null,
@@ -51,6 +54,6 @@
   "val_generations": 300,
   "rank_metric": "IGD",
   "summary_only": false,
-  "git_commit": "a3a695f475a7fad58189c875b776458e86fe04e4",
+  "git_commit": "561be4b7eac5161d932598551030a809ac036b70",
   "git_dirty": true
 }
