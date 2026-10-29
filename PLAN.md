@@ -6,32 +6,50 @@ evolutionary algorithm for task offloading in uncertain cloud–edge", EAAI 178,
 115043. Backups: Swarm and Evolutionary Computation, Applied Soft Computing,
 Expert Systems with Applications.
 
-**Working title:** Interval multi-objective offloading of dependent-task workflows
-in uncertain cloud–edge environments with learned, structure-aware environmental
-selection.
+**Reframed 2026-10-29** (after Suite A and three DQN learner designs; history in P1 below).
+The paper now leads with the selection backbone, not the learned controller: on Suite A the
+decomposition-ranked three-tier selection beats IMOEA/D on IGD in 12/12 cases, while no DQN
+design beat the best fixed action. The DQN work becomes an analysis section.
 
-**The gap:** Jin et al. treat every task as an independent offloading unit
-(their §3.3) and sum per-task latency. We model applications as DAGs: precedence,
-inter-task data transfer, and makespan along the interval critical path.
+**Working title:** Interval multi-objective offloading of DAG workflows in uncertain
+cloud–edge–end environments via decomposition-ranked three-tier environmental selection.
 
-**Guiding rule:** keep everything except the DAG extension as close to Jin et al.
-as possible (parameters, metrics, protocol, baselines), so reviewers can compare
-the two papers directly. Anything beyond that is a sensitivity study or a stated
-limitation.
+**Working name of the method:** DR-IMOEA (decomposition-ranked IMOEA); rename before writing.
+
+**The gap:** (1) Jin et al. treat every task as an independent offloading unit (their §3.3) and
+sum per-task latency; we model applications as DAGs: precedence, inter-task data transfer, and
+makespan along the interval critical path. (2) Their convergence ranking R_IN (dominance degree)
+loses selection pressure once most of the merged population is non-dominated (measured: 105–123
+of 210 pool members tie at R_IN = 0 for 88 slots), so the population drifts; a decomposition rank
+restores the pressure while keeping their dominance / uncertainty tiers.
+
+**Guiding rule:** keep everything except the DAG model and the selection backbone as close to
+Jin et al. as possible (parameters, metrics, protocol, baselines), so reviewers can compare the
+two papers directly. Anything beyond that is a sensitivity study or a stated limitation.
 
 ## Contributions
 
 | # | Contribution | Status |
 |---|---|---|
-| C1 | Interval critical-path model for DAG workflows in the cloud–edge–end architecture (transfer, makespan, energy, cost) | built; needs Jin-aligned parameters |
+| C1 | Interval critical-path model for DAG workflows in the cloud–edge–end architecture (transfer, makespan, energy, cost); reduces exactly to Jin et al.'s model for single-task applications | built and tested |
 | C2 | DAG-valid two-string encoding: allocation + topological priority, POX, shift mutation, topological repair | built |
-| C3 | RL-driven environmental selection trained across workflows and reused, not relearned per run | built; must be re-tested at 1000 generations |
-| C4 | Structure-aware state: dynamic GAT, or critical-path descriptors if the GAT fails gate L6 | to do |
-| C5 | Released benchmark: 40 interval WfCommons / Pegasus workflows + generator, and Suite A instances | Suite B built; Suite A to do |
-| C6 | Evaluation stronger than the predecessor's: their 5 baselines + IMOEA-DQN + NSGA-II + tuned fixed action; 30 runs; Holm-corrected tests | to do |
+| C3 | **Headline.** Decomposition-ranked three-tier selection: Rank C = interval Tchebycheff rank over N weight vectors (ICD tie-break) inside Jin et al.'s α/β/γ selection, plus neighbourhood mating; with a diagnosis of why R_IN stalls | built; Suite A: beats IMOEA/D IGD 12/12, HV 10/12 (10 seeds) |
+| C4 | Analysis of learned control of (α, β, γ): reward audit (per-step SNR 0.007–0.06), three learner designs, GAT vs no-GAT; best learner reaches but does not beat the best fixed action, and GAT adds nothing | done (`reward_audit`, `suite_a_tch`, `dqn_fix_test`); write up as ablation / negative result |
+| C5 | Released benchmark: Suite A instances + 40 interval WfCommons / Pegasus workflows + generators | Suite A and B built |
+| C6 | Evaluation stronger than the predecessor's: their 5 baselines + IMOEA-DQN on the DAG model + NSGA-II + list-scheduling heuristics; 30 runs; Holm-corrected tests | partly (IMOEA/D, IP-MOEA; Jin-backbone DQN = IMOEA-DQN on our model) |
 
-The GAT is a headline claim only if it passes L6. Otherwise it is reported as an
-ablation and the paper stands on C1–C3, C5 and C6.
+C4 is supporting material: it explains why per-generation DQN control fails here, which is
+useful to the field, but it is not a performance claim. The GAT stays only in that section.
+
+**What a reviewer will ask, and our answer (to prepare):**
+- *Is C3 novel?* Decomposition + dominance hybrids exist (MOEA/DD, θ-DEA, NSGA-III, RVEA) but not
+  for interval objectives inside a three-tier dominance / uncertainty selection. Literature check
+  is task W1 below.
+- *Which (α, β, γ) does the method use, and was it tuned on the test set?* Today's (5/6, 1/6, 0)
+  came from a trained agent's favourite action on the Jin backbone. Re-select it on the training
+  instances (i1–i3) only, and report the sensitivity over all 28 actions (task A2).
+- *Why drop the RL?* We don't hide it: C4 reports it with the reasons. EAAI's scope covers
+  evolutionary methods for engineering problems.
 
 ## Benchmark suites
 
@@ -103,9 +121,9 @@ setting for comparability and three-tier energy as a sensitivity study.
   random DAG per device; C ∈ {1..5} Gcycles, entry inputs and edge data U[500, 3000] KB, crisp
   tasks (uncertainty from resources, as in Jin et al.). Run with
   `--external-io device --makespan sum_apps --energy-scope device`.
-- [ ] B0. Reference heuristics: all-local, all-edge, all-cloud, HEFT-style list scheduling
+- [ ] B0. Reference heuristics → moved to P1b
 
-### P1 — Core claims
+### P1 — Core claims (history: the learned-controller line, closed 2026-10-29)
 - [x] L0. Re-run trained vs fresh vs fixed at G_max = 1000 under Jin et al.'s metrics (risk check for C3).
   `results/experiments/l0` (Jin scenario, data ×20, device energy, five 200-task workflows,
   10 paired seeds, agents averaged over 3 training seeds; Wilcoxon +/−/= over the 5 workflows):
@@ -312,27 +330,54 @@ setting for comparability and three-tier energy as a sensitivity study.
       action set, not from learned adaptation. GAT is again no better than no-GAT.
     - Conclusion after three learner designs: on the tch backbone the DQN reaches, but does not
       beat, the best tuned fixed action.
-  - [ ] IMOEA/D-AWN, IMEA-IED, IMaOEACI
-- [ ] B2. Re-implement IMOEA-DQN (Jin et al.) on the DAG model
-- [ ] B3. NSGA-II; tuned fixed-action baseline; ablations (UDR1, UDR2, DAEC, DQN-ES, GAT, POX, static vs dynamic state)
+### P1b — Reframed core claims (from 2026-10-29; in this order)
+- [ ] W1. Literature check for C3: decomposition / dominance hybrids (MOEA/DD, θ-DEA, NSGA-III,
+  RVEA, SPEA/R, MOEA/D-DU) and interval MOEAs (IMOEA/D, IMOEA/D-AWN, IP-MOEA, interval NSGA-II
+  variants). Write down exactly what is new: an interval Tchebycheff rank as the convergence tier
+  of a dominance / uncertainty three-tier selection, and the R_IN-stall diagnosis.
+- [ ] A2. Pick (α, β, γ) without the test set: the 28-action sweep (`scripts/reward_audit.py`) on
+  the training instances i1–i3 of all 12 cases; choose the default by mean rank; report the
+  sensitivity surface; keep (1, 0, 0) as the "no tuning" variant.
+- [ ] A1. Backbone ablation on Suite A with the chosen action (10 seeds, 12 cases): Jin backbone →
+  + Tchebycheff Rank C → + ICD tie-break → + neighbourhood mating; neighbourhood size {10, 20, 40},
+  p_local {0.5, 0.9, 1.0}, number of weight vectors. The audit (4 seeds, 2–3 cases) is the pilot.
+- [ ] A3. What the β (dominance) and γ (uncertainty) tiers buy under the new Rank C: IGD vs
+  Imprecision trade-off from the A2 sweep, and the Rank C tie counts per generation (the stall
+  figure: R_IN vs Tchebycheff).
+- [ ] B0. Reference heuristics: all-local, all-edge, all-cloud, HEFT-style list scheduling
+- [ ] B1. Remaining interval baselines: IMOEA/D-AWN, IMEA-IED, IMaOEACI (IMOEA/D, IP-MOEA done;
+  check IP-MOEA's tie-breaking / crowding against the original before the final runs)
+- [ ] B2. IMOEA-DQN (Jin et al.) on the DAG model = `trained_stable` on the Jin backbone (and
+  `fresh` for the online version): check it against their Algorithm 1/2 and name it in tables
+- [ ] B3. NSGA-II (midpoint and interval-dominance variants)
 - [ ] B4. Equal budget for all methods; wall-clock times reported
+- [ ] D1. Write-up material for C4: the reward-audit figures (per-step SNR by phase; reward
+  ranking vs IGD ranking), the three-learner table (stable / blk / l8), GAT vs no-GAT. A full Suite A
+  retrain of L8 only if a reviewer asks.
 
 ### P2 — Evaluation
-- [ ] E1. Suite A (3 scales × 2 device counts) and Suite B (5 families × 3 sizes × 3 CCR)
+- [ ] E1. Suite A (3 scales × 2 device counts × CCR ×1 / ×20) and Suite B (5 families × 3 sizes × 3 CCR)
 - [ ] E2. 30 runs per method and instance
 - [ ] E3. Metrics as above, normalised once per instance
 - [ ] E4. Statistics as above
-- [ ] E5. IGD-vs-generation curves; (α, β, γ) traces per family
+- [ ] E5. IGD / HV vs generation curves for DR-IMOEA and every baseline
 - [ ] E6. Sensitivity: CCR, uncertainty width, edge count, bandwidth, energy scope, multi-core queueing
 - [ ] E7. Monte Carlo check of final fronts under sampled crisp values
 
 ### P3 — Paper
 - [ ] R1. One script builds every table and figure (LaTeX)
 - [ ] R2. System-model figure, pseudocode, complexity, parameter table
-- [ ] R3. Threats to validity and limitations (no link contention, no receive energy, interval bounds assumed to hold)
+- [ ] R3. Threats to validity and limitations (no link contention, no receive energy, interval
+  bounds assumed to hold, fixed action chosen on training instances)
 
 ## Risks
 
-- At 1000 generations an online agent may catch up with the trained one (C3) → test first (L0).
-- Under Jin et al.'s metrics the tuned fixed action may beat the DQN → report honestly; the claim then rests on adaptivity vs the predecessor's equal-mix ablation, plus C1, C2 and C5.
-- Re-implementing six baselines without public code is the largest cost → start with IP-MOEA and IMOEA/D.
+- C3 judged incremental ("just add MOEA/D's Tchebycheff") → W1 first; make the diagnosis (tie
+  counts), the ablation and the interval treatment explicit; the DAG model (C1) is the second pillar.
+- Tuning on the test set → A2 picks the action on training instances only.
+- Our IMOEA/D is weaker or stronger than the original → document every parameter from Gan et al.
+  (2023); Jin et al. report IMOEA-DQN > IMOEA/D, we find the opposite on the DAG model: explain the
+  differences (DAG model, budget, re-implementation) and report it plainly.
+- Re-implementing the remaining baselines without public code is the largest cost → after A1/A2.
+- Closed: the learned controller does not beat the best fixed action (three designs, 2026-10-29);
+  now reported as C4 analysis.
