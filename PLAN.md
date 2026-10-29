@@ -244,6 +244,32 @@ setting for comparability and three-tier energy as a sensitivity study.
     - Open: (1) retrain the DQN on the new backbone — with tch Rank C the best fixed actions
       (5/6, 1/6, 0) and (1, 0, 0) are close, so the learned controller must show it still adds
       value; (2) confirm with 10+ seeds on all 12 Suite A cases; (3) ablate tie-break and mating.
+  - **Suite A on the tch backbone done, 2026-10-29** (`results/experiments/suite_a_tch`, 10 seeds,
+    Gmax 1000, 12 cases; agents retrained 48 episodes × 3 seeds; `summary_x1/x20.md`,
+    `summary_vs_tch_fixed_fav.md`). Mean IGD / HV_jin over the 12 cases, Wilcoxon wins/losses/ties:
+
+    | policy | IGD | HV_jin | IGD vs IMOEA/D | IGD vs tch_fixed_fav |
+    |---|---|---|---|---|
+    | **tch_fixed_fav** (5/6, 1/6, 0) | **0.0124** | **0.958** | 12/0/0 | — |
+    | tch_conv (1, 0, 0) | 0.0134 | 0.955 | 12/0/0 | 1/6/5 |
+    | tch_trained_nogat_stable | 0.0244 | 0.939 | 5/1/6 | 0/12/0 |
+    | tch_trained_stable (GAT) | 0.0261 | 0.947 | 5/4/3 | 0/11/1 |
+    | IMOEA/D | 0.0291 | 0.943 | — | 0/12/0 |
+    | tch_fresh (online, untrained) | 0.0721 | 0.894 | 0/8/4 | 0/12/0 |
+    | trained_stable (Jin backbone) | 0.107 | 0.872 | 0/12/0 | 0/12/0 |
+
+    - The backbone fix holds at full scale: tch with a fixed action beats IMOEA/D on IGD in 12/12
+      cases (×1 and ×20 alike) and on HV in 10/12 (2 ties).
+    - **The DQN does not add value on this backbone.** Both trained agents lose to the best fixed
+      action on IGD in 11–12/12 cases (about 2× the IGD); they only win on Imprecision (21.7 vs 24.5).
+      Training reward stays flat (0.0004 → 0.0005) and validation scores hover at 0.47–0.52 for
+      all six agents with no upward trend, so the agents have not learned a useful policy.
+    - GAT vs no-GAT: no clear difference (IGD 0.026 vs 0.024, HV 0.947 vs 0.939).
+    - This is the risk listed below ("the tuned fixed action may beat the DQN") coming true.
+      Decision needed before more experiments: (a) fix the learning signal (the per-step reward is
+      ~4e-4, likely too small and too noisy to learn from — e.g. reward scaling, IGD/HV-delta reward,
+      fewer/coarser actions, longer training) and retrain; or (b) reframe the paper around the
+      decomposition backbone with the DQN as an ablation/negative result.
   - [ ] IMOEA/D-AWN, IMEA-IED, IMaOEACI
 - [ ] B2. Re-implement IMOEA-DQN (Jin et al.) on the DAG model
 - [ ] B3. NSGA-II; tuned fixed-action baseline; ablations (UDR1, UDR2, DAEC, DQN-ES, GAT, POX, static vs dynamic state)
