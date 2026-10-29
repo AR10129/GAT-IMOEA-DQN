@@ -40,6 +40,9 @@ HV = (HV(midpoints) + HV(upper bounds)) / 2 on normalized objectives, with
 reference point 1.1, r_t = (HV_{t+1} - HV_t) / HV_t clipped to [-1, 1].
 Averaging in the upper-bound (worst-case) hypervolume keeps uncertainty in
 the signal.
+
+reward="hvjin": the same relative improvement, of HV_jin = (HV(lower bounds) +
+HV(upper bounds)) / 2, the evaluation metric itself (Jin et al.'s interval HV).
 """
 from __future__ import annotations
 
@@ -52,7 +55,7 @@ from .metrics import hypervolume_3d
 from .selection import das_dennis, interval_crowding
 
 STATE_POP_DIM = 7
-REWARDS = ("pibi", "hv")
+REWARDS = ("pibi", "hv", "hvjin")
 HV_REF = 1.1
 
 
@@ -164,11 +167,16 @@ class PopulationTracker:
         lo, hi = self.normalize(F_lo, F_hi)
         return 0.5 * (_hv_nondominated((lo + hi) / 2.0) + _hv_nondominated(hi))
 
+    def hv_jin(self, F_lo, F_hi) -> float:
+        lo, hi = self.normalize(F_lo, F_hi)
+        return 0.5 * (_hv_nondominated(lo) + _hv_nondominated(hi))
+
     def reward(self, F_before: Tuple[np.ndarray, np.ndarray], F_after: Tuple[np.ndarray, np.ndarray]) -> float:
         """Relative improvement (PIBI or HV) from P_t to P_{t+1}, both under the current bounds."""
         self.observe(*F_after)
-        if self.reward_kind == "hv":
-            h0, h1 = self.hypervolume(*F_before), self.hypervolume(*F_after)
+        if self.reward_kind in ("hv", "hvjin"):
+            f = self.hypervolume if self.reward_kind == "hv" else self.hv_jin
+            h0, h1 = f(*F_before), f(*F_after)
             if h0 <= 1e-12:
                 return 1.0 if h1 > 1e-12 else 0.0
             return float(np.clip((h1 - h0) / h0, -1.0, 1.0))

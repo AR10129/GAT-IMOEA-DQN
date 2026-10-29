@@ -46,6 +46,10 @@ class RunConfig:
     greedy: bool = False                        # dqn: no exploration (evaluation runs)
     reward: str = "pibi"                        # "pibi" (PDF) or "hv" (hypervolume improvement)
     tracker_normalization: str = "running"      # "running" or "fixed" (bounds from the initial population)
+    # dqn: pick an action every `decision_every` generations and hold it in between; one
+    # transition per decision, its reward the relative improvement over the whole block
+    # and its state change features measured over the block (1 = the PDF's per-generation loop)
+    decision_every: int = 1
     evaluator: EvaluatorConfig = EvaluatorConfig()
     variation: VariationConfig = VariationConfig()
     selection: SelectionConfig = SelectionConfig()
@@ -101,14 +105,21 @@ def run(wf, sc, cfg: RunConfig = RunConfig(), agent: Optional[DQNAgent] = None,
 
     hist: Dict[str, List] = {k: [] for k in ("action", "explored", "reward", "pibi", "epsilon", "loss",
                                              "best_mid", "median_mid")}
+    K = max(int(cfg.decision_every), 1)
+    block_F = (F_lo, F_hi)                                                 # population at the block start
+    a, explored = -1, False
     for t in range(cfg.generations):
         off, _ = make_offspring(pop, F_lo, F_hi, dag, allowed, rng, cfg.variation)   # step 6
         G_lo, G_hi = ev.evaluate_population(off.X, off.O)
         tracker.observe(G_lo, G_hi)
 
-        explored = False
+        if t % K == 0:
+            block_F = (F_lo, F_hi)
         if cfg.policy == "dqn":                                            # steps 2-3
-            a, explored = agent.act(gid, s, t, rng, greedy=cfg.greedy)
+            if t % K == 0:
+                a, explored = agent.act(gid, s, t, rng, greedy=cfg.greedy)
+            else:
+                explored = False
             action = actions[a]
         elif cfg.policy == "random":
             a = int(rng.integers(len(actions)))
@@ -125,12 +136,23 @@ def run(wf, sc, cfg: RunConfig = RunConfig(), agent: Optional[DQNAgent] = None,
                                           cfg=cfg.selection)
         new_pop, nF_lo, nF_hi = merged[keep], M_lo[keep], M_hi[keep]
 
-        r = tracker.reward((F_lo, F_hi), (nF_lo, nF_hi))                   # step 5
-        s2 = tracker.features(new_pop.X, nF_lo, nF_hi, t + 1)
         loss = None
-        if cfg.policy == "dqn" and cfg.learn:
-            agent.store(gid, s, a, r, s2, t == cfg.generations - 1)
-            loss = agent.maybe_train()
+        last = t == cfg.generations - 1
+        if K == 1:
+            r = tracker.reward((F_lo, F_hi), (nF_lo, nF_hi))               # step 5
+            s2 = tracker.features(new_pop.X, nF_lo, nF_hi, t + 1)
+            if cfg.policy == "dqn" and cfg.learn:
+                agent.store(gid, s, a, r, s2, last)
+                loss = agent.maybe_train()
+        elif (t + 1) % K == 0 or last:                                     # end of a decision block
+            r = tracker.reward(block_F, (nF_lo, nF_hi))
+            s2 = tracker.features(new_pop.X, nF_lo, nF_hi, t + 1)
+            if cfg.policy == "dqn" and cfg.learn:
+                agent.store(gid, s, a, r, s2, last)
+                loss = agent.maybe_train()
+        else:
+            tracker.observe(nF_lo, nF_hi)
+            r, s2 = None, s
 
         pop, F_lo, F_hi, s = new_pop, nF_lo, nF_hi, s2
         mid = (F_lo + F_hi) / 2

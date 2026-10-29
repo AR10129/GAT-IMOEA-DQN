@@ -107,6 +107,18 @@ def test_hypervolume_reward():
         PopulationTracker(g_max=5, reward="nope")
 
 
+def test_hv_jin_reward_tracks_the_metric():
+    from gat_imoea_dqn.metrics import hv_jin
+    rng = np.random.default_rng(2)
+    lo = rng.uniform(1, 5, size=(20, 3))
+    tr = PopulationTracker(g_max=50, reward="hvjin", normalization="fixed")
+    tr.observe(lo, lo + 1)
+    nl, nh = tr.normalize(lo, lo + 1)
+    assert tr.hv_jin(lo, lo + 1) == pytest.approx(hv_jin(nl, nh, [1.1] * 3))
+    narrower = (lo, lo + 0.5)                       # same lower bounds, tighter intervals: HV_jin rises
+    assert tr.reward((lo, lo + 1), narrower) > 0
+
+
 def test_run_with_hv_reward():
     agent = DQNAgent(DQNConfig(erb_threshold=10, update_period=5, grad_steps=2))
     res = run(WF, SC, RunConfig(pop_size=12, generations=15, reward="hv"), agent=agent)
@@ -166,6 +178,18 @@ def test_stable_agent_runs_and_trains():
     # the 5-step buffer lags 4 steps: 6 transitions at generation 10 (< 10), so rounds at 15 and 20 only
     assert agent.train_rounds == 2 and len(agent.buffer) == 20 and np.isfinite(agent.last_loss)
     assert len(res.front) >= 1
+
+
+def test_decision_blocks_hold_the_action():
+    agent = DQNAgent(DQNConfig(erb_threshold=1000))
+    res = run(WF, SC, RunConfig(pop_size=12, generations=23, decision_every=5, tracker_normalization="fixed"),
+              agent=agent)
+    acts, rew = res.history["action"], res.history["reward"]
+    assert all(acts[t] == acts[t - t % 5] for t in range(23))          # held within each block
+    assert [t for t, r in enumerate(rew) if r is not None] == [4, 9, 14, 19, 22]   # last block is short
+    assert agent.lifetime_steps == 5 and len(agent.buffer) == 5 and agent.buffer.done[4] == 1.0
+    fixed = run(WF, SC, RunConfig(pop_size=12, generations=6, policy="fixed", decision_every=3))
+    assert [r is not None for r in fixed.history["reward"]] == [False, False, True, False, False, True]
 
 
 def test_epsilon_floor():

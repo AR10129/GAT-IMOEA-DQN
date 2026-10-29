@@ -17,6 +17,9 @@ Policies (same eval seed = same initial population for every policy):
                   normalisation, 5-step returns, Huber loss, lr 5e-4, 50k buffer, and
                   (with --val-set) the best validation checkpoint kept
   trained_nogat_stable  the same without the GAT
+  tch_trained_blk / tch_trained_nogat_blk  stable learner, but one decision per 50 generations
+                  (reward = relative HV_jin improvement over the block; see scripts/reward_audit.py),
+                  n-step 3, gamma 0.95, training every 10 decisions once 100 are stored
   schedule        hand-made: linear from (1, 0, 0) to (1/6, 5/6, 0) over the run, snapped to the grid
   ip_moea         IP-MOEA (Limbourg & Aponte 2005), re-implemented; see gat_imoea_dqn/baselines.py
   imoead          IMOEA/D (Gan et al. 2023), re-implemented; see gat_imoea_dqn/baselines.py
@@ -84,6 +87,8 @@ POLICIES = {
     "fixed_fav":      {"kind": "fixed", "action": (5 / 6, 1 / 6, 0.0)},
     "tch_trained_stable": {"kind": "greedy", "variant": "tch_gat_stable"},
     "tch_trained_nogat_stable": {"kind": "greedy", "variant": "tch_nogat_stable"},
+    "tch_trained_blk": {"kind": "greedy", "variant": "tch_gat_blk"},
+    "tch_trained_nogat_blk": {"kind": "greedy", "variant": "tch_nogat_blk"},
     "tch_fixed_fav":  {"kind": "fixed", "action": (5 / 6, 1 / 6, 0.0), "backbone": "tch"},
     "tch_conv":       {"kind": "fixed", "action": (1.0, 0.0, 0.0), "backbone": "tch"},
     "tch_fresh":      {"kind": "fresh", "backbone": "tch"},
@@ -161,6 +166,11 @@ def _variant(variant: str, tseed: int):
         return dcfg, {**kw, **_backbone("tch")}, reward
     graph = not variant.startswith("nogat")
     reward = "hv" if "_hv" in variant else "pibi"
+    if variant.endswith("_blk"):                         # L7: block decisions + HV_jin reward
+        return (DQNConfig(seed=tseed, use_graph=graph, reward_scaling="running", eps_floor=0.1, n_step=3,
+                          gamma=0.95, loss="huber", lr=5e-4, buffer_capacity=50_000, erb_threshold=100,
+                          update_period=10),
+                {"tracker_normalization": "fixed", "decision_every": 50}, "hvjin")
     if variant.endswith("_stable"):
         return (DQNConfig(seed=tseed, use_graph=graph, reward_scaling="running", eps_floor=0.1, n_step=5,
                           loss="huber", lr=5e-4, buffer_capacity=50_000),
@@ -222,7 +232,7 @@ def train(out_dir: str, variant: str, tseed: int, workflows, episodes: int, gene
                                     reward=reward, evaluator=_ecfg(env), **run_kw),
                   agent=agent, graph_key=name)
         entry = {"episode": ep, "workflow": name, "seconds": round(time.time() - t0, 1),
-                 "mean_reward": float(np.mean(res.history["reward"])),
+                 "mean_reward": float(np.mean([r for r in res.history["reward"] if r is not None])),
                  "train_rounds": agent.train_rounds,
                  "last_loss": next((x for x in reversed(res.history["loss"]) if x is not None), None)}
         if val_data and ((ep + 1) % val_every == 0 or ep == episodes - 1):
