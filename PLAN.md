@@ -270,6 +270,25 @@ setting for comparability and three-tier energy as a sensitivity study.
       ~4e-4, likely too small and too noisy to learn from — e.g. reward scaling, IGD/HV-delta reward,
       fewer/coarser actions, longer training) and retrain; or (b) reframe the paper around the
       decomposition backbone with the DQN as an ablation/negative result.
+  - **L7 reward audit, 2026-10-29** (`scripts/reward_audit.py`, `results/experiments/reward_audit`):
+    each of the 28 actions fixed for 1000 generations, small_20 ×1 and basic_60 ×20, 2 seeds.
+    - The summed PIBI reward ranks actions like IGD overall (Spearman 0.92 / 0.90) but not among
+      the top ones: (0.67, 0, 0.33) earns near-top reward with ~2× the best IGD — the action the
+      GAT agent picked most.
+    - Per-step signal-to-noise after generation 100 is 0.007–0.06 (spread of the 28 action means /
+      per-step sd). The per-generation reward is almost pure noise; this is why nothing was learned.
+    - Static headroom is small: the best fixed action per instance (IGD 0.0087 / 0.0128) is within
+      ~10% of tch_fixed_fav, so an adaptive controller can only win through the schedule over time.
+  - **L7 fix, short test, 2026-10-29** (`results/experiments/dqn_fix_test`): one decision per 50
+    generations (`RunConfig.decision_every`), reward = relative HV_jin improvement over the block,
+    n-step 3, gamma 0.95; 2 training seeds × 24 episodes; 4 test cases × 4 seeds.
+    - Training reward now rises (≈ 0.05 → 0.09 per block on revisited workflows; the old learner
+      stayed at 0.0004), but test performance got worse: IGD 0.045 (no GAT) / 0.062 (GAT) vs 0.026 /
+      0.030 for the old agents and 0.0136 for tch_fixed_fav, last on all 4 cases. The agents
+      favour diversity-heavy actions ((0.5, 0.5, 0) 31–52%), which the audit shows are poor.
+    - Likely cause: too little data for 28 actions — 24 episodes × 20 decisions = 480 transitions
+      per agent — and early blocks (clipped large relative gains) dominate the return.
+    - Status: the DQN still does not beat the best fixed action after two learner designs.
   - [ ] IMOEA/D-AWN, IMEA-IED, IMaOEACI
 - [ ] B2. Re-implement IMOEA-DQN (Jin et al.) on the DAG model
 - [ ] B3. NSGA-II; tuned fixed-action baseline; ablations (UDR1, UDR2, DAEC, DQN-ES, GAT, POX, static vs dynamic state)
