@@ -61,6 +61,20 @@ def selection_actions(divisions: int = 6) -> np.ndarray:
     return das_dennis(divisions, 3)
 
 
+ACTION_SETS = ("all", "convergent")
+
+
+def action_subset(name: str = "all") -> np.ndarray:
+    """Indices into selection_actions() an agent may choose from: "all" 28, or
+    "convergent" the 10 actions with alpha >= 1/2 (convergence tier at least half of N)."""
+    A = selection_actions()
+    if name == "all":
+        return np.arange(len(A))
+    if name == "convergent":
+        return np.flatnonzero(A[:, 0] >= 0.5 - 1e-9)
+    raise ValueError(f"action set must be one of {ACTION_SETS}, got {name!r}")
+
+
 def simplex_weights(n: int, n_obj: int = 3) -> np.ndarray:
     """n weight vectors: the largest Das-Dennis lattice with at most n points, topped up
     with fixed-seed random simplex points (q = 13 gives exactly 105 for 3 objectives)."""

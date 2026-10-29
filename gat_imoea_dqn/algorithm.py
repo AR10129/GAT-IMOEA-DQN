@@ -28,7 +28,7 @@ from .dqn import DQNAgent
 from .evaluator import EvaluatorConfig, IntervalEvaluator
 from .intervals import interval_dominance_matrix, nondominated_fronts
 from .operators import VariationConfig, make_offspring
-from .selection import SelectionConfig, environmental_selection, selection_actions
+from .selection import SelectionConfig, action_subset, environmental_selection, selection_actions
 from .state import PopulationTracker
 
 
@@ -50,6 +50,9 @@ class RunConfig:
     # transition per decision, its reward the relative improvement over the whole block
     # and its state change features measured over the block (1 = the PDF's per-generation loop)
     decision_every: int = 1
+    # dqn / random: choose among "all" 28 actions or the 10 "convergent" ones (alpha >= 1/2);
+    # history["action"] always records the index into the full 28-action grid
+    action_set: str = "all"
     evaluator: EvaluatorConfig = EvaluatorConfig()
     variation: VariationConfig = VariationConfig()
     selection: SelectionConfig = SelectionConfig()
@@ -87,6 +90,7 @@ def run(wf, sc, cfg: RunConfig = RunConfig(), agent: Optional[DQNAgent] = None,
     ev = IntervalEvaluator(wf, sc, cfg.evaluator)
     allowed = allowed_for(wf, sc)
     actions = selection_actions()
+    subset = action_subset(cfg.action_set)
     tracker = PopulationTracker(cfg.generations, reward=cfg.reward, normalization=cfg.tracker_normalization)
     N = cfg.pop_size
 
@@ -94,8 +98,8 @@ def run(wf, sc, cfg: RunConfig = RunConfig(), agent: Optional[DQNAgent] = None,
     if cfg.policy == "dqn":
         agent = agent if agent is not None else DQNAgent()
         agent.begin_episode()
-        if agent.cfg.n_actions != len(actions):
-            raise ValueError("agent action count does not match the Das-Dennis action set")
+        if agent.cfg.n_actions != len(subset):
+            raise ValueError(f"agent has {agent.cfg.n_actions} actions, action set {cfg.action_set!r} has {len(subset)}")
         gid = agent.register_graph(graph_key or wf.name, wf)
 
     pop = init_population(wf, sc, N, rng, dag)                             # step 1
@@ -120,9 +124,9 @@ def run(wf, sc, cfg: RunConfig = RunConfig(), agent: Optional[DQNAgent] = None,
                 a, explored = agent.act(gid, s, t, rng, greedy=cfg.greedy)
             else:
                 explored = False
-            action = actions[a]
+            action = actions[subset[a]]
         elif cfg.policy == "random":
-            a = int(rng.integers(len(actions)))
+            a = int(subset[rng.integers(len(subset))])
             action = actions[a]
         elif cfg.policy == "schedule":
             a = schedule_action(cfg.schedule, t, cfg.generations, actions)
@@ -156,7 +160,7 @@ def run(wf, sc, cfg: RunConfig = RunConfig(), agent: Optional[DQNAgent] = None,
 
         pop, F_lo, F_hi, s = new_pop, nF_lo, nF_hi, s2
         mid = (F_lo + F_hi) / 2
-        rec = {"action": a, "explored": explored, "reward": r, "pibi": tracker.pibi(F_lo, F_hi),
+        rec = {"action": int(subset[a]) if cfg.policy == "dqn" else a, "explored": explored, "reward": r, "pibi": tracker.pibi(F_lo, F_hi),
                "epsilon": agent.epsilon(t) if cfg.policy == "dqn" else None, "loss": loss,
                "best_mid": mid.min(axis=0).tolist(), "median_mid": np.median(mid, axis=0).tolist()}
         for k, v in rec.items():

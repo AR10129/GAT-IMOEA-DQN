@@ -43,6 +43,8 @@ the signal.
 
 reward="hvjin": the same relative improvement, of HV_jin = (HV(lower bounds) +
 HV(upper bounds)) / 2, the evaluation metric itself (Jin et al.'s interval HV).
+reward="loghvjin": log(HV_jin_{t+1} / HV_jin_t), unclipped; its undiscounted sum over a run
+is log(final HV_jin / initial HV_jin), so maximising the return maximises the final HV_jin.
 """
 from __future__ import annotations
 
@@ -55,7 +57,7 @@ from .metrics import hypervolume_3d
 from .selection import das_dennis, interval_crowding
 
 STATE_POP_DIM = 7
-REWARDS = ("pibi", "hv", "hvjin")
+REWARDS = ("pibi", "hv", "hvjin", "loghvjin")
 HV_REF = 1.1
 
 
@@ -174,6 +176,9 @@ class PopulationTracker:
     def reward(self, F_before: Tuple[np.ndarray, np.ndarray], F_after: Tuple[np.ndarray, np.ndarray]) -> float:
         """Relative improvement (PIBI or HV) from P_t to P_{t+1}, both under the current bounds."""
         self.observe(*F_after)
+        if self.reward_kind == "loghvjin":
+            h0, h1 = self.hv_jin(*F_before), self.hv_jin(*F_after)
+            return float(np.log(h1 / h0)) if h0 > 1e-12 and h1 > 1e-12 else 0.0
         if self.reward_kind in ("hv", "hvjin"):
             f = self.hypervolume if self.reward_kind == "hv" else self.hv_jin
             h0, h1 = f(*F_before), f(*F_after)

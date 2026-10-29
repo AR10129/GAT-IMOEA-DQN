@@ -20,6 +20,9 @@ Policies (same eval seed = same initial population for every policy):
   tch_trained_blk / tch_trained_nogat_blk  stable learner, but one decision per 50 generations
                   (reward = relative HV_jin improvement over the block; see scripts/reward_audit.py),
                   n-step 3, gamma 0.95, training every 10 decisions once 100 are stored
+  tch_trained_l8 / tch_trained_nogat_l8  one decision per 25 generations among the 10 actions with
+                  alpha >= 1/2, reward = log HV_jin ratio (unclipped), n-step 5, gamma 0.98
+  tch_random_conv uniform random action among those 10, each generation (control for *_l8)
   schedule        hand-made: linear from (1, 0, 0) to (1/6, 5/6, 0) over the run, snapped to the grid
   ip_moea         IP-MOEA (Limbourg & Aponte 2005), re-implemented; see gat_imoea_dqn/baselines.py
   imoead          IMOEA/D (Gan et al. 2023), re-implemented; see gat_imoea_dqn/baselines.py
@@ -89,6 +92,9 @@ POLICIES = {
     "tch_trained_nogat_stable": {"kind": "greedy", "variant": "tch_nogat_stable"},
     "tch_trained_blk": {"kind": "greedy", "variant": "tch_gat_blk"},
     "tch_trained_nogat_blk": {"kind": "greedy", "variant": "tch_nogat_blk"},
+    "tch_trained_l8": {"kind": "greedy", "variant": "tch_gat_l8"},
+    "tch_trained_nogat_l8": {"kind": "greedy", "variant": "tch_nogat_l8"},
+    "tch_random_conv": {"kind": "random", "action_set": "convergent", "backbone": "tch"},
     "tch_fixed_fav":  {"kind": "fixed", "action": (5 / 6, 1 / 6, 0.0), "backbone": "tch"},
     "tch_conv":       {"kind": "fixed", "action": (1.0, 0.0, 0.0), "backbone": "tch"},
     "tch_fresh":      {"kind": "fresh", "backbone": "tch"},
@@ -166,6 +172,11 @@ def _variant(variant: str, tseed: int):
         return dcfg, {**kw, **_backbone("tch")}, reward
     graph = not variant.startswith("nogat")
     reward = "hv" if "_hv" in variant else "pibi"
+    if variant.endswith("_l8"):                          # L8: 10 convergent actions, log-HV_jin reward
+        return (DQNConfig(seed=tseed, use_graph=graph, n_actions=10, reward_scaling="running", eps_floor=0.1,
+                          n_step=5, gamma=0.98, loss="huber", lr=5e-4, buffer_capacity=50_000,
+                          erb_threshold=200, update_period=10),
+                {"tracker_normalization": "fixed", "decision_every": 25, "action_set": "convergent"}, "loghvjin")
     if variant.endswith("_blk"):                         # L7: block decisions + HV_jin reward
         return (DQNConfig(seed=tseed, use_graph=graph, reward_scaling="running", eps_floor=0.1, n_step=3,
                           gamma=0.95, loss="huber", lr=5e-4, buffer_capacity=50_000, erb_threshold=100,
@@ -273,7 +284,7 @@ def job(spec) -> str:
     elif d["kind"] == "fresh":
         cfg = RunConfig(**base, policy="dqn", **_backbone(d.get("backbone")))
     elif d["kind"] == "random":
-        cfg = RunConfig(**base, policy="random")
+        cfg = RunConfig(**base, policy="random", action_set=d.get("action_set", "all"), **_backbone(d.get("backbone")))
     elif d["kind"] == "schedule":
         cfg = RunConfig(**base, policy="schedule")
     elif d["kind"] == "baseline":

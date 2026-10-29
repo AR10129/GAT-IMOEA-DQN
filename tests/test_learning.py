@@ -119,6 +119,30 @@ def test_hv_jin_reward_tracks_the_metric():
     assert tr.reward((lo, lo + 1), narrower) > 0
 
 
+def test_log_hv_jin_reward_telescopes():
+    rng = np.random.default_rng(3)
+    lo = rng.uniform(1, 5, size=(20, 3))
+    tr = PopulationTracker(g_max=50, reward="loghvjin", normalization="fixed")
+    tr.observe(lo, lo + 1)
+    steps = [(lo, lo + 1), (lo * 0.9, lo * 0.9 + 0.8), (lo * 0.7, lo * 0.7 + 0.5)]
+    total = tr.reward(steps[0], steps[1]) + tr.reward(steps[1], steps[2])
+    assert total == pytest.approx(np.log(tr.hv_jin(*steps[2]) / tr.hv_jin(*steps[0])))
+
+
+def test_convergent_action_set():
+    from gat_imoea_dqn.selection import action_subset, selection_actions
+    idx = action_subset("convergent")
+    A = selection_actions()
+    assert len(idx) == 10 and np.all(A[idx, 0] >= 0.5 - 1e-9) and len(action_subset("all")) == 28
+    agent = DQNAgent(DQNConfig(n_actions=10, erb_threshold=1000))
+    res = run(WF, SC, RunConfig(pop_size=12, generations=6, decision_every=2, action_set="convergent"), agent=agent)
+    assert set(res.history["action"]) <= set(idx.tolist())          # recorded as full-grid indices
+    with pytest.raises(ValueError):
+        run(WF, SC, RunConfig(pop_size=12, generations=2), agent=DQNAgent(DQNConfig(n_actions=10)))
+    rnd = run(WF, SC, RunConfig(pop_size=12, generations=5, policy="random", action_set="convergent"))
+    assert set(rnd.history["action"]) <= set(idx.tolist())
+
+
 def test_run_with_hv_reward():
     agent = DQNAgent(DQNConfig(erb_threshold=10, update_period=5, grad_steps=2))
     res = run(WF, SC, RunConfig(pop_size=12, generations=15, reward="hv"), agent=agent)
