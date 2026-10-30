@@ -45,9 +45,11 @@ useful to the field, but it is not a performance claim. The GAT stays only in th
 - *Is C3 novel?* Decomposition + dominance hybrids exist (MOEA/DD, θ-DEA, NSGA-III, RVEA) but not
   for interval objectives inside a three-tier dominance / uncertainty selection. Literature check
   is task W1 below.
-- *Which (α, β, γ) does the method use, and was it tuned on the test set?* Today's (5/6, 1/6, 0)
-  came from a trained agent's favourite action on the Jin backbone. Re-select it on the training
-  instances (i1–i3) only, and report the sensitivity over all 28 actions (task A2).
+- *Which (α, β, γ) does the method use, and was it tuned on the test set?* (5/6, 1/6, 0), chosen
+  on the training instances (i1–i3) only: A2 (2026-10-31) ranks it first of 28 by mean IGD rank on
+  the 36 training instances. The test set was never used. The top four actions (α ≥ 2/3, γ ≤ 1/6)
+  are within 1.2× of the per-instance best IGD on average, so the method is not sensitive to the
+  exact choice inside that region.
 - *Why drop the RL?* We don't hide it: C4 reports it with the reasons. EAAI's scope covers
   evolutionary methods for engineering problems.
 
@@ -335,9 +337,18 @@ setting for comparability and three-tier energy as a sensitivity study.
   RVEA, SPEA/R, MOEA/D-DU) and interval MOEAs (IMOEA/D, IMOEA/D-AWN, IP-MOEA, interval NSGA-II
   variants). Write down exactly what is new: an interval Tchebycheff rank as the convergence tier
   of a dominance / uncertainty three-tier selection, and the R_IN-stall diagnosis.
-- [ ] A2. Pick (α, β, γ) without the test set: the 28-action sweep (`scripts/reward_audit.py`) on
-  the training instances i1–i3 of all 12 cases; choose the default by mean rank; report the
-  sensitivity surface; keep (1, 0, 0) as the "no tuning" variant.
+- [x] A2. Pick (α, β, γ) without the test set (done 2026-10-31, `scripts/action_sweep.py`,
+  `results/experiments/action_sweep/summary.md`). 28 fixed actions × 36 training instances (i1–i3
+  of the 6 configurations at CCR ×1 and ×20), 1 seed, G = 1000, tch backbone.
+  - Chosen default: **(5/6, 1/6, 0)**, mean IGD rank 2.25 of 28, IGD ratio to the per-instance best
+    1.13 on average and 1.71 at worst. It is the action already used, so the Suite A results stand.
+  - Runners-up: (2/3, 1/6, 1/6) 2.67, (5/6, 0, 1/6) 2.69 (best mean HV rank, 1.75), (1, 0, 0) 2.97.
+    Only these four ever win an instance (9 / 10 / 9 / 8 wins).
+  - Sensitivity: IGD rank rises steadily as α falls. Below α = 1/2 the IGD ratio is above 4;
+    pure γ (0, 0, 1) is 52× worse. Imprecision falls as γ rises (0.31 → 0.20 per solution): the
+    A3 trade-off.
+  - Robustness: the default is 1st on CCR ×1 and 3rd on CCR ×20, and in the top 3 on every
+    configuration. Keep (1, 0, 0) as the "no tuning" variant.
 - [ ] A1. Backbone ablation on Suite A with the chosen action (10 seeds, 12 cases): Jin backbone →
   + Tchebycheff Rank C → + ICD tie-break → + neighbourhood mating; neighbourhood size {10, 20, 40},
   p_local {0.5, 0.9, 1.0}, number of weight vectors. The audit (4 seeds, 2–3 cases) is the pilot.
