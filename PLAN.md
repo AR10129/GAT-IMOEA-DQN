@@ -349,7 +349,8 @@ setting for comparability and three-tier energy as a sensitivity study.
     A3 trade-off.
   - Robustness: the default is 1st on CCR ×1 and 3rd on CCR ×20, and in the top 3 on every
     configuration. Keep (1, 0, 0) as the "no tuning" variant.
-- [ ] A1. Backbone ablation on Suite A with the chosen action (10 seeds, 12 cases): Jin backbone →
+- [ ] A1 (running since 2026-11-01: `scripts/ablation.py`, 10 new variants × 12 cases × 10 seeds;
+  jin / full / conv / imoead reused from suite_a and suite_a_tch). Backbone ablation on Suite A with the chosen action (10 seeds, 12 cases): Jin backbone →
   + Tchebycheff Rank C → + ICD tie-break → + neighbourhood mating; neighbourhood size {10, 20, 40},
   p_local {0.5, 0.9, 1.0}, number of weight vectors. The audit (4 seeds, 2–3 cases) is the pilot.
 - [ ] A3. What the β (dominance) and γ (uncertainty) tiers buy under the new Rank C: IGD vs
