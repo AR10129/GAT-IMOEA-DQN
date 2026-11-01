@@ -349,10 +349,24 @@ setting for comparability and three-tier energy as a sensitivity study.
     A3 trade-off.
   - Robustness: the default is 1st on CCR ×1 and 3rd on CCR ×20, and in the top 3 on every
     configuration. Keep (1, 0, 0) as the "no tuning" variant.
-- [ ] A1 (running since 2026-11-01: `scripts/ablation.py`, 10 new variants × 12 cases × 10 seeds;
-  jin / full / conv / imoead reused from suite_a and suite_a_tch). Backbone ablation on Suite A with the chosen action (10 seeds, 12 cases): Jin backbone →
-  + Tchebycheff Rank C → + ICD tie-break → + neighbourhood mating; neighbourhood size {10, 20, 40},
-  p_local {0.5, 0.9, 1.0}, number of weight vectors. The audit (4 seeds, 2–3 cases) is the pilot.
+- [x] A1. Backbone ablation (done 2026-11-01, `scripts/ablation.py`,
+  `results/experiments/ablation/summary.md`). Action (5/6, 1/6, 0) fixed, 12 test cases × 10 seeds,
+  Wilcoxon vs full per case. Mean IGD (W/L/T of the variant against full):
+  - Build-up: Jin 0.116 → + Tchebycheff Rank C 0.053 → + ICD tie-break 0.044 → + neighbourhood
+    mating (= full) **0.0125**. Every step is significant on 12/12 cases. IMOEA/D is 0.042.
+  - Leave one out: without Tchebycheff 0.069 (0/12/0), without neighbourhood mating 0.044
+    (0/12/0), without ICD 0.015 (0/7/5). The first two are the method, and they interact:
+    neighbourhood mating alone (on R_IN) and Tchebycheff alone each recover only part of the
+    gain, together they are 3.5× better than either. ICD is a small, consistent extra.
+  - Sensitivity: smaller / more local mating is better. T = 10 beats T = 20 (8/0/4, IGD 0.0108),
+    p_local = 1.0 beats 0.9 (7/0/5); T = 40 and p_local = 0.5 are worse on 11–12/12. The default
+    number of weight vectors (N) beats N/2 and 2N.
+  - **Open:** T and p_local were not tuned; the better values were found on the test cases, so
+    do not adopt them from A1. Either keep T = 20, p_local = 0.9 as the stated defaults and report
+    A1 as sensitivity, or re-tune them on the training instances as in A2 (T ∈ {5, 10, 20},
+    p_local ∈ {0.9, 1.0}; ~2 h) and rerun the full method on the test cases.
+  - The seconds column is not comparable: jin / full / conv / imoead were run in other batches
+    under different machine load. B4 does timing properly.
 - [ ] A3. What the β (dominance) and γ (uncertainty) tiers buy under the new Rank C: IGD vs
   Imprecision trade-off from the A2 sweep, and the Rank C tie counts per generation (the stall
   figure: R_IN vs Tchebycheff).
