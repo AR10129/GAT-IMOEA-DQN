@@ -42,9 +42,10 @@ C4 is supporting material: it explains why per-generation DQN control fails here
 useful to the field, but it is not a performance claim. The GAT stays only in that section.
 
 **What a reviewer will ask, and our answer (to prepare):**
-- *Is C3 novel?* Decomposition + dominance hybrids exist (MOEA/DD, θ-DEA, NSGA-III, RVEA) but not
-  for interval objectives inside a three-tier dominance / uncertainty selection. Literature check
-  is task W1 below.
+- *Is C3 novel?* The rank itself is not: it is MSOPS's best-position rank (Hughes 2003) on
+  interval midpoint Tchebycheff values. New is its use as the convergence tier inside Jin et
+  al.'s dominance / uncertainty selection, the diagnosis of why R_IN stalls, and the evidence.
+  Say this plainly and cite MSOPS and Global WASF-GA (W1, `docs/novelty_check.md`).
 - *Which (α, β, γ) does the method use, and was it tuned on the test set?* (5/6, 1/6, 0), chosen
   on the training instances (i1–i3) only: A2 (2026-10-31) ranks it first of 28 by mean IGD rank on
   the 36 training instances. The test set was never used. The top four actions (α ≥ 2/3, γ ≤ 1/6)
@@ -333,10 +334,17 @@ setting for comparability and three-tier energy as a sensitivity study.
     - Conclusion after three learner designs: on the tch backbone the DQN reaches, but does not
       beat, the best tuned fixed action.
 ### P1b — Reframed core claims (from 2026-10-29; in this order)
-- [ ] W1. Literature check for C3: decomposition / dominance hybrids (MOEA/DD, θ-DEA, NSGA-III,
-  RVEA, SPEA/R, MOEA/D-DU) and interval MOEAs (IMOEA/D, IMOEA/D-AWN, IP-MOEA, interval NSGA-II
-  variants). Write down exactly what is new: an interval Tchebycheff rank as the convergence tier
-  of a dominance / uncertainty three-tier selection, and the R_IN-stall diagnosis.
+- [x] W1. Literature check (done 2026-11-02, `docs/novelty_check.md`). Findings:
+  - **Our Rank C is MSOPS's ranking** (Hughes 2003: best position over per-weight Tchebycheff
+    orderings); Global WASF-GA (2017) is close. Not new as a ranking: credit both.
+  - Still new (no paper found): that rank, on interval objectives, as the convergence tier of
+    Jin et al.'s dominance / uncertainty three-tier selection; the R_IN-stall diagnosis; the
+    integrated method beating the interval baselines.
+  - Closest C1 prior work: Shi et al., EIJ 2023 (interval, dependent workflows, devices + edge,
+    migration). Get the full text and separate C1 from it.
+  - New interval baseline candidate: IMOEA/D-DAW (Sci. Rep. 2026).
+  - Consequences: add a midpoint NSGA-III or MOEA/DD baseline (B3), make A3's stall figure
+    central, and run Suite B and the DAG heuristics before the hand-written baselines.
 - [x] A2. Pick (α, β, γ) without the test set (done 2026-10-31, `scripts/action_sweep.py`,
   `results/experiments/action_sweep/summary.md`). 28 fixed actions × 36 training instances (i1–i3
   of the 6 configurations at CCR ×1 and ×20), 1 seed, G = 1000, tch backbone.
@@ -401,7 +409,7 @@ setting for comparability and three-tier energy as a sensitivity study.
 
 ## Risks
 
-- C3 judged incremental ("just add MOEA/D's Tchebycheff") → W1 first; make the diagnosis (tie
+- C3 judged incremental ("just MSOPS inside Jin et al.") → W1 confirmed the rank is MSOPS's; make the diagnosis (tie
   counts), the ablation and the interval treatment explicit; the DAG model (C1) is the second pillar.
 - Tuning on the test set → A2 picks the action on training instances only.
 - Our IMOEA/D is weaker or stronger than the original → document every parameter from Gan et al.
