@@ -20,6 +20,7 @@ N = 105, 10 seeds, on the 12 Suite A test cases (i0 at CCR x1 and x20).
     p05, p10           p_local
     w53, w210          number of Tchebycheff weight vectors (default N = 105)
   References:
+    final      full with T = 10, p_local = 1.0 (chosen on the training instances, scripts/tune_mating.py)
     conv       full with (1, 0, 0), the "no tuning" action                   [copied: suite_a_tch tch_conv]
     imoead     the IMOEA/D baseline                                         [copied: suite_a imoead]
 
@@ -67,13 +68,14 @@ VARIANTS = {
     "p10": {**FULL, "p_local": 1.0},
     "w53": {**FULL, "n_weights": 53},
     "w210": {**FULL, "n_weights": 210},
+    "final": {**FULL, "neighbours": 10, "p_local": 1.0},     # A1b: tuned on the training instances
 }
 COPIED = {"jin": ("suite_a", "fixed_fav"), "full": ("suite_a_tch", "tch_fixed_fav"),
           "conv": ("suite_a_tch", "tch_conv"), "imoead": ("suite_a", "imoead")}
 ORDER = ["jin", "+tch", "+tch+icd", "full", "-tch", "-icd", "T10", "T40", "p05", "p10", "w53", "w210",
-         "conv", "imoead"]
+         "final", "conv", "imoead"]
 GROUPS = [("Build-up", ["jin", "+tch", "+tch+icd", "full"]), ("Leave one out", ["full", "-tch", "-icd", "+tch+icd"]),
-          ("Sensitivity", ["full", "T10", "T40", "p05", "p10", "w53", "w210"]), ("References", ["full", "conv", "imoead"])]
+          ("Sensitivity", ["full", "T10", "T40", "p05", "p10", "w53", "w210"]), ("References", ["full", "final", "conv", "imoead"])]
 
 
 def _file(w, v, s):
