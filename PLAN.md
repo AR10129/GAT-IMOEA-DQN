@@ -33,7 +33,7 @@ two papers directly. Anything beyond that is a sensitivity study or a stated lim
 |---|---|---|
 | C1 | Interval critical-path model for DAG workflows in the cloud–edge–end architecture (transfer, makespan, energy, cost); reduces exactly to Jin et al.'s model for single-task applications | built and tested |
 | C2 | DAG-valid two-string encoding: allocation + topological priority, POX, shift mutation, topological repair | built |
-| C3 | **Headline.** Decomposition-ranked three-tier selection: Rank C = interval Tchebycheff rank over N weight vectors (ICD tie-break) inside Jin et al.'s α/β/γ selection, plus neighbourhood mating; with a diagnosis of why R_IN stalls | built; Suite A: beats IMOEA/D IGD 12/12, HV 10/12 (10 seeds) |
+| C3 | **Headline.** Decomposition-ranked three-tier selection: Rank C = interval Tchebycheff rank over N weight vectors (ICD tie-break) inside Jin et al.'s α/β/γ selection, plus neighbourhood mating (T = 10, p_local = 1.0); with a diagnosis of why R_IN stalls | built; Suite A: beats IMOEA/D IGD 12/12, HV 10/12 (10 seeds) |
 | C4 | Analysis of learned control of (α, β, γ): reward audit (per-step SNR 0.007–0.06), three learner designs, GAT vs no-GAT; best learner reaches but does not beat the best fixed action, and GAT adds nothing | done (`reward_audit`, `suite_a_tch`, `dqn_fix_test`); write up as ablation / negative result |
 | C5 | Released benchmark: Suite A instances + 40 interval WfCommons / Pegasus workflows + generators | Suite A and B built |
 | C6 | Evaluation stronger than the predecessor's: their 5 baselines + IMOEA-DQN on the DAG model + NSGA-II + list-scheduling heuristics; 30 runs; Holm-corrected tests | partly (IMOEA/D, IP-MOEA; Jin-backbone DQN = IMOEA-DQN on our model) |
@@ -361,10 +361,13 @@ setting for comparability and three-tier energy as a sensitivity study.
   - Sensitivity: smaller / more local mating is better. T = 10 beats T = 20 (8/0/4, IGD 0.0108),
     p_local = 1.0 beats 0.9 (7/0/5); T = 40 and p_local = 0.5 are worse on 11–12/12. The default
     number of weight vectors (N) beats N/2 and 2N.
-  - **Open:** T and p_local were not tuned; the better values were found on the test cases, so
-    do not adopt them from A1. Either keep T = 20, p_local = 0.9 as the stated defaults and report
-    A1 as sensitivity, or re-tune them on the training instances as in A2 (T ∈ {5, 10, 20},
-    p_local ∈ {0.9, 1.0}; ~2 h) and rerun the full method on the test cases.
+  - **Resolved (A1b, 2026-11-02, `scripts/tune_mating.py`):** T ∈ {3, 5, 10, 20} × p_local ∈ {0.9, 1.0}
+    re-tuned on the 36 training instances (2 seeds): **T = 10, p_local = 1.0** has the best mean
+    IGD rank and beats the old default on 35/36 training instances; T = 3 is worse, so 10 is
+    inside the range. On the test cases (`final` variant, 10 seeds): mean IGD 0.0103 vs 0.0135
+    for the old default (9/0/3), HV 12/0/0; vs IMOEA/D 12/0/0 on IGD. **The method's settings
+    are now frozen: (5/6, 1/6, 0), Tchebycheff Rank C with N weights, ICD tie-break,
+    neighbourhood mating T = 10, p_local = 1.0.** Use these for all B and E runs.
   - The seconds column is not comparable: jin / full / conv / imoead were run in other batches
     under different machine load. B4 does timing properly.
 - [ ] A3. What the β (dominance) and γ (uncertainty) tiers buy under the new Rank C: IGD vs
