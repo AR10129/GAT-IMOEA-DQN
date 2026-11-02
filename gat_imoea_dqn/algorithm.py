@@ -105,7 +105,14 @@ def run(wf, sc, cfg: RunConfig = RunConfig(), agent: Optional[DQNAgent] = None,
     pop = init_population(wf, sc, N, rng, dag)                             # step 1
     F_lo, F_hi = ev.evaluate_population(pop.X, pop.O)
     tracker.observe(F_lo, F_hi)
-    s = tracker.features(pop.X, F_lo, F_hi, 0)
+    # state features only feed the agent; other policies only need the tracker's bounds updated
+    if cfg.policy == "dqn":
+        features = tracker.features
+    else:
+        def features(X, lo, hi, t):
+            tracker.observe(lo, hi)
+            return None
+    s = features(pop.X, F_lo, F_hi, 0)
 
     hist: Dict[str, List] = {k: [] for k in ("action", "explored", "reward", "pibi", "epsilon", "loss",
                                              "best_mid", "median_mid")}
@@ -144,13 +151,13 @@ def run(wf, sc, cfg: RunConfig = RunConfig(), agent: Optional[DQNAgent] = None,
         last = t == cfg.generations - 1
         if K == 1:
             r = tracker.reward((F_lo, F_hi), (nF_lo, nF_hi))               # step 5
-            s2 = tracker.features(new_pop.X, nF_lo, nF_hi, t + 1)
+            s2 = features(new_pop.X, nF_lo, nF_hi, t + 1)
             if cfg.policy == "dqn" and cfg.learn:
                 agent.store(gid, s, a, r, s2, last)
                 loss = agent.maybe_train()
         elif (t + 1) % K == 0 or last:                                     # end of a decision block
             r = tracker.reward(block_F, (nF_lo, nF_hi))
-            s2 = tracker.features(new_pop.X, nF_lo, nF_hi, t + 1)
+            s2 = features(new_pop.X, nF_lo, nF_hi, t + 1)
             if cfg.policy == "dqn" and cfg.learn:
                 agent.store(gid, s, a, r, s2, last)
                 loss = agent.maybe_train()

@@ -39,6 +39,7 @@ Choices beyond the PDF (SelectionConfig):
 """
 from __future__ import annotations
 
+import functools
 import itertools
 from dataclasses import dataclass, field
 from typing import Optional, Tuple
@@ -50,6 +51,11 @@ from .intervals import interval_dominance_matrix, normalize_intervals, pareto_do
 
 # -------------------------------------------------------------- actions ---
 def das_dennis(divisions: int = 6, n_obj: int = 3) -> np.ndarray:
+    return _das_dennis(int(divisions), int(n_obj)).copy()
+
+
+@functools.lru_cache(maxsize=None)
+def _das_dennis(divisions: int, n_obj: int) -> np.ndarray:
     """Das-Dennis simplex lattice: all weight vectors with entries in {0, 1/q, ..., 1}
     summing to 1. q = 6, m = 3 gives C(8, 2) = 28 vectors."""
     rows = [c for c in itertools.product(range(divisions + 1), repeat=n_obj) if sum(c) == divisions]
@@ -76,6 +82,11 @@ def action_subset(name: str = "all") -> np.ndarray:
 
 
 def simplex_weights(n: int, n_obj: int = 3) -> np.ndarray:
+    return _simplex_weights(int(n), int(n_obj)).copy()
+
+
+@functools.lru_cache(maxsize=None)
+def _simplex_weights(n: int, n_obj: int) -> np.ndarray:
     """n weight vectors: the largest Das-Dennis lattice with at most n points, topped up
     with fixed-seed random simplex points (q = 13 gives exactly 105 for 3 objectives)."""
     q = 1

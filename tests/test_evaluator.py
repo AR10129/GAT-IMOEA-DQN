@@ -200,3 +200,31 @@ def _tt_tc(ev, X):
     xs, xd = I[ev.src], I[ev.dst]
     return (ev.D_lo * ev.spk_lo[xs, xd], ev.D_hi * ev.spk_hi[xs, xd],
             ev.C_lo / (ev.f_hi / share)[I], ev.C_hi / (ev.f_lo / share)[I])
+
+
+@pytest.mark.parametrize("name", ["montage/montage_200", "cybershake/cybershake_400", "sipht/sipht_200"])
+def test_fast_population_path_is_bit_identical(name):
+    """evaluate_population's compiled loop must reproduce evaluate() exactly (same sums, same
+    order), under every model switch, so runs are reproducible whichever path is used."""
+    import itertools
+    from gat_imoea_dqn.evaluator import _psum
+    wf = load_workflow(ROOT / "datasets" / "workflows" / f"{name}.json")
+    sc = load_scenario(ROOT / "datasets" / "scenarios" / "default.yaml")
+    rng = np.random.default_rng(2)
+    targets = sc.allowed_targets()
+    X = rng.choice(targets, size=(12, wf.num_tasks))
+    X[:3] = 0
+    O = np.stack([wf.random_topological_order(rng) for _ in range(12)])
+    for io, es, mk, eq in itertools.product(("pdf", "device"), ("all", "device"), ("max", "sum_apps"), (False, True)):
+        ev = IntervalEvaluator(wf, sc, EvaluatorConfig(external_io=io, energy_scope=es, makespan=mk, edge_queue=eq))
+        fast = ev.evaluate_population(X, O, fast=True)
+        ref = ev.evaluate_population(X, O, fast=False)
+        for a, b in zip(fast, ref):
+            assert np.array_equal(a, b)
+    for n in (0, 5, 8, 100, 129, 1000, 4099):
+        a = rng.lognormal(0, 3, n)
+        assert _psum(a, 0, n) == a.sum()
+    bad = O.copy()
+    bad[0] = bad[0][::-1]
+    with pytest.raises(InvalidIndividual):
+        ev.evaluate_population(X, bad)

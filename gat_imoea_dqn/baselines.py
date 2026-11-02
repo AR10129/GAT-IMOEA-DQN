@@ -197,8 +197,7 @@ def run_imoead(wf, sc, cfg: BaselineConfig) -> RunResult:
             pool = B[i] if rng.random() < cfg.delta else np.arange(N)
             p, q = rng.choice(pool, size=2, replace=False)
             x, o = _child(pop.X[p], pop.O[p], pop.X[q], pop.O[q], allowed, dag, rng, True)
-            res = ev.evaluate(x, o)                  # one evaluation per subproblem per generation
-            c_lo, c_hi = res.F_lo, res.F_hi
+            c_lo, c_hi = (f[0] for f in ev.evaluate_population(x[None], o[None]))   # one per subproblem per generation
             ideal = np.minimum(ideal, c_lo)
             nadir = np.maximum(nadir, c_hi)
             cand = pool

@@ -103,6 +103,284 @@ def _schedule_py(order, X, pred_ptr, pred_edge, src, tt_lo, tt_hi, tc_lo, tc_hi,
 _schedule = njit(cache=True)(_schedule_py) if HAVE_NUMBA else _schedule_py
 
 
+@njit(cache=True)
+def _xf(kb, spk):
+    return kb * spk if kb > 0 else 0.0
+
+
+@njit(cache=True)
+def _psum(a, lo, n):
+    """Sum of a[lo:lo+n] in exactly NumPy's pairwise order, so the fast path is bit-identical.
+    NumPy splits n > 128 in halves (rounded to multiples of 8) recursively; this walks the same
+    tree with an explicit stack, because numba cannot cache recursive functions safely."""
+    if n <= 128:
+        return _pblock(a, lo, n)
+    s_lo = np.empty(64, dtype=np.int64)
+    s_n = np.empty(64, dtype=np.int64)
+    s_st = np.empty(64, dtype=np.int64)
+    vals = np.empty(64)
+    sp = 0
+    vp = 0
+    s_lo[0], s_n[0], s_st[0] = lo, n, 0
+    sp = 1
+    while sp > 0:
+        sp -= 1
+        l, m, st = s_lo[sp], s_n[sp], s_st[sp]
+        if m <= 128:
+            vals[vp] = _pblock(a, l, m)
+            vp += 1
+        elif st == 0:
+            m2 = m // 2
+            m2 -= m2 % 8
+            s_lo[sp], s_n[sp], s_st[sp] = l, m, 1              # combine after both halves
+            s_lo[sp + 1], s_n[sp + 1], s_st[sp + 1] = l + m2, m - m2, 0
+            s_lo[sp + 2], s_n[sp + 2], s_st[sp + 2] = l, m2, 0  # left half first
+            sp += 3
+        else:
+            right = vals[vp - 1]
+            left = vals[vp - 2]
+            vp -= 1
+            vals[vp - 1] = left + right
+    return vals[0]
+
+
+@njit(cache=True)
+def _pblock(a, lo, n):
+    if n < 8:
+        r = 0.0
+        for i in range(n):
+            r += a[lo + i]
+        return r
+    if n <= 128:
+        r0, r1, r2, r3 = a[lo], a[lo + 1], a[lo + 2], a[lo + 3]
+        r4, r5, r6, r7 = a[lo + 4], a[lo + 5], a[lo + 6], a[lo + 7]
+        i = 8
+        while i < n - (n % 8):
+            r0 += a[lo + i]
+            r1 += a[lo + i + 1]
+            r2 += a[lo + i + 2]
+            r3 += a[lo + i + 3]
+            r4 += a[lo + i + 4]
+            r5 += a[lo + i + 5]
+            r6 += a[lo + i + 6]
+            r7 += a[lo + i + 7]
+            i += 8
+        res = ((r0 + r1) + (r2 + r3)) + ((r4 + r5) + (r6 + r7))
+        while i < n:
+            res += a[lo + i]
+            i += 1
+        return res
+    return 0.0                                  # not reached: callers pass n <= 128
+
+
+@njit(cache=True)
+def _evaluate_population_nb(Xs, Os, validate, allowed_mask, dev_node, near_node, cloud, NI, is_edge, queued,
+                            f_lo, f_hi, C_lo, C_hi, src, dst, D_lo, D_hi, pred_ptr, pred_edge,
+                            spk_lo, spk_hi, device_io, ext_in, ext_out, sum_apps, app, n_apps,
+                            e_lo_t, e_hi_t, p_tx_t, p_idle_t, kappa_E, kappa_C, P_static, eta_E, eta_C,
+                            device_energy):
+    """Fast path of IntervalEvaluator.evaluate for a whole population (same model, one compiled
+    loop). Returns F_lo, F_hi (P, 3), feasible (P,), error (P,): 0 ok, 1 invalid individual."""
+    P, K = Xs.shape
+    E = src.shape[0]
+    F_lo = np.empty((P, 3))
+    F_hi = np.empty((P, 3))
+    feas = np.ones(P, dtype=np.bool_)
+    err = np.zeros(P, dtype=np.int64)
+    I = np.empty(K, dtype=np.int64)
+    cnt = np.zeros(NI, dtype=np.int64)
+    pos = np.empty(K, dtype=np.int64)
+    feff_lo = np.empty(K)
+    feff_hi = np.empty(K)
+    tc_lo = np.empty(K)
+    tc_hi = np.empty(K)
+    tt_lo = np.empty(E)
+    tt_hi = np.empty(E)
+    ready_lo = np.zeros(K)
+    ready_hi = np.zeros(K)
+    app_lo = np.zeros(n_apps)
+    app_hi = np.zeros(n_apps)
+    work_lo = np.zeros(NI)
+    work_hi = np.zeros(NI)
+    busy_lo = np.zeros(NI)
+    busy_hi = np.zeros(NI)
+    b_lo = np.empty(max(K, E, NI, n_apps) + 1)        # scratch for NumPy-order sums
+    b_hi = np.empty(max(K, E, NI, n_apps) + 1)
+    N = allowed_mask.shape[1]
+    for p in range(P):
+        X = Xs[p]
+        O = Os[p]
+        if validate:
+            bad = False
+            for v in range(K):
+                if X[v] < 0 or X[v] >= N or not allowed_mask[v, X[v]]:
+                    bad = True
+                pos[v] = -1
+            for i in range(K):
+                o = O[i]
+                if o < 0 or o >= K or pos[o] >= 0:
+                    bad = True
+                else:
+                    pos[o] = i
+            if not bad:
+                for e in range(E):
+                    if pos[src[e]] >= pos[dst[e]]:
+                        bad = True
+                        break
+            if bad:
+                err[p] = 1
+                continue
+        cnt[:] = 0
+        for v in range(K):
+            I[v] = dev_node[v] if X[v] == 0 else X[v]
+            cnt[I[v]] += 1
+        for v in range(K):
+            s = cnt[I[v]] if (is_edge[I[v]] and cnt[I[v]] > 1) else 1
+            feff_lo[v] = f_lo[I[v]] / s
+            feff_hi[v] = f_hi[I[v]] / s
+            tc_lo[v] = C_lo[v] / feff_hi[v]
+            tc_hi[v] = C_hi[v] / feff_lo[v]
+        ok = True
+        for e in range(E):
+            a, b = I[src[e]], I[dst[e]]
+            tt_lo[e] = _xf(D_lo[e], spk_lo[a, b])
+            tt_hi[e] = _xf(D_hi[e], spk_hi[a, b])
+            if not np.isfinite(tt_hi[e]):
+                ok = False
+        if device_io:
+            for v in range(K):
+                ready_lo[v] = _xf(ext_in[v], spk_lo[dev_node[v], I[v]])
+                ready_hi[v] = _xf(ext_in[v], spk_hi[dev_node[v], I[v]])
+                if not np.isfinite(ready_hi[v]) or not np.isfinite(_xf(ext_out[v], spk_hi[I[v], dev_node[v]])):
+                    ok = False
+        feas[p] = ok
+        ST_lo, ST_hi, FT_lo, FT_hi = _schedule(O, I, pred_ptr, pred_edge, src, tt_lo, tt_hi, tc_lo, tc_hi,
+                                               ready_lo, ready_hi, queued, NI)
+        # F1
+        mk_lo = 0.0
+        mk_hi = 0.0
+        if sum_apps:
+            app_lo[:] = 0.0
+            app_hi[:] = 0.0
+        for v in range(K):
+            el = FT_lo[v]
+            eh = FT_hi[v]
+            if device_io:
+                el += _xf(ext_out[v], spk_lo[I[v], dev_node[v]])
+                eh += _xf(ext_out[v], spk_hi[I[v], dev_node[v]])
+            if sum_apps:
+                if el > app_lo[app[v]]:
+                    app_lo[app[v]] = el
+                if eh > app_hi[app[v]]:
+                    app_hi[app[v]] = eh
+            else:
+                if v == 0 or el > mk_lo:
+                    mk_lo = el
+                if v == 0 or eh > mk_hi:
+                    mk_hi = eh
+        if sum_apps:
+            mk_lo = _psum(app_lo, 0, n_apps)
+            mk_hi = _psum(app_hi, 0, n_apps)
+        # F2: device side (each sum gathers its terms in task / edge order, then sums as NumPy does)
+        m = 0
+        for v in range(K):
+            if X[v] == 0:
+                b_lo[m] = C_lo[v] * e_lo_t[v]
+                b_hi[m] = C_hi[v] * e_hi_t[v]
+                m += 1
+        ec_lo = _psum(b_lo, 0, m)
+        ec_hi = _psum(b_hi, 0, m)
+        m = 0
+        for e in range(E):                       # parent on its device -> offloaded child
+            s = src[e]
+            if X[s] == 0 and X[dst[e]] != 0:
+                d = I[dst[e]]
+                nr = near_node[s]
+                to_c = d == cloud and nr > 0
+                wn = nr if to_c else d
+                w_lo = _xf(D_lo[e], spk_lo[nr, cloud]) if to_c else 0.0
+                w_hi = _xf(D_hi[e], spk_hi[nr, cloud]) if to_c else 0.0
+                b_lo[m] = p_tx_t[s] * _xf(D_lo[e], spk_lo[dev_node[s], wn]) + p_idle_t[s] * w_lo
+                b_hi[m] = p_tx_t[s] * _xf(D_hi[e], spk_hi[dev_node[s], wn]) + p_idle_t[s] * w_hi
+                m += 1
+        tx_lo = _psum(b_lo, 0, m)
+        tx_hi = _psum(b_hi, 0, m)
+        if device_io:
+            m = 0
+            for v in range(K):                   # external inputs of offloaded tasks
+                if X[v] != 0:
+                    d = I[v]
+                    nr = near_node[v]
+                    to_c = d == cloud and nr > 0
+                    wn = nr if to_c else d
+                    w_lo = _xf(ext_in[v], spk_lo[nr, cloud]) if to_c else 0.0
+                    w_hi = _xf(ext_in[v], spk_hi[nr, cloud]) if to_c else 0.0
+                    b_lo[m] = p_tx_t[v] * _xf(ext_in[v], spk_lo[dev_node[v], wn]) + p_idle_t[v] * w_lo
+                    b_hi[m] = p_tx_t[v] * _xf(ext_in[v], spk_hi[dev_node[v], wn]) + p_idle_t[v] * w_hi
+                    m += 1
+            tx_lo += _psum(b_lo, 0, m)
+            tx_hi += _psum(b_hi, 0, m)
+        m = 0
+        for v in range(K):
+            if X[v] != 0:
+                b_lo[m] = p_idle_t[v] * tc_lo[v]
+                b_hi[m] = p_idle_t[v] * tc_hi[v]
+                m += 1
+        ei_lo = _psum(b_lo, 0, m)
+        ei_hi = _psum(b_hi, 0, m)
+        # F2: edge and cloud
+        eE_lo = 0.0
+        eE_hi = 0.0
+        eC_lo = 0.0
+        eC_hi = 0.0
+        if not device_energy:
+            work_lo[:] = 0.0
+            work_hi[:] = 0.0
+            busy_lo[:] = 0.0
+            busy_hi[:] = 0.0
+            for v in range(K):
+                work_lo[I[v]] += C_lo[v]
+                work_hi[I[v]] += C_hi[v]
+                if FT_lo[v] > busy_lo[I[v]]:
+                    busy_lo[I[v]] = FT_lo[v]
+                if FT_hi[v] > busy_hi[I[v]]:
+                    busy_hi[I[v]] = FT_hi[v]
+            m = 0
+            for u in range(NI):
+                if is_edge[u]:
+                    b_lo[m] = kappa_E * f_lo[u] ** 2 * work_lo[u] + P_static[u] * busy_lo[u]
+                    b_hi[m] = kappa_E * f_hi[u] ** 2 * work_hi[u] + P_static[u] * busy_hi[u]
+                    m += 1
+            eE_lo = _psum(b_lo, 0, m)
+            eE_hi = _psum(b_hi, 0, m)
+            eC_lo = kappa_C * f_lo[cloud] ** 2 * work_lo[cloud] + P_static[cloud] * busy_lo[cloud]
+            eC_hi = kappa_C * f_hi[cloud] ** 2 * work_hi[cloud] + P_static[cloud] * busy_hi[cloud]
+        # F3
+        m = 0
+        for v in range(K):
+            if is_edge[I[v]]:
+                b_lo[m] = feff_lo[v] * tc_lo[v]
+                b_hi[m] = feff_hi[v] * tc_hi[v]
+                m += 1
+        ce_lo = _psum(b_lo, 0, m)
+        ce_hi = _psum(b_hi, 0, m)
+        m = 0
+        for v in range(K):
+            if I[v] == cloud:
+                b_lo[m] = tc_lo[v]
+                b_hi[m] = tc_hi[v]
+                m += 1
+        cc_lo = _psum(b_lo, 0, m)
+        cc_hi = _psum(b_hi, 0, m)
+        F_lo[p, 0] = mk_lo
+        F_hi[p, 0] = mk_hi
+        F_lo[p, 1] = ec_lo + tx_lo + ei_lo + eE_lo + eC_lo
+        F_hi[p, 1] = ec_hi + tx_hi + ei_hi + eE_hi + eC_hi
+        F_lo[p, 2] = eta_E * ce_lo + eta_C * cc_lo
+        F_hi[p, 2] = eta_E * ce_hi + eta_C * cc_hi
+    return F_lo, F_hi, feas, err
+
+
 @dataclass(frozen=True)
 class EvaluatorConfig:
     external_io: str = "pdf"            # "pdf" or "device"
@@ -350,8 +628,25 @@ class IntervalEvaluator:
             res.ST, res.FT = (ST_lo, ST_hi), (FT_lo, FT_hi)
         return res
 
-    def evaluate_population(self, Xs, Os) -> Tuple[np.ndarray, np.ndarray]:
-        Xs, Os = np.asarray(Xs), np.asarray(Os)
+    def evaluate_population(self, Xs, Os, fast: bool = True) -> Tuple[np.ndarray, np.ndarray]:
+        """(P, 3) lower / upper objectives. fast=True uses the compiled loop (needs numba);
+        fast=False calls evaluate() per individual (the reference implementation)."""
+        Xs = np.ascontiguousarray(Xs, dtype=np.int64)
+        Os = np.ascontiguousarray(Os, dtype=np.int64)
+        if fast and HAVE_NUMBA and Xs.ndim == 2 and Xs.shape[1] == self.K:
+            c = self.cfg
+            F_lo, F_hi, _, err = _evaluate_population_nb(
+                Xs, Os, c.validate, self.allowed_mask, self.dev_node, self.near_node, self.cloud, self.NI,
+                self.is_edge, self.queued, self.f_lo, self.f_hi, self.C_lo, self.C_hi, self.src, self.dst,
+                self.D_lo, self.D_hi, self.pred_ptr, self.pred_edge, self.spk_lo, self.spk_hi,
+                c.external_io == "device", self.ext_in, self.ext_out, c.makespan == "sum_apps",
+                self.app.astype(np.int64), max(self.n_apps, 1), self.e_lo_t, self.e_hi_t,
+                self.p_tx_t.astype(float), self.p_idle_t.astype(float), self.kappa_E, self.kappa_C,
+                self.P_static, self.eta_E, self.eta_C, c.energy_scope == "device")
+            if err.any():
+                i = int(np.flatnonzero(err)[0])
+                self.check(Xs[i], Os[i])                  # raises with the reason
+            return F_lo, F_hi
         F_lo = np.empty((len(Xs), 3))
         F_hi = np.empty((len(Xs), 3))
         for i in range(len(Xs)):
