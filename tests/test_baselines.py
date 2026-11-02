@@ -60,3 +60,23 @@ def test_baselines_valid_and_improve(name):
 def test_unknown_baseline():
     with pytest.raises(ValueError):
         run_baseline("nsga9", WF_A, SC_A)
+
+
+def test_heuristics_plans_valid():
+    from gat_imoea_dqn.heuristics import run_heuristics
+    wf = load_workflow(ROOT / "datasets" / "workflows" / "montage" / "montage_100.json")
+    sc = load_scenario(ROOT / "datasets" / "scenarios" / "jin.yaml")
+    res = run_heuristics(wf, sc, EvaluatorConfig(external_io="device", energy_scope="device"))
+    names = res.history["names"]
+    assert names == ["all_local", "all_edge", "all_cloud", "heft_makespan", "heft_energy", "heft_cost"]
+    dag, allowed = DagIndex(wf), allowed_for(wf, sc)
+    for x, o in zip(res.population.X, res.population.O):
+        assert is_topological(o, dag) and is_allowed(x, allowed).all()
+    i = {n: k for k, n in enumerate(names)}
+    assert np.all(res.population.X[i["all_local"]] == 0) and res.F_hi[i["all_local"], 2] == 0.0
+    assert np.all(res.population.X[i["all_cloud"]] == sc.n_edge + 1)
+    # each greedy plan is no worse on its own objective than all-local, where it starts
+    for j, n in enumerate(("heft_makespan", "heft_energy", "heft_cost")):
+        mid = (res.F_lo + res.F_hi) / 2
+        assert mid[i[n], j] <= mid[i["all_local"], j] + 1e-9
+    assert len(res.front) >= 2

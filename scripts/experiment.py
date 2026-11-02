@@ -98,6 +98,9 @@ POLICIES = {
     "tch_fixed_fav":  {"kind": "fixed", "action": (5 / 6, 1 / 6, 0.0), "backbone": "tch"},
     "tch_conv":       {"kind": "fixed", "action": (1.0, 0.0, 0.0), "backbone": "tch"},
     "tch_fresh":      {"kind": "fresh", "backbone": "tch"},
+    # the frozen method (A1/A1b/A2): (5/6, 1/6, 0), Tchebycheff Rank C, ICD, T = 10, p_local = 1.0
+    "final":          {"kind": "fixed", "action": (5 / 6, 1 / 6, 0.0), "backbone": "final"},
+    "heuristics":     {"kind": "heuristic"},     # all_local / all_edge / all_cloud / HEFT-style (B0)
 }
 
 
@@ -110,6 +113,11 @@ def _backbone(name):
         from gat_imoea_dqn.selection import SelectionConfig
         return {"selection": SelectionConfig(convergence="tchebycheff", tie_break="icd"),
                 "variation": VariationConfig(partner="neighbours")}
+    if name == "final":                                  # tch with the mating parameters tuned in A1b
+        from gat_imoea_dqn.operators import VariationConfig
+        from gat_imoea_dqn.selection import SelectionConfig
+        return {"selection": SelectionConfig(convergence="tchebycheff", tie_break="icd"),
+                "variation": VariationConfig(partner="neighbours", neighbours=10, p_local=1.0)}
     raise ValueError(f"unknown backbone {name!r}")
 TRAIN_SET = ["montage_100", "epigenomics_100", "cybershake_100", "inspiral_100", "sipht_100"]
 TEST_SET = ["montage_200", "epigenomics_200", "cybershake_200", "inspiral_200", "sipht_200"]
@@ -287,12 +295,15 @@ def job(spec) -> str:
         cfg = RunConfig(**base, policy="random", action_set=d.get("action_set", "all"), **_backbone(d.get("backbone")))
     elif d["kind"] == "schedule":
         cfg = RunConfig(**base, policy="schedule")
-    elif d["kind"] == "baseline":
-        from gat_imoea_dqn.baselines import BaselineConfig, run_baseline
+    elif d["kind"] in ("baseline", "heuristic"):
         cfg = None
     else:
         cfg = RunConfig(**base, policy="fixed", fixed_action=tuple(d["action"]), **_backbone(d.get("backbone")))
-    if d["kind"] == "baseline":
+    if d["kind"] == "heuristic":
+        from gat_imoea_dqn.heuristics import run_heuristics
+        res = run_heuristics(wf, sc, _ecfg(env))       # deterministic: the same plans for every seed
+    elif d["kind"] == "baseline":
+        from gat_imoea_dqn.baselines import BaselineConfig, run_baseline
         res = run_baseline(d["name"], wf, sc, BaselineConfig(pop_size=spec["pop"], generations=spec["generations"],
                                                              seed=spec["seed"], evaluator=_ecfg(env)))
     else:

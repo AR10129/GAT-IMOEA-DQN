@@ -381,7 +381,14 @@ setting for comparability and three-tier energy as a sensitivity study.
 - [ ] A3. What the β (dominance) and γ (uncertainty) tiers buy under the new Rank C: IGD vs
   Imprecision trade-off from the A2 sweep, and the Rank C tie counts per generation (the stall
   figure: R_IN vs Tchebycheff).
-- [ ] B0. Reference heuristics: all-local, all-edge, all-cloud, HEFT-style list scheduling
+- [x] B0. Reference heuristics (2026-11-03, `gat_imoea_dqn/heuristics.py`, policy `heuristics`):
+  all_local, all_edge (nearest edge), all_cloud, and HEFT-style list scheduling in upward-rank
+  order: heft_makespan = classic earliest-finish-time placement, heft_energy / heft_cost = greedy
+  on the plan's energy / cost. Note for the paper: HEFT loses to all_cloud on makespan because
+  edge capacity is shared by every task placed on it, so early EFT choices are slowed by later
+  ones. Pilot (4 Suite B cases, 2 seeds, G = 1000): the heuristics' IGD is 20–40× the method's.
+- [x] Speed-up (2026-11-03): compiled population scorer, bit-identical to the reference
+  (old runs reproduce exactly); runs are 5–10× faster.
 - [ ] B1. Remaining interval baselines: IMOEA/D-AWN, IMEA-IED, IMaOEACI (IMOEA/D, IP-MOEA done;
   check IP-MOEA's tie-breaking / crowding against the original before the final runs)
 - [ ] B2. IMOEA-DQN (Jin et al.) on the DAG model = `trained_stable` on the Jin backbone (and
@@ -394,6 +401,9 @@ setting for comparability and three-tier energy as a sensitivity study.
 
 ### P2 — Evaluation
 - [ ] E1. Suite A (3 scales × 2 device counts × CCR ×1 / ×20) and Suite B (5 families × 3 sizes × 3 CCR)
+  - Suite B running since 2026-11-03 (`scripts/run_suite_b.cmd`, experiment `suite_b`): 45 cases
+    (100/400/1000 tasks, data ×1/×20/×100), Jin scenario, 10 seeds; final, IMOEA/D, IP-MOEA,
+    Jin backbone (fixed_fav), heuristics. Pilot: final beats IMOEA/D on IGD in 4/4 cases.
 - [ ] E2. 30 runs per method and instance
 - [ ] E3. Metrics as above, normalised once per instance
 - [ ] E4. Statistics as above
