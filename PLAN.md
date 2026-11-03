@@ -401,9 +401,15 @@ setting for comparability and three-tier energy as a sensitivity study.
 
 ### P2 — Evaluation
 - [ ] E1. Suite A (3 scales × 2 device counts × CCR ×1 / ×20) and Suite B (5 families × 3 sizes × 3 CCR)
-  - Suite B running since 2026-11-03 (`scripts/run_suite_b.cmd`, experiment `suite_b`): 45 cases
-    (100/400/1000 tasks, data ×1/×20/×100), Jin scenario, 10 seeds; final, IMOEA/D, IP-MOEA,
-    Jin backbone (fixed_fav), heuristics. Pilot: final beats IMOEA/D on IGD in 4/4 cases.
+  - [x] Suite B done 2026-11-04 (`scripts/run_suite_b.cmd`, `results/experiments/suite_b/summary.md`):
+    45 cases (5 families × 100/400/1000 tasks × data ×1/×20/×100), Jin scenario, 10 seeds, G = 1000,
+    2250 runs. Mean IGD: final 0.0105, IMOEA/D 0.0208, Jin backbone 0.084, IP-MOEA 0.225,
+    heuristics 0.239. Final is best on IGD and HV_jin everywhere: vs IMOEA/D IGD 43 wins / 2 ties
+    (inspiral_400@x1, sipht_100@x100) / 0 losses, HV_jin 45/0/0; vs every other method 45/0/0.
+    IMOEA/D's IGD is ~2× final's at every size, data level and family (1.9–2.8×). The Jin backbone's
+    gap grows with size (IGD 0.046 / 0.085 / 0.121 at 100 / 400 / 1000 tasks): the R_IN stall
+    gets worse on larger DAGs. Imprecision: final's fronts are wider than IMOEA/D's (worse in 35/45),
+    as in Suite A; the heuristics' 3-plan fronts have near-zero imprecision by construction.
 - [ ] E2. 30 runs per method and instance
 - [ ] E3. Metrics as above, normalised once per instance
 - [ ] E4. Statistics as above
