@@ -410,7 +410,11 @@ setting for comparability and three-tier energy as a sensitivity study.
     gap grows with size (IGD 0.046 / 0.085 / 0.121 at 100 / 400 / 1000 tasks): the R_IN stall
     gets worse on larger DAGs. Imprecision: final's fronts are wider than IMOEA/D's (worse in 35/45),
     as in Suite A; the heuristics' 3-plan fronts have near-zero imprecision by construction.
-- [ ] E2. 30 runs per method and instance
+- [ ] E2. Seeds (trimmed 2026-11-04, user decision): 30 runs for the main comparison only
+  (final, IMOEA/D, Jin backbone) on all 57 cases (Suite A 12 + Suite B 45) = 20 more seeds ×
+  3 × 57 = 3420 runs. Every other method (B1, B2, B3, IP-MOEA) stays at 10 seeds; heuristics are
+  deterministic. Sensitivity (E6) and scalability at 10 seeds. Remaining budget ≈ 10,000 runs
+  (B1 1710, B2 1350, B3 1710, E2 3420, E6 ~1200, 2000-task scalability ~600), ≈ 22 h awake.
 - [ ] E3. Metrics as above, normalised once per instance
 - [ ] E4. Statistics as above
 - [ ] E5. IGD / HV vs generation curves for DR-IMOEA and every baseline
