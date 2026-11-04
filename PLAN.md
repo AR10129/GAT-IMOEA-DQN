@@ -391,8 +391,17 @@ setting for comparability and three-tier energy as a sensitivity study.
   (old runs reproduce exactly); runs are 5–10× faster.
 - [ ] B1. Remaining interval baselines: IMOEA/D-AWN, IMEA-IED, IMaOEACI (IMOEA/D, IP-MOEA done;
   check IP-MOEA's tie-breaking / crowding against the original before the final runs)
-- [ ] B2. IMOEA-DQN (Jin et al.) on the DAG model = `trained_stable` on the Jin backbone (and
+- [~] B2. IMOEA-DQN (Jin et al.) on the DAG model = `trained_stable` on the Jin backbone (and
   `fresh` for the online version): check it against their Algorithm 1/2 and name it in tables
+  - [x] Suite B runs done 2026-11-04 (`scripts/run_b2.cmd`, 1800 runs: Suite A GAT agents ×3
+    training seeds, greedy, plus online `fresh`; agents trained on the default scenario, so this
+    is also a transfer test to Jin's scenario). Mean IGD: final 0.011, IMOEA/D 0.020, Jin backbone
+    with fixed action 0.083, trained_stable 0.125, fresh 0.176. Both DQN versions lose to final and
+    to the fixed-action Jin backbone on IGD and HV_jin in 45/45 cases; trained beats fresh
+    (342–372 of 450 runs per training seed). By size (IGD trained / fixed_fav): 0.096 / 0.046,
+    0.108 / 0.082, 0.171 / 0.120. Supports C4: the learned controller adds nothing over a fixed
+    action. (Adding policies changes the pooled reference front, so final's IGD moved 0.0105 → 0.011.)
+  - [ ] Still open: the Algorithm 1/2 fidelity check and table naming.
 - [ ] B3. NSGA-II (midpoint and interval-dominance variants)
 - [ ] B4. Equal budget for all methods; wall-clock times reported
 - [ ] D1. Write-up material for C4: the reward-audit figures (per-step SNR by phase; reward

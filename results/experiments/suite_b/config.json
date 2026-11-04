@@ -5,7 +5,9 @@
     "imoead",
     "ip_moea",
     "fixed_fav",
-    "heuristics"
+    "heuristics",
+    "trained_stable",
+    "fresh"
   ],
   "train_seeds": [
     0,
@@ -71,7 +73,7 @@
   "pop": 105,
   "seeds": 10,
   "workers": 12,
-  "reuse_from": "suite_b_pilot",
+  "reuse_from": null,
   "reference": "final",
   "scenario": "jin",
   "data_multiplier": null,
@@ -84,6 +86,6 @@
   "val_generations": 300,
   "rank_metric": "IGD",
   "summary_only": false,
-  "git_commit": "45142819f10e2e40d67522c519f442639daf4d91",
+  "git_commit": "794beac000df9c4537ae01478d72acbb074fe2fd",
   "git_dirty": true
 }
