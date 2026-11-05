@@ -171,15 +171,31 @@ def _load(name, env=None):
     wf = load_workflow(ROOT / "datasets" / manifest[name]["path"])
     if env.get("data_multiplier") is not None:
         wf = rescale_workflow(wf, data_multiplier=float(env["data_multiplier"]))
+    if env.get("width_scale") is not None:   # E6: scale every interval's half-width about its midpoint
+        wf = _scale_widths(wf, float(env["width_scale"]))
     sc = load_scenario(ROOT / "datasets" / "scenarios" / f"{env.get('scenario', 'default')}.yaml")
     return wf, sc
+
+
+def _scale_widths(wf, s: float):
+    import copy
+    import numpy as np
+    out = copy.deepcopy(wf)
+    for a, b in (("C_lo", "C_hi"), ("D_lo", "D_hi")):
+        lo, hi = np.asarray(getattr(wf, a), float), np.asarray(getattr(wf, b), float)
+        mid, half = (lo + hi) / 2, (hi - lo) / 2 * s
+        half = np.minimum(half, mid)                          # keep lower bounds >= 0
+        setattr(out, a, mid - half)
+        setattr(out, b, mid + half)
+    out.meta = {**wf.meta, "width_scale": s}
+    return out
 
 
 def _ecfg(env=None):
     from gat_imoea_dqn.evaluator import EvaluatorConfig
     env = env or {}
     return EvaluatorConfig(energy_scope=env.get("energy_scope", "all"), external_io=env.get("external_io", "pdf"),
-                           makespan=env.get("makespan", "max"))
+                           makespan=env.get("makespan", "max"), edge_queue=bool(env.get("edge_queue", False)))
 
 
 def _retry(fn, attempts: int = 5, wait_s: float = 2.0):
@@ -587,9 +603,12 @@ def main() -> int:
     ap.add_argument("--val-generations", type=int, default=300)
     ap.add_argument("--rank-metric", default="PIBI", help="metric used for mean ranks and table order")
     ap.add_argument("--summary-only", action="store_true")
+    ap.add_argument("--width-scale", type=float, default=None, help="E6: scale every interval half-width")
+    ap.add_argument("--edge-queue", action="store_true", help="E6: edge servers queue tasks (multi-core)")
     args = ap.parse_args()
     env = {"scenario": args.scenario, "data_multiplier": args.data_multiplier, "energy_scope": args.energy_scope,
-           "external_io": args.external_io, "makespan": args.makespan}
+           "external_io": args.external_io, "makespan": args.makespan,
+           "width_scale": args.width_scale, "edge_queue": args.edge_queue}
     train_gens = args.train_generations or args.generations
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # Windows consoles default to cp1252
