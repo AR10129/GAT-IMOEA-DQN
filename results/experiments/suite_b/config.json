@@ -10,7 +10,10 @@
     "fresh",
     "nsga2_mid",
     "nsga2_int",
-    "nsga3_mid"
+    "nsga3_mid",
+    "imoead_awn",
+    "imea_ied",
+    "imoead_orig"
   ],
   "train_seeds": [
     0,
@@ -89,6 +92,6 @@
   "val_generations": 300,
   "rank_metric": "IGD",
   "summary_only": false,
-  "git_commit": "f17722f71601e271f33de32d3cb9cadbc8958124",
+  "git_commit": "48a9678c2078ece2e22cc62cb818b6d5e740cf9e",
   "git_dirty": true
 }

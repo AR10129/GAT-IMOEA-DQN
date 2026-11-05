@@ -389,12 +389,12 @@ setting for comparability and three-tier energy as a sensitivity study.
   ones. Pilot (4 Suite B cases, 2 seeds, G = 1000): the heuristics' IGD is 20–40× the method's.
 - [x] Speed-up (2026-11-03): compiled population scorer, bit-identical to the reference
   (old runs reproduce exactly); runs are 5–10× faster.
-- [~] B1. Remaining interval baselines (2026-11-05; PDFs in the repo root, user-supplied):
+- [x] B1. Remaining interval baselines (2026-11-05; PDFs in the repo root, user-supplied):
   - [x] IMOEA/D-AWN (Jin, Zhang, Xie, Cui, EIJ 24 (2023) 100405) and IMEA-IED (Cui et al., SWEVO 91
     (2024) 101749) re-implemented from the papers in `gat_imoea_dqn/baselines_b1.py` (policies
     `imoead_awn`, `imea_ied`); the docstring lists every equation used and every choice the paper
     leaves open. Tests: `tests/test_baselines_b1.py` (IED reproduces the paper's Fig. 3 example).
-    Launch script `scripts/run_b1.cmd` (Suite A + B, 1140 runs), run after B3.
+    Launch script `scripts/run_b1.cmd` (Suite A + B, 1710 runs with imoead_orig).
   - Dropped: IMaOEACI (Cai et al., Inf. Sci. 690 (2025) 121552). Its core quantity, the
     "individual comprehensive indicator", is defined only by citation to an unpublished PhD thesis
     (Zhang, Taiyuan Univ. Sci. Tech., 2023), and its environmental selection is one paragraph, so a
@@ -402,11 +402,22 @@ setting for comparability and three-tier energy as a sensitivity study.
   - Not a baseline: IMOEA/D-DAW (Sci. Rep. 2026). Its sparsity measure is built for a bi-objective
     problem with one crisp objective; adapting it to three interval objectives would be our own
     design. Related work only.
-  - [ ] Fidelity: IMEA-IED's Section 4.3 gives IMOEA/D's original settings as T = 10, reference
+  - [x] Fidelity: IMEA-IED's Section 4.3 gives IMOEA/D's original settings as T = 10, reference
     vectors adapted from G_max / 2 every G_max / 6. Ours uses T = 20 and adapts every 10% from the
     start (baselines.py). Decided 2026-11-05: add policy `imoead_orig` (T = 10, adaptation from G_max / 2
     every floor(G_max / 6)), queued in run_b1.cmd (570 runs); `imoead` is unchanged and bit-identical.
     Report the original-settings version as IMOEA/D; the old one becomes a sensitivity note.
+  - Results (done 2026-11-05, no errors; mean IGD, reference front now pooled over 13 policies):
+    - Suite A: final 0.0123, imoead_awn 0.0206, imoead_orig 0.0224, imoead 0.0304, imea_ied 0.0824.
+      final wins IGD and HV_jin 12/12 against all three.
+    - Suite B: final 0.0158, imoead_orig 0.0183, imoead 0.0236, imoead_awn 0.0296, imea_ied 0.0916.
+      vs final (IGD · HV_jin, better/worse/tie): imoead_orig 4/30/11 · 12/30/3;
+      imoead_awn 3/30/12 · 2/41/2; imea_ied 0/45/0 · 0/45/0.
+    - **Threat:** imoead_orig beats final on HV_jin in 12 of the 15 1000-task cases (on IGD in those 15 cases:
+      imoead_orig better in 2, tie 3, final better in 10). final still wins every
+      100- and 400-task case on HV. The original schedule (T = 10, late adaptation) is much
+      stronger than our earlier setting at 1000 tasks. Decide before writing: investigate (e.g. G
+      budget at 1000 tasks, late adaptation inside final), and state it in the paper either way.
   - [ ] Check IP-MOEA's tie-breaking / crowding against the original before the final runs.
 - [~] B2. IMOEA-DQN (Jin et al.) on the DAG model = `trained_stable` on the Jin backbone (and
   `fresh` for the online version): check it against their Algorithm 1/2 and name it in tables
