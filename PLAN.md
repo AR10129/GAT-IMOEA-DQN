@@ -487,7 +487,17 @@ setting for comparability and three-tier energy as a sensitivity study.
 - [ ] E3. Metrics as above, normalised once per instance
 - [ ] E4. Statistics as above
 - [ ] E5. IGD / HV vs generation curves for DR-IMOEA and every baseline
-- [ ] E6. Sensitivity: CCR, uncertainty width, edge count, bandwidth, energy scope, multi-core queueing
+- [~] E6. Sensitivity: CCR, uncertainty width, edge count, bandwidth, energy scope, multi-core queueing
+  Running since 2026-11-05 (`scripts/run_e.cmd`, log results/experiment_e.log; queue E6 ->
+  2000-task scalability -> E2). Cases: the five 400-task workflows at x20; policies final,
+  imoead_orig (reported as IMOEA/D), fixed_fav (Jin backbone), nsga2_mid; 10 seeds. Levels, each its
+  own experiment: e6_base (copied from suite_b), e6_energy_all, e6_width05 / e6_width2 (interval
+  half-widths x0.5 / x2, `--width-scale`), e6_bw05 / e6_bw2 (wireless bandwidth, scenarios
+  jin_bw05 / jin_bw2), e6_edges1 / e6_edges6 (scenarios jin_e1 / jin_e6), e6_edgequeue (edge servers
+  queue, `--edge-queue`). CCR is already covered by Suite B's x1 / x20 / x100. 1600 runs.
+  Scalability: `scale_2000`, 5 families x 2000 tasks x {x1, x20, x100}, same 4 policies, 600 runs.
+  E2: `suite_a_e2`, `suite_b_e2` (final, imoead_orig, fixed_fav; seeds 0-9 copied, 10-29 new;
+  3420 runs). The E2 set uses imoead_orig as IMOEA/D (B1 decision).
 - [ ] E7. Monte Carlo check of final fronts under sampled crisp values
 
 ### P3 — Paper
