@@ -419,11 +419,21 @@ setting for comparability and three-tier energy as a sensitivity study.
     0.108 / 0.082, 0.171 / 0.120. Supports C4: the learned controller adds nothing over a fixed
     action. (Adding policies changes the pooled reference front, so final's IGD moved 0.0105 → 0.011.)
   - [ ] Still open: the Algorithm 1/2 fidelity check and table naming.
-- [~] B3. NSGA-II (midpoint and interval-dominance variants) and NSGA-III (midpoint), in
+- [x] B3. NSGA-II (midpoint and interval-dominance variants) and NSGA-III (midpoint), in
   `gat_imoea_dqn/baselines.py` (policies `nsga2_mid`, `nsga2_int`, `nsga3_mid`); IP-MOEA's loop is
-  generalised over the dominance relation and stays bit-identical. Running since 2026-11-05
-  (`scripts/run_b3.cmd`): Suite A goes to the new experiment `suite_a_main` (every method in one
-  table; the frozen method's re-runs reproduce the A1 ablation runs exactly) and Suite B to `suite_b`.
+  generalised over the dominance relation and stays bit-identical. Done 2026-11-05
+  (`scripts/run_b3.cmd`): Suite A in the new experiment `suite_a_main` (every method in one table;
+  the frozen method's 120 re-runs are identical to the ablation's `final` runs, checked file by
+  file) and Suite B in `suite_b`.
+  - Suite A (mean IGD): final 0.0123, nsga2_int 0.0325, nsga2_mid 0.0327, imoead 0.0352, nsga3_mid
+    0.0912. final wins IGD and HV_jin in 12/12 against every baseline.
+  - Suite B (mean IGD): final 0.0126, imoead 0.0217, nsga2_mid 0.0355, nsga2_int 0.0358, nsga3_mid
+    0.0993. HV_jin: final wins 45/45 against every baseline (nsga2_int: 43 wins, 2 ties).
+  - Caveat for the paper: on IGD both NSGA-II variants beat final in 9 cases, all of them 100-task
+    workflows (cybershake/epigenomics/inspiral/montage/sipht_100 at x1, inspiral/montage/sipht_100
+    at x20, sipht_100 at x100); final wins every 400- and 1000-task case. Report it. Untested
+    guess: on 100 tasks the search space is small enough for plain NSGA-II to converge. Imprecision
+    vs final: Suite A NSGA-II worse in 8, tie 4; Suite B nsga2_mid better in 24, worse in 16.
 - [ ] B4. Equal budget for all methods; wall-clock times reported
 - [ ] D1. Write-up material for C4: the reward-audit figures (per-step SNR by phase; reward
   ranking vs IGD ranking), the three-learner table (stable / blk / l8), GAT vs no-GAT. A full Suite A

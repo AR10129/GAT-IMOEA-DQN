@@ -7,7 +7,10 @@
     "fixed_fav",
     "heuristics",
     "trained_stable",
-    "fresh"
+    "fresh",
+    "nsga2_mid",
+    "nsga2_int",
+    "nsga3_mid"
   ],
   "train_seeds": [
     0,
@@ -86,6 +89,6 @@
   "val_generations": 300,
   "rank_metric": "IGD",
   "summary_only": false,
-  "git_commit": "794beac000df9c4537ae01478d72acbb074fe2fd",
+  "git_commit": "f17722f71601e271f33de32d3cb9cadbc8958124",
   "git_dirty": true
 }
