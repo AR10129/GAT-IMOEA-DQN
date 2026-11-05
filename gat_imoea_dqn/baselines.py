@@ -28,6 +28,9 @@ IMOEA/D (Gan et al., 2023) - decomposition with interval scalar functions:
   which adjusts vectors by interval crowding distance): every 10% of the run, the
   vector of the most crowded solution (smallest ICD) is moved to the normalised
   direction of the most isolated solution (largest ICD), and neighbourhoods are rebuilt.
+  imoead_orig: the same algorithm with the original paper's schedule, as reported by Cui et al.
+  2024 (IMEA-IED, Section 4.3) and Jin et al. 2023 (IMOEA/D-AWN, Section 4.4): T = 10, vector
+  adaptation from G_max / 2, every floor(G_max / 6) generations.
 
 NSGA-II (Deb et al., 2002), two interval variants (task B3); the loop is IP-MOEA's, only the
 dominance relation used for non-dominated sorting changes:
@@ -61,7 +64,7 @@ from .intervals import (interval_dominance_matrix, nondominated_fronts, normaliz
 from .operators import daec, mutate_allocation, mutate_order, pox
 from .selection import interval_crowding, simplex_weights
 
-BASELINES = ("ip_moea", "imoead", "nsga2_mid", "nsga2_int", "nsga3_mid", "imoead_awn", "imea_ied")
+BASELINES = ("ip_moea", "imoead", "imoead_orig", "nsga2_mid", "nsga2_int", "nsga3_mid", "imoead_awn", "imea_ied")
 
 
 @dataclass(frozen=True)
@@ -75,6 +78,7 @@ class BaselineConfig:
     delta: float = 0.9                # IMOEA/D mating-restriction probability
     max_replace: int = 2              # IMOEA/D n_r
     adapt_every: float = 0.1          # IMOEA/D: fraction of the run between vector adaptations
+    adapt_start: float = 0.0          # IMOEA/D: fraction of the run before the first adaptation
 
 
 # --------------------------------------------------------------- shared ---
@@ -212,7 +216,8 @@ def run_imoead(wf, sc, cfg: BaselineConfig) -> RunResult:
     F_lo, F_hi = ev.evaluate_population(pop.X, pop.O)
     ideal = F_lo.min(axis=0)
     nadir = F_hi.max(axis=0)
-    adapt = max(1, int(round(cfg.adapt_every * cfg.generations)))
+    adapt = max(1, int(cfg.adapt_every * cfg.generations + 1e-9))        # floor(G_max * adapt_every)
+    start = cfg.adapt_start * cfg.generations
 
     def tcheby(w, lo, hi):
         """Interval Tchebycheff on normalised objectives; the reference (ideal) maps to 0."""
@@ -240,7 +245,7 @@ def run_imoead(wf, sc, cfg: BaselineConfig) -> RunResult:
                 replaced += 1
                 if replaced >= cfg.max_replace:
                     break
-        if (gen + 1) % adapt == 0 and gen + 1 < cfg.generations:   # reference-vector adaptation
+        if (gen + 1) % adapt == 0 and start <= gen + 1 < cfg.generations:   # reference-vector adaptation
             nlo, nhi = normalize_intervals(F_lo, F_hi)
             icd = interval_crowding(nlo, nhi)
             worst, best = int(np.argmin(icd)), int(np.argmax(icd))
@@ -353,4 +358,7 @@ def run_baseline(name: str, wf, sc, cfg: Optional[BaselineConfig] = None) -> Run
         return run_imea_ied(wf, sc, cfg)
     if name == "imoead":
         return run_imoead(wf, sc, cfg)
+    if name == "imoead_orig":
+        from dataclasses import replace
+        return run_imoead(wf, sc, replace(cfg, neighbours=10, adapt_every=1 / 6, adapt_start=0.5))
     raise ValueError(f"unknown baseline {name!r}; choose from {BASELINES}")

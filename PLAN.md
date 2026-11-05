@@ -404,7 +404,9 @@ setting for comparability and three-tier energy as a sensitivity study.
     design. Related work only.
   - [ ] Fidelity: IMEA-IED's Section 4.3 gives IMOEA/D's original settings as T = 10, reference
     vectors adapted from G_max / 2 every G_max / 6. Ours uses T = 20 and adapts every 10% from the
-    start (baselines.py). Decide whether to re-run IMOEA/D with the original settings (570 runs).
+    start (baselines.py). Decided 2026-11-05: add policy `imoead_orig` (T = 10, adaptation from G_max / 2
+    every floor(G_max / 6)), queued in run_b1.cmd (570 runs); `imoead` is unchanged and bit-identical.
+    Report the original-settings version as IMOEA/D; the old one becomes a sensitivity note.
   - [ ] Check IP-MOEA's tie-breaking / crowding against the original before the final runs.
 - [~] B2. IMOEA-DQN (Jin et al.) on the DAG model = `trained_stable` on the Jin backbone (and
   `fresh` for the online version): check it against their Algorithm 1/2 and name it in tables
