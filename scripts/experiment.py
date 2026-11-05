@@ -26,6 +26,8 @@ Policies (same eval seed = same initial population for every policy):
   schedule        hand-made: linear from (1, 0, 0) to (1/6, 5/6, 0) over the run, snapped to the grid
   ip_moea         IP-MOEA (Limbourg & Aponte 2005), re-implemented; see gat_imoea_dqn/baselines.py
   imoead          IMOEA/D (Gan et al. 2023), re-implemented; see gat_imoea_dqn/baselines.py
+  nsga2_mid / nsga2_int / nsga3_mid  NSGA-II on midpoints / with interval dominance, NSGA-III on
+                  midpoints (B3); see gat_imoea_dqn/baselines.py
   fresh           new DQN learning online from scratch (the PDF's single-run setting)
   random          uniform random action each generation
   fixed           always (1/3, 1/3, 1/3)
@@ -84,6 +86,9 @@ POLICIES = {
     "schedule":       {"kind": "schedule"},
     "ip_moea":        {"kind": "baseline", "name": "ip_moea"},
     "imoead":         {"kind": "baseline", "name": "imoead"},
+    "nsga2_mid":      {"kind": "baseline", "name": "nsga2_mid"},
+    "nsga2_int":      {"kind": "baseline", "name": "nsga2_int"},
+    "nsga3_mid":      {"kind": "baseline", "name": "nsga3_mid"},
     "fresh":          {"kind": "fresh"},
     "random":         {"kind": "random"},
     "fixed":          {"kind": "fixed", "action": (1 / 3, 1 / 3, 1 / 3)},

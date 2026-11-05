@@ -28,6 +28,21 @@ IMOEA/D (Gan et al., 2023) - decomposition with interval scalar functions:
   which adjusts vectors by interval crowding distance): every 10% of the run, the
   vector of the most crowded solution (smallest ICD) is moved to the normalised
   direction of the most isolated solution (largest ICD), and neighbourhoods are rebuilt.
+
+NSGA-II (Deb et al., 2002), two interval variants (task B3); the loop is IP-MOEA's, only the
+dominance relation used for non-dominated sorting changes:
+  nsga2_mid  crisp Pareto dominance on interval midpoints (the "ignore the uncertainty" baseline);
+  nsga2_int  possibility-degree interval dominance (P >= 0.5 in every objective, > 0.5 in one),
+             the relation of Jin et al.'s beta tier.
+  Crowding distance on midpoints, binary tournament on (front, crowding), p_c = 0.9.
+
+NSGA-III (Deb & Jain, 2014) on interval midpoints (nsga3_mid): random mating, crossover
+  always applied; (mu + lambda) survival by Pareto fronts on midpoints, the last front
+  filled by reference-point niching: N Das-Dennis reference points (105 for N = 105),
+  normalisation by the ideal point and the hyperplane through the extreme points (ASF with
+  weights e_j, 1e-6 elsewhere; falls back to the worst value per objective when the plane is
+  degenerate), association by perpendicular distance, and niche-count selection (an empty
+  niche takes its closest member, otherwise a random one).
 """
 from __future__ import annotations
 
@@ -41,11 +56,12 @@ from .algorithm import RunResult
 from .chromosome import (DagIndex, Population, allowed_for, init_population, is_allowed, is_topological,
                          repair_allocation, repair_order)
 from .evaluator import EvaluatorConfig, IntervalEvaluator
-from .intervals import interval_dominance_matrix, nondominated_fronts, normalize_intervals, possibility_leq
+from .intervals import (interval_dominance_matrix, nondominated_fronts, normalize_intervals, pareto_dominance_matrix,
+                        possibility_leq)
 from .operators import daec, mutate_allocation, mutate_order, pox
 from .selection import interval_crowding, simplex_weights
 
-BASELINES = ("ip_moea", "imoead")
+BASELINES = ("ip_moea", "imoead", "nsga2_mid", "nsga2_int", "nsga3_mid")
 
 
 @dataclass(frozen=True)
@@ -109,8 +125,19 @@ def crowding_distance(F: np.ndarray) -> np.ndarray:
     return cd
 
 
-def _rank_and_crowd(F_lo, F_hi):
-    fronts = nondominated_fronts(imprecise_dominance_matrix(F_lo, F_hi))
+def midpoint_dominance_matrix(F_lo: np.ndarray, F_hi: np.ndarray) -> np.ndarray:
+    """D[i, j]: the midpoint of i Pareto-dominates the midpoint of j."""
+    D = pareto_dominance_matrix((F_lo + F_hi) / 2.0)
+    np.fill_diagonal(D, False)
+    return D
+
+
+DOMINANCE = {"ip_moea": imprecise_dominance_matrix, "nsga2_mid": midpoint_dominance_matrix,
+             "nsga2_int": interval_dominance_matrix}
+
+
+def _rank_and_crowd(F_lo, F_hi, dominance=imprecise_dominance_matrix):
+    fronts = nondominated_fronts(dominance(F_lo, F_hi))
     rank = np.empty(len(F_lo), dtype=np.int64)
     crowd = np.empty(len(F_lo))
     mid = (F_lo + F_hi) / 2.0
@@ -120,7 +147,8 @@ def _rank_and_crowd(F_lo, F_hi):
     return fronts, rank, crowd
 
 
-def run_ip_moea(wf, sc, cfg: BaselineConfig) -> RunResult:
+def run_ip_moea(wf, sc, cfg: BaselineConfig, dominance=imprecise_dominance_matrix) -> RunResult:
+    """IP-MOEA; with another `dominance` relation, the matching NSGA-II variant."""
     t0 = time.perf_counter()
     rng = np.random.default_rng(cfg.seed)
     dag = DagIndex(wf)
@@ -130,7 +158,7 @@ def run_ip_moea(wf, sc, cfg: BaselineConfig) -> RunResult:
     pop = init_population(wf, sc, N, rng, dag)
     F_lo, F_hi = ev.evaluate_population(pop.X, pop.O)
     for _ in range(cfg.generations):
-        _, rank, crowd = _rank_and_crowd(F_lo, F_hi)
+        _, rank, crowd = _rank_and_crowd(F_lo, F_hi, dominance)
 
         def tournament() -> int:
             a, b = rng.integers(N, size=2)
@@ -147,7 +175,7 @@ def run_ip_moea(wf, sc, cfg: BaselineConfig) -> RunResult:
         G_lo, G_hi = ev.evaluate_population(Xc, Oc)
         merged = Population.concat(pop, Population(Xc, Oc))
         M_lo, M_hi = np.concatenate([F_lo, G_lo]), np.concatenate([F_hi, G_hi])
-        fronts, _, crowd_m = _rank_and_crowd(M_lo, M_hi)
+        fronts, _, crowd_m = _rank_and_crowd(M_lo, M_hi, dominance)
         keep = []
         for f in fronts:
             if len(keep) + len(f) <= N:
@@ -222,10 +250,101 @@ def run_imoead(wf, sc, cfg: BaselineConfig) -> RunResult:
     return _final(pop, F_lo, F_hi, t0)
 
 
+# ------------------------------------------------------------- NSGA-III ---
+def _normalise_nsga3(F: np.ndarray) -> np.ndarray:
+    """Deb & Jain's adaptive normalisation of the candidate set F (rows = solutions)."""
+    M = F.shape[1]
+    Ft = F - F.min(axis=0)
+    W = np.full((M, M), 1e-6) + np.eye(M) * (1 - 1e-6)
+    extreme = np.array([np.argmin(np.max(Ft / W[j], axis=1)) for j in range(M)])
+    a = None
+    try:
+        b = np.linalg.solve(Ft[extreme], np.ones(M))
+        if np.all(b > 1e-12):
+            a = 1.0 / b
+            if not np.all(np.isfinite(a)) or np.any(a <= 1e-10):
+                a = None
+    except np.linalg.LinAlgError:
+        a = None
+    if a is None:
+        a = Ft.max(axis=0)
+    a = np.where(a > 1e-10, a, 1.0)
+    return Ft / a
+
+
+def niching_select(F: np.ndarray, fronts, n: int, Z: np.ndarray, rng) -> np.ndarray:
+    """NSGA-III survival: indices of n members of F (midpoints), fronts in order."""
+    chosen, last = [], None
+    for f in fronts:
+        if len(chosen) + len(f) <= n:
+            chosen.extend(f.tolist())
+            if len(chosen) == n:
+                return np.asarray(chosen, dtype=np.int64)
+        else:
+            last = f
+            break
+    cand = np.asarray(chosen + last.tolist(), dtype=np.int64)
+    Fn = _normalise_nsga3(F[cand])
+    Zu = Z / np.linalg.norm(Z, axis=1, keepdims=True)
+    proj = Fn @ Zu.T
+    dist = np.sqrt(np.maximum((Fn ** 2).sum(1)[:, None] - proj ** 2, 0.0))
+    pi, d = dist.argmin(axis=1), dist.min(axis=1)
+    k = len(chosen)
+    rho = np.bincount(pi[:k], minlength=len(Z))
+    pool = {}                                           # reference point -> last-front positions
+    for pos in range(k, len(cand)):
+        pool.setdefault(int(pi[pos]), []).append(pos)
+    active = np.ones(len(Z), dtype=bool)
+    picked = []
+    while len(chosen) + len(picked) < n:
+        r_min = rho[active].min()
+        J = np.flatnonzero(active & (rho == r_min))
+        j = int(rng.choice(J))
+        members = pool.get(j, [])
+        if not members:
+            active[j] = False
+            continue
+        if rho[j] == 0:
+            pos = min(members, key=lambda q: d[q])
+        else:
+            pos = members[int(rng.integers(len(members)))]
+        members.remove(pos)
+        picked.append(int(cand[pos]))
+        rho[j] += 1
+    return np.asarray(chosen + picked, dtype=np.int64)
+
+
+def run_nsga3(wf, sc, cfg: BaselineConfig) -> RunResult:
+    t0 = time.perf_counter()
+    rng = np.random.default_rng(cfg.seed)
+    dag = DagIndex(wf)
+    ev = IntervalEvaluator(wf, sc, cfg.evaluator)
+    allowed = allowed_for(wf, sc)
+    N = cfg.pop_size
+    Z = _weights(N)
+    pop = init_population(wf, sc, N, rng, dag)
+    F_lo, F_hi = ev.evaluate_population(pop.X, pop.O)
+    for _ in range(cfg.generations):
+        Xc = np.empty_like(pop.X)
+        Oc = np.empty_like(pop.O)
+        for i in range(N):
+            p, q = rng.choice(N, size=2, replace=False)
+            Xc[i], Oc[i] = _child(pop.X[p], pop.O[p], pop.X[q], pop.O[q], allowed, dag, rng, True)
+        G_lo, G_hi = ev.evaluate_population(Xc, Oc)
+        merged = Population.concat(pop, Population(Xc, Oc))
+        M_lo, M_hi = np.concatenate([F_lo, G_lo]), np.concatenate([F_hi, G_hi])
+        fronts = nondominated_fronts(midpoint_dominance_matrix(M_lo, M_hi))
+        keep = niching_select((M_lo + M_hi) / 2.0, fronts, N, Z, rng)
+        pop, F_lo, F_hi = merged[keep], M_lo[keep], M_hi[keep]
+    return _final(pop, F_lo, F_hi, t0)
+
+
 def run_baseline(name: str, wf, sc, cfg: Optional[BaselineConfig] = None) -> RunResult:
     cfg = cfg or BaselineConfig()
-    if name == "ip_moea":
-        return run_ip_moea(wf, sc, cfg)
+    if name in DOMINANCE:
+        return run_ip_moea(wf, sc, cfg, DOMINANCE[name])
+    if name == "nsga3_mid":
+        return run_nsga3(wf, sc, cfg)
     if name == "imoead":
         return run_imoead(wf, sc, cfg)
     raise ValueError(f"unknown baseline {name!r}; choose from {BASELINES}")

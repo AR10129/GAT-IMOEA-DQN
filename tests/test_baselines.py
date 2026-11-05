@@ -7,7 +7,8 @@ from dataset_tools.loader import load_scenario, load_workflow
 from gat_imoea_dqn import DagIndex, EvaluatorConfig, IntervalEvaluator, allowed_for, is_allowed, is_topological, \
     init_population, pareto_dominance_matrix
 from gat_imoea_dqn.baselines import (BaselineConfig, _weights, crowding_distance, imprecise_dominance_matrix,
-                                     run_baseline)
+                                     niching_select, run_baseline)
+from gat_imoea_dqn.intervals import nondominated_fronts
 
 SC_A = load_scenario(ROOT / "datasets" / "scenarios" / "suite_a" / "small_20.yaml")
 WF_A = load_workflow(ROOT / "datasets" / "suite_a" / "small_20_i0.json")
@@ -32,7 +33,7 @@ def test_weights_count():
     assert W.shape == (105, 3) and np.allclose(W.sum(1), 1)
 
 
-@pytest.mark.parametrize("name", ["ip_moea", "imoead"])
+@pytest.mark.parametrize("name", ["ip_moea", "imoead", "nsga2_mid", "nsga2_int", "nsga3_mid"])
 def test_baselines_valid_and_improve(name):
     cfg = BaselineConfig(pop_size=24, generations=25, seed=3, evaluator=SUITE_CFG)
     res = run_baseline(name, WF_A, SC_A, cfg)
@@ -55,6 +56,17 @@ def test_baselines_valid_and_improve(name):
     need, allow = (0.3, 0.3) if name == "ip_moea" else (0.8, 0.1)
     assert D[:24, 24:].any(axis=0).mean() >= need
     assert D[24:, :24].any(axis=0).mean() <= allow          # initial solutions rarely beat survivors
+
+
+def test_nsga3_niching_spreads_over_reference_points():
+    # 3 clusters on a 2-objective line; reference points at both ends and the middle:
+    # picking 3 must take one from each cluster, not 3 from the biggest one
+    F = np.array([[0, 1], [0.01, 0.99], [0.02, 0.98], [0.5, 0.5], [1, 0], [0.99, 0.01]], float)
+    Z = np.array([[1e-6, 1], [0.5, 0.5], [1, 1e-6]])
+    fronts = nondominated_fronts(pareto_dominance_matrix(F))
+    keep = niching_select(F, fronts, 3, Z, np.random.default_rng(0))
+    assert len(set(keep.tolist())) == 3
+    assert {0, 1, 2} & set(keep.tolist()) and 3 in keep and {4, 5} & set(keep.tolist())
 
 
 def test_unknown_baseline():
