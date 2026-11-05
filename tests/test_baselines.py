@@ -33,7 +33,8 @@ def test_weights_count():
     assert W.shape == (105, 3) and np.allclose(W.sum(1), 1)
 
 
-@pytest.mark.parametrize("name", ["ip_moea", "imoead", "nsga2_mid", "nsga2_int", "nsga3_mid"])
+@pytest.mark.parametrize("name", ["ip_moea", "imoead", "nsga2_mid", "nsga2_int", "nsga3_mid", "imoead_awn",
+                                  "imea_ied"])
 def test_baselines_valid_and_improve(name):
     cfg = BaselineConfig(pop_size=24, generations=25, seed=3, evaluator=SUITE_CFG)
     res = run_baseline(name, WF_A, SC_A, cfg)

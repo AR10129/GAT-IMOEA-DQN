@@ -389,8 +389,23 @@ setting for comparability and three-tier energy as a sensitivity study.
   ones. Pilot (4 Suite B cases, 2 seeds, G = 1000): the heuristics' IGD is 20–40× the method's.
 - [x] Speed-up (2026-11-03): compiled population scorer, bit-identical to the reference
   (old runs reproduce exactly); runs are 5–10× faster.
-- [ ] B1. Remaining interval baselines: IMOEA/D-AWN, IMEA-IED, IMaOEACI (IMOEA/D, IP-MOEA done;
-  check IP-MOEA's tie-breaking / crowding against the original before the final runs)
+- [~] B1. Remaining interval baselines (2026-11-05; PDFs in the repo root, user-supplied):
+  - [x] IMOEA/D-AWN (Jin, Zhang, Xie, Cui, EIJ 24 (2023) 100405) and IMEA-IED (Cui et al., SWEVO 91
+    (2024) 101749) re-implemented from the papers in `gat_imoea_dqn/baselines_b1.py` (policies
+    `imoead_awn`, `imea_ied`); the docstring lists every equation used and every choice the paper
+    leaves open. Tests: `tests/test_baselines_b1.py` (IED reproduces the paper's Fig. 3 example).
+    Launch script `scripts/run_b1.cmd` (Suite A + B, 1140 runs), run after B3.
+  - Dropped: IMaOEACI (Cai et al., Inf. Sci. 690 (2025) 121552). Its core quantity, the
+    "individual comprehensive indicator", is defined only by citation to an unpublished PhD thesis
+    (Zhang, Taiyuan Univ. Sci. Tech., 2023), and its environmental selection is one paragraph, so a
+    faithful re-implementation is not possible. Say so in the paper.
+  - Not a baseline: IMOEA/D-DAW (Sci. Rep. 2026). Its sparsity measure is built for a bi-objective
+    problem with one crisp objective; adapting it to three interval objectives would be our own
+    design. Related work only.
+  - [ ] Fidelity: IMEA-IED's Section 4.3 gives IMOEA/D's original settings as T = 10, reference
+    vectors adapted from G_max / 2 every G_max / 6. Ours uses T = 20 and adapts every 10% from the
+    start (baselines.py). Decide whether to re-run IMOEA/D with the original settings (570 runs).
+  - [ ] Check IP-MOEA's tie-breaking / crowding against the original before the final runs.
 - [~] B2. IMOEA-DQN (Jin et al.) on the DAG model = `trained_stable` on the Jin backbone (and
   `fresh` for the online version): check it against their Algorithm 1/2 and name it in tables
   - [x] Suite B runs done 2026-11-04 (`scripts/run_b2.cmd`, 1800 runs: Suite A GAT agents ×3
@@ -402,7 +417,11 @@ setting for comparability and three-tier energy as a sensitivity study.
     0.108 / 0.082, 0.171 / 0.120. Supports C4: the learned controller adds nothing over a fixed
     action. (Adding policies changes the pooled reference front, so final's IGD moved 0.0105 → 0.011.)
   - [ ] Still open: the Algorithm 1/2 fidelity check and table naming.
-- [ ] B3. NSGA-II (midpoint and interval-dominance variants)
+- [~] B3. NSGA-II (midpoint and interval-dominance variants) and NSGA-III (midpoint), in
+  `gat_imoea_dqn/baselines.py` (policies `nsga2_mid`, `nsga2_int`, `nsga3_mid`); IP-MOEA's loop is
+  generalised over the dominance relation and stays bit-identical. Running since 2026-11-05
+  (`scripts/run_b3.cmd`): Suite A goes to the new experiment `suite_a_main` (every method in one
+  table; the frozen method's re-runs reproduce the A1 ablation runs exactly) and Suite B to `suite_b`.
 - [ ] B4. Equal budget for all methods; wall-clock times reported
 - [ ] D1. Write-up material for C4: the reward-audit figures (per-step SNR by phase; reward
   ranking vs IGD ranking), the three-learner table (stable / blk / l8), GAT vs no-GAT. A full Suite A

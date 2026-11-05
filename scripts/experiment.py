@@ -28,6 +28,8 @@ Policies (same eval seed = same initial population for every policy):
   imoead          IMOEA/D (Gan et al. 2023), re-implemented; see gat_imoea_dqn/baselines.py
   nsga2_mid / nsga2_int / nsga3_mid  NSGA-II on midpoints / with interval dominance, NSGA-III on
                   midpoints (B3); see gat_imoea_dqn/baselines.py
+  imoead_awn / imea_ied  IMOEA/D-AWN (Jin et al. 2023), IMEA-IED (Cui et al. 2024), re-implemented
+                  from the papers (B1); see gat_imoea_dqn/baselines_b1.py
   fresh           new DQN learning online from scratch (the PDF's single-run setting)
   random          uniform random action each generation
   fixed           always (1/3, 1/3, 1/3)
@@ -89,6 +91,8 @@ POLICIES = {
     "nsga2_mid":      {"kind": "baseline", "name": "nsga2_mid"},
     "nsga2_int":      {"kind": "baseline", "name": "nsga2_int"},
     "nsga3_mid":      {"kind": "baseline", "name": "nsga3_mid"},
+    "imoead_awn":     {"kind": "baseline", "name": "imoead_awn"},
+    "imea_ied":       {"kind": "baseline", "name": "imea_ied"},
     "fresh":          {"kind": "fresh"},
     "random":         {"kind": "random"},
     "fixed":          {"kind": "fixed", "action": (1 / 3, 1 / 3, 1 / 3)},

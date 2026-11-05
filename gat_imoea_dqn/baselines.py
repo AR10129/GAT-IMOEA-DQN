@@ -61,7 +61,7 @@ from .intervals import (interval_dominance_matrix, nondominated_fronts, normaliz
 from .operators import daec, mutate_allocation, mutate_order, pox
 from .selection import interval_crowding, simplex_weights
 
-BASELINES = ("ip_moea", "imoead", "nsga2_mid", "nsga2_int", "nsga3_mid")
+BASELINES = ("ip_moea", "imoead", "nsga2_mid", "nsga2_int", "nsga3_mid", "imoead_awn", "imea_ied")
 
 
 @dataclass(frozen=True)
@@ -345,6 +345,12 @@ def run_baseline(name: str, wf, sc, cfg: Optional[BaselineConfig] = None) -> Run
         return run_ip_moea(wf, sc, cfg, DOMINANCE[name])
     if name == "nsga3_mid":
         return run_nsga3(wf, sc, cfg)
+    if name == "imoead_awn":                     # B1, see baselines_b1.py
+        from .baselines_b1 import run_imoead_awn
+        return run_imoead_awn(wf, sc, cfg)
+    if name == "imea_ied":
+        from .baselines_b1 import run_imea_ied
+        return run_imea_ied(wf, sc, cfg)
     if name == "imoead":
         return run_imoead(wf, sc, cfg)
     raise ValueError(f"unknown baseline {name!r}; choose from {BASELINES}")
