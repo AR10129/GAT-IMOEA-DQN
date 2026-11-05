@@ -112,6 +112,10 @@ POLICIES = {
     "tch_fresh":      {"kind": "fresh", "backbone": "tch"},
     # the frozen method (A1/A1b/A2): (5/6, 1/6, 0), Tchebycheff Rank C, ICD, T = 10, p_local = 1.0
     "final":          {"kind": "fixed", "action": (5 / 6, 1 / 6, 0.0), "backbone": "final"},
+    # 1000-task investigation (why imoead_orig wins HV there): more diversity in selection / mating
+    "final_a23":      {"kind": "fixed", "action": (2 / 3, 1 / 3, 0.0), "backbone": "final"},
+    "final_a12":      {"kind": "fixed", "action": (1 / 2, 1 / 2, 0.0), "backbone": "final"},
+    "final_p09":      {"kind": "fixed", "action": (5 / 6, 1 / 6, 0.0), "backbone": "final_p09"},
     "heuristics":     {"kind": "heuristic"},     # all_local / all_edge / all_cloud / HEFT-style (B0)
 }
 
@@ -130,6 +134,11 @@ def _backbone(name):
         from gat_imoea_dqn.selection import SelectionConfig
         return {"selection": SelectionConfig(convergence="tchebycheff", tie_break="icd"),
                 "variation": VariationConfig(partner="neighbours", neighbours=10, p_local=1.0)}
+    if name == "final_p09":                              # final, but 10% of partners from the whole population
+        from gat_imoea_dqn.operators import VariationConfig
+        from gat_imoea_dqn.selection import SelectionConfig
+        return {"selection": SelectionConfig(convergence="tchebycheff", tie_break="icd"),
+                "variation": VariationConfig(partner="neighbours", neighbours=10, p_local=0.9)}
     raise ValueError(f"unknown backbone {name!r}")
 TRAIN_SET = ["montage_100", "epigenomics_100", "cybershake_100", "inspiral_100", "sipht_100"]
 TEST_SET = ["montage_200", "epigenomics_200", "cybershake_200", "inspiral_200", "sipht_200"]

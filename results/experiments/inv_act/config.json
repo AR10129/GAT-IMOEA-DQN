@@ -1,0 +1,47 @@
+{
+  "name": "inv_act",
+  "policies": [
+    "final",
+    "imoead_orig",
+    "final_a23",
+    "final_a12",
+    "final_p09"
+  ],
+  "train_seeds": [
+    0,
+    1,
+    2
+  ],
+  "train_set": [
+    "montage_100",
+    "epigenomics_100",
+    "cybershake_100",
+    "inspiral_100",
+    "sipht_100"
+  ],
+  "test_set": [
+    "cybershake_1000@x1",
+    "epigenomics_1000@x20",
+    "sipht_1000@x20"
+  ],
+  "train_episodes": 40,
+  "generations": 1000,
+  "pop": 105,
+  "seeds": 5,
+  "workers": 12,
+  "reuse_from": null,
+  "reference": "final",
+  "scenario": "jin",
+  "data_multiplier": null,
+  "energy_scope": "device",
+  "external_io": "device",
+  "makespan": "sum_apps",
+  "train_generations": null,
+  "val_set": null,
+  "val_every": 10,
+  "val_generations": 300,
+  "rank_metric": "IGD",
+  "summary_only": false,
+  "git_commit": "2b3ec35621817dbe0eaca2b886d188c20ed45acb",
+  "git_dirty": true
+}

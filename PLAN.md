@@ -418,6 +418,24 @@ setting for comparability and three-tier energy as a sensitivity study.
       100- and 400-task case on HV. The original schedule (T = 10, late adaptation) is much
       stronger than our earlier setting at 1000 tasks. Decide before writing: investigate (e.g. G
       budget at 1000 tasks, late adaptation inside final), and state it in the paper either way.
+    - Investigation (2026-11-05; `scripts/run_inv.cmd`, experiments `inv_act`, `inv_g2000`; 3 cases
+      cybershake_1000@x1, epigenomics_1000@x20, sipht_1000@x20, 5 seeds, scored on the Suite B scale):
+      - Where the fronts overlap, final is better: 61-90% of imoead_orig's front is dominated by
+        final's (pooled over seeds), 0-5% the other way. imoead_orig wins HV by reaching cheaper
+        solutions (normalised min cost about 0.24 vs 0.28-0.29). At 400 tasks it is the reverse
+        (final 0.13-0.16, imoead_orig 0.14-0.19), which is why final wins HV there.
+      - More diversity in selection hurts: action (2/3, 1/3, 0) IGD 0.0267, (1/2, 1/2, 0) 0.0378,
+        vs final 0.0203. 10% global mating (`final_p09`): IGD 0.0175 (better), HV unchanged (0.920),
+        min cost no lower. Neither closes the HV gap.
+      - Budget: at G = 2000 both improve; final IGD 0.0061 vs imoead_orig 0.0094, HV 0.9535 vs
+        0.9572 (final ahead on cybershake, behind on the other two). imoead_orig still reaches
+        cheaper solutions (0.215-0.224 vs 0.231-0.245). So the gap is not only budget: IMOEA/D
+        covers the low-cost extreme better at 1000 tasks.
+      - Timing: the 898 s mean for final at 1000 tasks was 10 sleep-stretched runs (up to 10884 s);
+        medians are final 176 s, imoead_orig 162 s, imoead_awn 226 s, nsga2_mid 70 s. Re-time in B4.
+      - Options: report as is (IGD and dominance favour final, HV favours imoead_orig at 1000 tasks
+        by reaching the cost extreme), or change the frozen method (e.g. keep each objective's
+        extreme solution); a change means re-running every `final` run.
   - [ ] Check IP-MOEA's tie-breaking / crowding against the original before the final runs.
 - [~] B2. IMOEA-DQN (Jin et al.) on the DAG model = `trained_stable` on the Jin backbone (and
   `fresh` for the online version): check it against their Algorithm 1/2 and name it in tables
