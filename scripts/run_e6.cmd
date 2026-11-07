@@ -1,0 +1,22 @@
+@echo off
+rem e6: split from run_e.cmd; resumable (finished runs are skipped)
+cd /d %~dp0..
+.venv\Scripts\python.exe -u scripts\experiment.py --name e6_base --policies final imoead_orig fixed_fav nsga2_mid --seeds 10 --scenario jin --energy-scope device --external-io device --makespan sum_apps  --reference final --rank-metric IGD --generations 1000 --workers 12 --test-set cybershake_400@x20 epigenomics_400@x20 inspiral_400@x20 montage_400@x20 sipht_400@x20 >> results\experiment_e6.log 2>&1
+echo e6_base exit %errorlevel% >> results\experiment_e6.log 2>&1
+.venv\Scripts\python.exe -u scripts\experiment.py --name e6_energy_all --policies final imoead_orig fixed_fav nsga2_mid --seeds 10 --scenario jin --energy-scope all --external-io device --makespan sum_apps  --reference final --rank-metric IGD --generations 1000 --workers 12 --test-set cybershake_400@x20 epigenomics_400@x20 inspiral_400@x20 montage_400@x20 sipht_400@x20 >> results\experiment_e6.log 2>&1
+echo e6_energy_all exit %errorlevel% >> results\experiment_e6.log 2>&1
+.venv\Scripts\python.exe -u scripts\experiment.py --name e6_width05 --policies final imoead_orig fixed_fav nsga2_mid --seeds 10 --scenario jin --energy-scope device --external-io device --makespan sum_apps --width-scale 0.5 --reference final --rank-metric IGD --generations 1000 --workers 12 --test-set cybershake_400@x20 epigenomics_400@x20 inspiral_400@x20 montage_400@x20 sipht_400@x20 >> results\experiment_e6.log 2>&1
+echo e6_width05 exit %errorlevel% >> results\experiment_e6.log 2>&1
+.venv\Scripts\python.exe -u scripts\experiment.py --name e6_width2 --policies final imoead_orig fixed_fav nsga2_mid --seeds 10 --scenario jin --energy-scope device --external-io device --makespan sum_apps --width-scale 2 --reference final --rank-metric IGD --generations 1000 --workers 12 --test-set cybershake_400@x20 epigenomics_400@x20 inspiral_400@x20 montage_400@x20 sipht_400@x20 >> results\experiment_e6.log 2>&1
+echo e6_width2 exit %errorlevel% >> results\experiment_e6.log 2>&1
+.venv\Scripts\python.exe -u scripts\experiment.py --name e6_bw05 --policies final imoead_orig fixed_fav nsga2_mid --seeds 10 --scenario jin_bw05 --energy-scope device --external-io device --makespan sum_apps  --reference final --rank-metric IGD --generations 1000 --workers 12 --test-set cybershake_400@x20 epigenomics_400@x20 inspiral_400@x20 montage_400@x20 sipht_400@x20 >> results\experiment_e6.log 2>&1
+echo e6_bw05 exit %errorlevel% >> results\experiment_e6.log 2>&1
+.venv\Scripts\python.exe -u scripts\experiment.py --name e6_bw2 --policies final imoead_orig fixed_fav nsga2_mid --seeds 10 --scenario jin_bw2 --energy-scope device --external-io device --makespan sum_apps  --reference final --rank-metric IGD --generations 1000 --workers 12 --test-set cybershake_400@x20 epigenomics_400@x20 inspiral_400@x20 montage_400@x20 sipht_400@x20 >> results\experiment_e6.log 2>&1
+echo e6_bw2 exit %errorlevel% >> results\experiment_e6.log 2>&1
+.venv\Scripts\python.exe -u scripts\experiment.py --name e6_edges1 --policies final imoead_orig fixed_fav nsga2_mid --seeds 10 --scenario jin_e1 --energy-scope device --external-io device --makespan sum_apps  --reference final --rank-metric IGD --generations 1000 --workers 12 --test-set cybershake_400@x20 epigenomics_400@x20 inspiral_400@x20 montage_400@x20 sipht_400@x20 >> results\experiment_e6.log 2>&1
+echo e6_edges1 exit %errorlevel% >> results\experiment_e6.log 2>&1
+.venv\Scripts\python.exe -u scripts\experiment.py --name e6_edges6 --policies final imoead_orig fixed_fav nsga2_mid --seeds 10 --scenario jin_e6 --energy-scope device --external-io device --makespan sum_apps  --reference final --rank-metric IGD --generations 1000 --workers 12 --test-set cybershake_400@x20 epigenomics_400@x20 inspiral_400@x20 montage_400@x20 sipht_400@x20 >> results\experiment_e6.log 2>&1
+echo e6_edges6 exit %errorlevel% >> results\experiment_e6.log 2>&1
+.venv\Scripts\python.exe -u scripts\experiment.py --name e6_edgequeue --policies final imoead_orig fixed_fav nsga2_mid --seeds 10 --scenario jin --energy-scope device --external-io device --makespan sum_apps --edge-queue --reference final --rank-metric IGD --generations 1000 --workers 12 --test-set cybershake_400@x20 epigenomics_400@x20 inspiral_400@x20 montage_400@x20 sipht_400@x20 >> results\experiment_e6.log 2>&1
+echo e6_edgequeue exit %errorlevel% >> results\experiment_e6.log 2>&1
+echo exit %errorlevel% >> results\experiment_e6.log 2>&1

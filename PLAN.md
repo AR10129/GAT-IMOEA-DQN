@@ -488,7 +488,7 @@ setting for comparability and three-tier energy as a sensitivity study.
 - [ ] E4. Statistics as above
 - [ ] E5. IGD / HV vs generation curves for DR-IMOEA and every baseline
 - [~] E6. Sensitivity: CCR, uncertainty width, edge count, bandwidth, energy scope, multi-core queueing
-  Running since 2026-11-05 (`scripts/run_e.cmd`, log results/experiment_e.log; queue E6 ->
+  Running since 2026-11-05 (`scripts/run_e6.cmd, run_scale.cmd, run_e2.cmd (one at a time)`, logs results/experiment_{e6,scale,e2}.log; order E6 ->
   2000-task scalability -> E2). Cases: the five 400-task workflows at x20; policies final,
   imoead_orig (reported as IMOEA/D), fixed_fav (Jin backbone), nsga2_mid; 10 seeds. Levels, each its
   own experiment: e6_base (copied from suite_b), e6_energy_all, e6_width05 / e6_width2 (interval
