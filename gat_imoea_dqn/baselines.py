@@ -64,7 +64,7 @@ from .intervals import (interval_dominance_matrix, nondominated_fronts, normaliz
 from .operators import daec, mutate_allocation, mutate_order, pox
 from .selection import interval_crowding, simplex_weights
 
-BASELINES = ("ip_moea", "imoead", "imoead_orig", "nsga2_mid", "nsga2_int", "nsga3_mid", "imoead_awn", "imea_ied")
+BASELINES = ("ip_moea", "imoead", "imoead_orig", "nsga2_mid", "nsga2_int", "nsga3_mid", "imoead_awn", "imea_ied", "imoead_noadapt")
 
 
 @dataclass(frozen=True)
@@ -361,4 +361,7 @@ def run_baseline(name: str, wf, sc, cfg: Optional[BaselineConfig] = None) -> Run
     if name == "imoead_orig":
         from dataclasses import replace
         return run_imoead(wf, sc, replace(cfg, neighbours=10, adapt_every=1 / 6, adapt_start=0.5))
+    if name == "imoead_noadapt":                       # diagnostic: imoead_orig without vector adaptation
+        from dataclasses import replace
+        return run_imoead(wf, sc, replace(cfg, neighbours=10, adapt_every=1 / 6, adapt_start=1.0))
     raise ValueError(f"unknown baseline {name!r}; choose from {BASELINES}")

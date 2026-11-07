@@ -513,6 +513,22 @@ setting for comparability and three-tier energy as a sensitivity study.
   cost final 0.20-0.25 vs imoead_orig 0.12-0.15. imoead_orig's IGD wins come from that extreme
   (the pooled reference includes it), not from a better front. Same structural effect as B1 at
   1000 tasks, now visible on IGD instead of HV.
+  Extreme-coverage pilot (2026-11-07, `scripts/run_pilot.cmd`, experiment `pilot_ext`; 8 cases:
+  montage/sipht_400@x20, the three 1000-task investigation cases, cybershake_2000@x100,
+  epigenomics/inspiral_2000@x20; 5 seeds; final / imoead_orig runs reused). Variants of final:
+  `final_rb` (Rank C Tchebycheff normalised by the run's running ideal / nadir, as IMOEA/D does),
+  `final_ax` (6 extra weight vectors near each axis), `final_rbax` (both); diagnostic
+  `imoead_noadapt` (imoead_orig without vector adaptation; it moves only 3 of 105 vectors anyway).
+  Mean over the 8 cases (IGD, HV_jin, normalised min cost): final 0.0439 / 0.8812 / 0.196,
+  imoead_orig 0.0368 / 0.8650 / 0.145, final_rb 0.0464 / 0.8747 / 0.214, final_ax 0.0442 / 0.8796 /
+  0.203, final_rbax 0.0463 / 0.8766 / 0.216, imoead_noadapt 0.0372 / 0.8650 / 0.143.
+  - No variant reaches cheaper solutions; none improves IGD or HV. imoead_noadapt equals
+    imoead_orig, so adaptation is not the cause; the normalisation is not either.
+  - At 400 tasks final reaches the cheaper end (0.10 vs 0.16-0.18); at 1000-2000 it reaches the
+    makespan and energy extremes better and IMOEA/D the cost extreme. The remaining differences are
+    IMOEA/D's steady-state per-subproblem replacement and weight-space mating.
+  - Decision: keep final frozen; report the cost-extreme gap as a limitation (R3) with the
+    dominance analysis and this pilot. The switches (`tch_bounds`, `axis_weights`) stay, default off.
   E2: `suite_a_e2`, `suite_b_e2` (final, imoead_orig, fixed_fav; seeds 0-9 copied, 10-29 new;
   3420 runs). The E2 set uses imoead_orig as IMOEA/D (B1 decision).
 - [ ] E7. Monte Carlo check of final fronts under sampled crisp values
@@ -521,7 +537,8 @@ setting for comparability and three-tier energy as a sensitivity study.
 - [ ] R1. One script builds every table and figure (LaTeX)
 - [ ] R2. System-model figure, pseudocode, complexity, parameter table
 - [ ] R3. Threats to validity and limitations (no link contention, no receive energy, interval
-  bounds assumed to hold, fixed action chosen on training instances)
+  bounds assumed to hold, fixed action chosen on training instances, at 1000-2000 tasks IMOEA/D
+  reaches cheaper solutions though final dominates the overlap; see the E6 / pilot notes)
 
 ## Risks
 

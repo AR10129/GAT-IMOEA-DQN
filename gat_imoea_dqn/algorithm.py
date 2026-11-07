@@ -143,8 +143,9 @@ def run(wf, sc, cfg: RunConfig = RunConfig(), agent: Optional[DQNAgent] = None,
 
         merged = Population.concat(pop, off)                               # step 4
         M_lo, M_hi = np.concatenate([F_lo, G_lo]), np.concatenate([F_hi, G_hi])
+        bounds = (tracker.ideal, tracker.nadir) if cfg.selection.tch_bounds == "running" else None
         keep, _ = environmental_selection(M_lo, M_hi, N, action, rng, genotypes=(merged.X, merged.O),
-                                          cfg=cfg.selection)
+                                          cfg=cfg.selection, bounds=bounds)
         new_pop, nF_lo, nF_hi = merged[keep], M_lo[keep], M_hi[keep]
 
         loss = None

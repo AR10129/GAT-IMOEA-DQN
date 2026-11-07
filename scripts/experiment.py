@@ -116,6 +116,11 @@ POLICIES = {
     "final_a23":      {"kind": "fixed", "action": (2 / 3, 1 / 3, 0.0), "backbone": "final"},
     "final_a12":      {"kind": "fixed", "action": (1 / 2, 1 / 2, 0.0), "backbone": "final"},
     "final_p09":      {"kind": "fixed", "action": (5 / 6, 1 / 6, 0.0), "backbone": "final_p09"},
+    # extreme-coverage pilot: running-bound normalisation in Rank C (rb), extra axis weights (ax), both
+    "final_rb":       {"kind": "fixed", "action": (5 / 6, 1 / 6, 0.0), "backbone": "final_rb"},
+    "final_ax":       {"kind": "fixed", "action": (5 / 6, 1 / 6, 0.0), "backbone": "final_ax"},
+    "final_rbax":     {"kind": "fixed", "action": (5 / 6, 1 / 6, 0.0), "backbone": "final_rbax"},
+    "imoead_noadapt": {"kind": "baseline", "name": "imoead_noadapt"},
     "heuristics":     {"kind": "heuristic"},     # all_local / all_edge / all_cloud / HEFT-style (B0)
 }
 
@@ -139,6 +144,13 @@ def _backbone(name):
         from gat_imoea_dqn.selection import SelectionConfig
         return {"selection": SelectionConfig(convergence="tchebycheff", tie_break="icd"),
                 "variation": VariationConfig(partner="neighbours", neighbours=10, p_local=0.9)}
+    if name in ("final_rb", "final_ax", "final_rbax"):
+        from gat_imoea_dqn.operators import VariationConfig
+        from gat_imoea_dqn.selection import SelectionConfig
+        sel = SelectionConfig(convergence="tchebycheff", tie_break="icd",
+                              tch_bounds="running" if "rb" in name else "pool",
+                              axis_weights=6 if "ax" in name else 0)
+        return {"selection": sel, "variation": VariationConfig(partner="neighbours", neighbours=10, p_local=1.0)}
     raise ValueError(f"unknown backbone {name!r}")
 TRAIN_SET = ["montage_100", "epigenomics_100", "cybershake_100", "inspiral_100", "sipht_100"]
 TEST_SET = ["montage_200", "epigenomics_200", "cybershake_200", "inspiral_200", "sipht_200"]

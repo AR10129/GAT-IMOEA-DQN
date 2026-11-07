@@ -152,6 +152,10 @@ class SelectionConfig:
     tie_break: str = "random"              # Rank C ties: "random" or "icd" (descending crowding)
     convergence: str = "dominance"         # Rank C: "dominance" (R_IN, Jin et al.) or "tchebycheff"
     n_weights: Optional[int] = None        # tchebycheff: weight vectors; None -> the selection size N
+    # tchebycheff: normalise over the selection pool ("pool") or over the run's running ideal / nadir
+    # ("running", as IMOEA/D does; needs `bounds` passed to environmental_selection)
+    tch_bounds: str = "pool"
+    axis_weights: int = 0                  # tchebycheff: extra weight vectors near each axis (per objective)
 
 
 @dataclass
@@ -163,13 +167,42 @@ class SelectionInfo:
     tiers: dict = field(default_factory=dict)   # "C" / "D" / "U" -> chosen pool indices
 
 
-def rankings(F_lo, F_hi, cfg: SelectionConfig = SelectionConfig(), n_select: Optional[int] = None):
+def axis_weights(k: int, n_obj: int) -> np.ndarray:
+    """k extra vectors per objective j: (1 - t) e_j + t / (m - 1) on the others, t = 0.02 .. 0.2."""
+    if k <= 0:
+        return np.zeros((0, n_obj))
+    out = []
+    for j in range(n_obj):
+        for t in np.linspace(0.02, 0.2, k):
+            w = np.full(n_obj, t / (n_obj - 1))
+            w[j] = 1 - t
+            out.append(w)
+    return np.asarray(out)
+
+
+def _tch_normalised(F_lo, F_hi, cfg, bounds):
+    if cfg.tch_bounds == "pool":
+        return normalize_intervals(F_lo, F_hi)
+    if cfg.tch_bounds != "running":
+        raise ValueError(f"unknown tch_bounds {cfg.tch_bounds!r}")
+    if bounds is None:
+        raise ValueError("tch_bounds='running' needs bounds=(ideal, nadir)")
+    ideal, nadir = (np.asarray(b, float) for b in bounds)
+    ideal = np.minimum(ideal, np.asarray(F_lo).min(axis=0))
+    span = np.maximum(nadir, np.asarray(F_hi).max(axis=0)) - ideal
+    span = np.where(span > 0, span, 1.0)
+    return (np.asarray(F_lo) - ideal) / span, (np.asarray(F_hi) - ideal) / span
+
+
+def rankings(F_lo, F_hi, cfg: SelectionConfig = SelectionConfig(), n_select: Optional[int] = None, bounds=None):
     G_lo, G_hi = normalize_intervals(F_lo, F_hi) if cfg.normalize else (np.asarray(F_lo), np.asarray(F_hi))
     if cfg.convergence == "dominance":
         R_C = dominance_degree(interval_dominance_matrix(F_lo, F_hi, cfg.dominance_threshold))
     elif cfg.convergence == "tchebycheff":
         n_w = cfg.n_weights or n_select or len(F_lo) // 2
-        R_C = tchebycheff_rank(*normalize_intervals(F_lo, F_hi), simplex_weights(n_w, np.shape(F_lo)[1]))
+        m = np.shape(F_lo)[1]
+        W = np.vstack([simplex_weights(n_w, m), axis_weights(cfg.axis_weights, m)])
+        R_C = tchebycheff_rank(*_tch_normalised(F_lo, F_hi, cfg, bounds), W)
     else:
         raise ValueError(f"unknown convergence ranking {cfg.convergence!r}")
     ICD = interval_crowding(G_lo, G_hi, cfg.k_neighbors)
@@ -180,7 +213,7 @@ def rankings(F_lo, F_hi, cfg: SelectionConfig = SelectionConfig(), n_select: Opt
 
 def environmental_selection(F_lo: np.ndarray, F_hi: np.ndarray, n_select: int, action,
                             rng: np.random.Generator, genotypes=None,
-                            cfg: SelectionConfig = SelectionConfig()):
+                            cfg: SelectionConfig = SelectionConfig(), bounds=None):
     """Pick n_select pool indices. `action` = (alpha, beta, gamma), summing to 1.
     `genotypes` = (X, O) of the pool, used only for clone removal."""
     F_lo, F_hi = np.asarray(F_lo, float), np.asarray(F_hi, float)
@@ -194,7 +227,7 @@ def environmental_selection(F_lo: np.ndarray, F_hi: np.ndarray, n_select: int, a
     n_D = min(int(round(a[1] * n_select)), n_select - n_C)
     n_U = n_select - n_C - n_D
 
-    R_C, ICD, R_U = rankings(F_lo, F_hi, cfg, n_select)
+    R_C, ICD, R_U = rankings(F_lo, F_hi, cfg, n_select, bounds)
     if cfg.tie_break == "icd":
         order_C = np.lexsort((rng.random(n_pool), -ICD, R_C))
     elif cfg.tie_break == "random":

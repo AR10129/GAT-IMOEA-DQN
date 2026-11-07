@@ -166,3 +166,25 @@ def test_tchebycheff_rank_keeps_extremes_and_converges():
     assert 4 not in keep
     with pytest.raises(ValueError):
         rankings(lo, hi, SelectionConfig(convergence="nope"))
+
+
+def test_tch_running_bounds_and_axis_weights():
+    import numpy as np
+    from gat_imoea_dqn.selection import SelectionConfig, axis_weights, environmental_selection
+    rng = np.random.default_rng(0)
+    lo = rng.random((40, 3))
+    hi = lo + 0.1 * rng.random((40, 3))
+    W = axis_weights(4, 3)
+    assert W.shape == (12, 3) and np.allclose(W.sum(axis=1), 1) and (W.max(axis=1) >= 0.8).all()
+    base = SelectionConfig(convergence="tchebycheff", tie_break="icd")
+    for cfg, bounds in ((SelectionConfig(convergence="tchebycheff", tie_break="icd", tch_bounds="running"),
+                         (np.zeros(3), np.full(3, 5.0))),
+                        (SelectionConfig(convergence="tchebycheff", tie_break="icd", axis_weights=6), None)):
+        keep, _ = environmental_selection(lo, hi, 20, (5 / 6, 1 / 6, 0), np.random.default_rng(1), cfg=cfg, bounds=bounds)
+        assert len(set(keep.tolist())) == 20
+    # bounds equal to the pool's own reproduce pool normalisation exactly
+    same = SelectionConfig(convergence="tchebycheff", tie_break="icd", tch_bounds="running")
+    a, _ = environmental_selection(lo, hi, 20, (5 / 6, 1 / 6, 0), np.random.default_rng(1), cfg=base)
+    b, _ = environmental_selection(lo, hi, 20, (5 / 6, 1 / 6, 0), np.random.default_rng(1), cfg=same,
+                                   bounds=(lo.min(0), hi.max(0)))
+    assert sorted(a.tolist()) == sorted(b.tolist())
