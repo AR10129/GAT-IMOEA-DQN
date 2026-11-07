@@ -505,6 +505,14 @@ setting for comparability and three-tier energy as a sensitivity study.
   jin_bw05 / jin_bw2), e6_edges1 / e6_edges6 (scenarios jin_e1 / jin_e6), e6_edgequeue (edge servers
   queue, `--edge-queue`). CCR is already covered by Suite B's x1 / x20 / x100. 1600 runs.
   Scalability: `scale_2000`, 5 families x 2000 tasks x {x1, x20, x100}, same 4 policies, 600 runs.
+  Scalability result (2026-11-07, 600/600 runs): mean IGD final 0.0699 / imoead_orig 0.0692,
+  HV_jin 0.886 / 0.857, Imprecision 63.2 / 74.6. imoead_orig vs final: IGD 6/5/4, HV 0/13/2,
+  Imprecision 1/13/1. nsga2_mid and fixed_fav lose 15/15 on IGD and HV. Front check
+  (`front_cmp` on scale_2000): final dominates 64-79% of imoead_orig's front, about 0% the other
+  way, and final wins HV 13/15. The cost-extreme gap is larger than at 1000 tasks: normalised min
+  cost final 0.20-0.25 vs imoead_orig 0.12-0.15. imoead_orig's IGD wins come from that extreme
+  (the pooled reference includes it), not from a better front. Same structural effect as B1 at
+  1000 tasks, now visible on IGD instead of HV.
   E2: `suite_a_e2`, `suite_b_e2` (final, imoead_orig, fixed_fav; seeds 0-9 copied, 10-29 new;
   3420 runs). The E2 set uses imoead_orig as IMOEA/D (B1 decision).
 - [ ] E7. Monte Carlo check of final fronts under sampled crisp values
