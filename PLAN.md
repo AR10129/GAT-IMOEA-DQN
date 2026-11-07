@@ -487,7 +487,16 @@ setting for comparability and three-tier energy as a sensitivity study.
 - [ ] E3. Metrics as above, normalised once per instance
 - [ ] E4. Statistics as above
 - [ ] E5. IGD / HV vs generation curves for DR-IMOEA and every baseline
-- [~] E6. Sensitivity: CCR, uncertainty width, edge count, bandwidth, energy scope, multi-core queueing
+- [x] E6. Sensitivity: CCR, uncertainty width, edge count, bandwidth, energy scope, multi-core queueing
+  Done 2026-11-07, no errors. Mean IGD (final / imoead_orig / nsga2_mid / fixed_fav) and final's
+  record vs imoead_orig (IGD · HV_jin, better/worse/tie for imoead_orig, 5 cases):
+  base 0.0082 / 0.0121 / 0.0496 / 0.122 (0/5/0 · 0/5/0); energy all-tier 0.0100 / 0.0108 / 0.113 /
+  0.139 (**2/1/2 · 4/0/1**); width x0.5 0.0094 / 0.0178 (0/5/0 · 0/5/0); width x2 0.0073 / 0.0089
+  (0/4/1 · **2/1/2**); bandwidth x0.5 0.0118 / 0.0160 and x2 0.0063 / 0.0100 (0/5/0 · 0/5/0);
+  1 edge 0.0093 / 0.0112 (0/4/1 · 0/4/1); 6 edges 0.0108 / 0.0170 (0/4/1 · 0/5/0); edge queue
+  0.0083 / 0.0106 (0/4/1 · 0/4/1). nsga2_mid and fixed_fav lose 5/5 on IGD and HV everywhere.
+  Weak spots for final: all-tier energy (imoead_orig wins HV 4/5) and wide intervals (HV 2/5);
+  check whether these are the same cost-extreme effect as at 1000 tasks.
   Running since 2026-11-05 (`scripts/run_e6.cmd, run_scale.cmd, run_e2.cmd (one at a time)`, logs results/experiment_{e6,scale,e2}.log; order E6 ->
   2000-task scalability -> E2). Cases: the five 400-task workflows at x20; policies final,
   imoead_orig (reported as IMOEA/D), fixed_fav (Jin backbone), nsga2_mid; 10 seeds. Levels, each its
