@@ -495,8 +495,29 @@ setting for comparability and three-tier energy as a sensitivity study.
   Note: HV vs imoead_orig at 1000 tasks is 1/42/2 here but 12/30/3 in B1, because the
   normalisation covers only these 3 policies; the paper tables need one fixed normalisation per
   instance (E3) and must say which.
-- [ ] E3. Metrics as above, normalised once per instance
-- [ ] E4. Statistics as above
+- [x] E3. Metrics as above, normalised once per instance
+- [x] E4. Statistics as above
+  `scripts/stats.py` (2026-11-10) -> results/stats/suite_{a,b}.md and *_runs.csv. Per instance it
+  pools every run of the paper set (final, imoead_orig, imoead_awn, imea_ied, ip_moea, nsga2_mid,
+  nsga2_int, nsga3_mid, fixed_fav, trained_stable) from suite_a_main + suite_a_e2 / suite_b +
+  suite_b_e2, and fixes one normalisation and one reference front over that pool. Heuristics, the
+  old imoead schedule and fresh DQN are left out (heuristics would stretch the normalisation;
+  report them separately). Seeds: final / imoead_orig / fixed_fav 30, the rest 10. Wilcoxon
+  rank-sum vs final with Holm over the 9 policies per instance and metric; A12; Friedman + Nemenyi.
+  - Suite A (12): final better on IGD and HV against every policy on 12/12, A12 large on 12/12;
+    Friedman rank 1.00 on IGD and HV, but with 12 instances the Nemenyi CD is 3.91, so only
+    IMEA-IED, IP-MOEA, NSGA-III, the Jin backbone and IMOEA-DQN are significantly behind on
+    ranks; the per-instance tests carry the evidence. Imprecision: final ranks 7.75 of 10; IMOEA/D,
+    IMOEA/D-AWN, NSGA-III, the Jin backbone and IMOEA-DQN give narrower intervals.
+  - Suite B (45): IGD vs final - IMOEA/D 4/37/4 (wins cybershake_1000@x1, epigenomics_1000@x20,
+    inspiral_1000@x1, inspiral_1000@x100), NSGA-II mid / int 5/40/0 (wins the five 100-task x1
+    cases), every other policy 0 wins. HV_jin - IMOEA/D 2/42/1 (inspiral_1000@x100,
+    sipht_1000@x20), all others 0 wins. Friedman ranks: IGD 1.42 vs next 2.64 (IMOEA/D), HV 1.09
+    vs 2.73; CD 2.02, so on ranks final is significantly ahead of every policy except IMOEA/D and
+    IMOEA/D-AWN (IGD gaps 1.22 / 1.58, HV 1.64 / 1.84).
+    Imprecision: final ranks 7.64 of 10 (IMOEA/D 28/7/10 vs final).
+  - Use these tables in the paper (one normalisation per instance); the per-experiment
+    summaries differ because each normalises over its own policy set.
 - [ ] E5. IGD / HV vs generation curves for DR-IMOEA and every baseline
 - [x] E6. Sensitivity: CCR, uncertainty width, edge count, bandwidth, energy scope, multi-core queueing
   Done 2026-11-07, no errors. Mean IGD (final / imoead_orig / nsga2_mid / fixed_fav) and final's
