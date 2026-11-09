@@ -479,11 +479,22 @@ setting for comparability and three-tier energy as a sensitivity study.
     gap grows with size (IGD 0.046 / 0.085 / 0.121 at 100 / 400 / 1000 tasks): the R_IN stall
     gets worse on larger DAGs. Imprecision: final's fronts are wider than IMOEA/D's (worse in 35/45),
     as in Suite A; the heuristics' 3-plan fronts have near-zero imprecision by construction.
-- [ ] E2. Seeds (trimmed 2026-11-04, user decision): 30 runs for the main comparison only
+- [x] E2. Seeds (trimmed 2026-11-04, user decision): 30 runs for the main comparison only
   (final, IMOEA/D, Jin backbone) on all 57 cases (Suite A 12 + Suite B 45) = 20 more seeds ×
   3 × 57 = 3420 runs. Every other method (B1, B2, B3, IP-MOEA) stays at 10 seeds; heuristics are
   deterministic. Sensitivity (E6) and scalability at 10 seeds. Remaining budget ≈ 10,000 runs
   (B1 1710, B2 1350, B3 1710, E2 3420, E6 ~1200, 2000-task scalability ~600), ≈ 22 h awake.
+  Result (2026-11-10, 1080 + 4050 runs; Suite A first attempt hit a numba cache race at
+  start-up, rerun with `scripts/run_e2a.cmd`). Means final / imoead_orig / fixed_fav:
+  Suite A IGD 0.0111 / 0.0324 / 0.1162, HV_jin 0.814 / 0.792 / 0.631, Imprecision 29.5 / 26.5 / 25.6;
+  imoead_orig vs final: IGD 0/12/0, HV 0/12/0, Imprecision 11/0/1 (imoead_orig narrower).
+  Suite B IGD 0.0180 / 0.0230 / 0.1461, HV_jin 0.928 / 0.912 / 0.780, Imprecision 63.9 / 60.9 / 49.6;
+  imoead_orig vs final: IGD 6/36/3, HV 1/42/2, Imprecision 26/8/11. fixed_fav loses every case on
+  IGD and HV. imoead_orig's IGD wins are all 1000-task cases (cybershake x1/x20, epigenomics
+  x1/x20, inspiral x20, sipht x20; it also wins HV on inspiral_1000@x100) - the cost-extreme gap.
+  Note: HV vs imoead_orig at 1000 tasks is 1/42/2 here but 12/30/3 in B1, because the
+  normalisation covers only these 3 policies; the paper tables need one fixed normalisation per
+  instance (E3) and must say which.
 - [ ] E3. Metrics as above, normalised once per instance
 - [ ] E4. Statistics as above
 - [ ] E5. IGD / HV vs generation curves for DR-IMOEA and every baseline
