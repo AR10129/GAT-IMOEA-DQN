@@ -463,7 +463,28 @@ setting for comparability and three-tier energy as a sensitivity study.
     at x20, sipht_100 at x100); final wins every 400- and 1000-task case. Report it. Untested
     guess: on 100 tasks the search space is small enough for plain NSGA-II to converge. Imprecision
     vs final: Suite A NSGA-II worse in 8, tie 4; Suite B nsga2_mid better in 24, worse in 16.
-- [ ] B4. Equal budget for all methods; wall-clock times reported
+- [x] B4. Equal budget for all methods; wall-clock times reported
+  Budget (2026-11-10, `scripts/budget_check.py`, evaluator calls counted, G=10, N=105): every
+  method evaluates N(G+1) solutions except IMOEA/D-AWN, N*G (the original's loop runs generations
+  1..G_max-1; 0.1% fewer at G=1000). Kept as published; say so in the setup section.
+  Timing (`scripts/run_timing.cmd`, experiments timing_a / timing_b, one run at a time, G=1000,
+  2 seeds, trained agent reused so no training time; median seconds per run):
+  | Method | A small_20 | A medium_250 | cyber_100 | cyber_400 | cyber_1000 | cyber_2000 |
+  | final | 29.2 | 33.2 | 34.6 | 41.0 | 53.1 | 61.9 |
+  | imoead_orig | 27.0 | 33.7 | 37.5 | 45.2 | 59.2 | 59.0 |
+  | imoead_awn | 36.9 | 45.8 | 52.6 | 60.0 | 73.4 | 74.0 |
+  | imea_ied | 38.5 | 46.7 | 51.1 | 54.0 | 65.6 | 68.7 |
+  | ip_moea | 15.2 | 20.9 | 21.4 | 26.7 | 38.0 | 49.4 |
+  | nsga2_mid | 15.3 | 20.7 | 22.0 | 27.6 | 30.0 | 45.9 |
+  | nsga2_int | 21.1 | 26.6 | 28.6 | 33.8 | 36.2 | 52.0 |
+  | nsga3_mid | 18.1 | 23.0 | 24.4 | 29.3 | 32.8 | 47.7 |
+  | fixed_fav | 30.5 | 37.0 | 38.5 | 44.8 | 47.1 | 64.7 |
+  | trained_stable | 34.9 | 57.7 | 38.0 | 44.7 | 62.8 | 92.8 |
+  - final costs about the same as IMOEA/D and the Jin backbone, less than IMOEA/D-AWN and
+    IMEA-IED, and 1.3-1.7x the NSGA family (Tchebycheff ranking + neighbourhood mating).
+  - IMOEA-DQN vs the fixed-action backbone: +0-56% (none at cybershake 100/400, +33% at 1000,
+    +43% at 2000, +56% on Suite A medium_250): the per-generation GAT inference over the DAG.
+    final drops it, which is part of its case.
 - [ ] D1. Write-up material for C4: the reward-audit figures (per-step SNR by phase; reward
   ranking vs IGD ranking), the three-learner table (stable / blk / l8), GAT vs no-GAT. A full Suite A
   retrain of L8 only if a reviewer asks.

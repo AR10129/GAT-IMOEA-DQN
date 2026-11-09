@@ -1,0 +1,51 @@
+{
+  "name": "timing_a",
+  "policies": [
+    "final",
+    "imoead_orig",
+    "imoead_awn",
+    "imea_ied",
+    "ip_moea",
+    "nsga2_mid",
+    "nsga2_int",
+    "nsga3_mid",
+    "fixed_fav",
+    "trained_stable"
+  ],
+  "train_seeds": [
+    0
+  ],
+  "train_set": [
+    "montage_100",
+    "epigenomics_100",
+    "cybershake_100",
+    "inspiral_100",
+    "sipht_100"
+  ],
+  "test_set": [
+    "small_20_i0@x20",
+    "medium_250_i0@x20"
+  ],
+  "train_episodes": 40,
+  "generations": 1000,
+  "pop": 105,
+  "seeds": 2,
+  "workers": 1,
+  "reuse_from": null,
+  "reference": "final",
+  "scenario": "default",
+  "data_multiplier": null,
+  "energy_scope": "device",
+  "external_io": "device",
+  "makespan": "sum_apps",
+  "train_generations": null,
+  "val_set": null,
+  "val_every": 10,
+  "val_generations": 300,
+  "rank_metric": "IGD",
+  "summary_only": false,
+  "width_scale": null,
+  "edge_queue": false,
+  "git_commit": "5b67eb2bac1975ffd57f58c28627755b5fad994e",
+  "git_dirty": true
+}
