@@ -539,7 +539,27 @@ setting for comparability and three-tier energy as a sensitivity study.
     Imprecision: final ranks 7.64 of 10 (IMOEA/D 28/7/10 vs final).
   - Use these tables in the paper (one normalisation per instance); the per-experiment
     summaries differ because each normalises over its own policy set.
-- [ ] E5. IGD / HV vs generation curves for DR-IMOEA and every baseline
+- [x] E5. IGD / HV vs generation curves for DR-IMOEA and every baseline
+  Done 2026-11-10 (`scripts/run_e5.cmd`, experiments e5_a / e5_b, 400 runs, no errors). New
+  `gat_imoea_dqn/trace.py` + `experiment.py --trace`: every loop stores the first interval front at
+  G = 0, 10, 25, 50, 100, ..., 1000 (IMOEA/D-AWN's last loop step is 999; its end front is stored
+  as 1000). Tracing touches no random stream: all 400 final fronts are identical to the same
+  policy / seed in suite_a_main / suite_b (`scripts/convergence.py` checks this). Instances:
+  medium_250_i0@x20 (A), montage_400@x20, cybershake_1000@x20, epigenomics_1000@x20 (B); the 10
+  paper policies, 10 seeds; IMOEA-DQN with training seed 0 only. Normalisation and reference front
+  as in E3, so G=1000 matches the stats tables. Output results/stats/e5_convergence.{md,csv},
+  results/figures/e5_convergence.{png,pdf}.
+  - medium_250: final leads from about G=150 and keeps falling (IGD 0.011 at G=1000); IMOEA/D
+    0.033 at G=1000, never reaches final's G=500 value (0.026).
+  - montage_400: IMOEA/D is ahead up to about G=350, final overtakes and flattens at 0.010 from
+    G~700 (IMOEA/D 0.011).
+  - cybershake_1000 / epigenomics_1000: IMOEA/D slightly ahead throughout (0.029 vs 0.030; 0.030
+    vs 0.037), and both curves are still falling at G=1000: at 1000 tasks the budget is not
+    saturated, so the gap there is convergence speed, not a plateau. HV: final catches up by
+    G~600 and ends level or ahead.
+  - Every other policy stalls far above (IGD 0.04-0.33); IMOEA-DQN starts worse than the initial
+    population on IGD (its early actions push to one region) and only slowly recovers, the
+    fixed-action backbone plateaus by G~300. Paper figure: the 2x4 panel as is.
 - [x] E6. Sensitivity: CCR, uncertainty width, edge count, bandwidth, energy scope, multi-core queueing
   Done 2026-11-07, no errors. Mean IGD (final / imoead_orig / nsga2_mid / fixed_fav) and final's
   record vs imoead_orig (IGD · HV_jin, better/worse/tie for imoead_orig, 5 cases):

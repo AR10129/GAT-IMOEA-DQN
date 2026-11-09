@@ -26,6 +26,7 @@ import numpy as np
 from .chromosome import DagIndex, Population, allowed_for, init_population
 from .dqn import DQNAgent
 from .evaluator import EvaluatorConfig, IntervalEvaluator
+from . import trace
 from .intervals import interval_dominance_matrix, nondominated_fronts
 from .operators import VariationConfig, make_offspring
 from .selection import SelectionConfig, action_subset, environmental_selection, selection_actions
@@ -113,6 +114,7 @@ def run(wf, sc, cfg: RunConfig = RunConfig(), agent: Optional[DQNAgent] = None,
             tracker.observe(lo, hi)
             return None
     s = features(pop.X, F_lo, F_hi, 0)
+    trace.record(0, F_lo, F_hi)
 
     hist: Dict[str, List] = {k: [] for k in ("action", "explored", "reward", "pibi", "epsilon", "loss",
                                              "best_mid", "median_mid")}
@@ -173,9 +175,11 @@ def run(wf, sc, cfg: RunConfig = RunConfig(), agent: Optional[DQNAgent] = None,
                "best_mid": mid.min(axis=0).tolist(), "median_mid": np.median(mid, axis=0).tolist()}
         for k, v in rec.items():
             hist[k].append(v)
+        trace.record(t + 1, F_lo, F_hi)
         if callback:
             callback(t, rec)
 
+    trace.final(F_lo, F_hi)
     front = nondominated_fronts(interval_dominance_matrix(F_lo, F_hi))[0]
     return RunResult(population=pop, F_lo=F_lo, F_hi=F_hi, front=np.sort(front), history=hist,
                      seconds=time.perf_counter() - t_start)

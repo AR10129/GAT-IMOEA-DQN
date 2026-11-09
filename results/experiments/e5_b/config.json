@@ -1,0 +1,53 @@
+{
+  "name": "e5_b",
+  "policies": [
+    "final",
+    "imoead_orig",
+    "imoead_awn",
+    "imea_ied",
+    "ip_moea",
+    "nsga2_mid",
+    "nsga2_int",
+    "nsga3_mid",
+    "fixed_fav",
+    "trained_stable"
+  ],
+  "train_seeds": [
+    0
+  ],
+  "train_set": [
+    "montage_100",
+    "epigenomics_100",
+    "cybershake_100",
+    "inspiral_100",
+    "sipht_100"
+  ],
+  "test_set": [
+    "montage_400@x20",
+    "cybershake_1000@x20",
+    "epigenomics_1000@x20"
+  ],
+  "train_episodes": 40,
+  "generations": 1000,
+  "pop": 105,
+  "seeds": 10,
+  "workers": 12,
+  "reuse_from": null,
+  "reference": "final",
+  "scenario": "jin",
+  "data_multiplier": null,
+  "energy_scope": "device",
+  "external_io": "device",
+  "makespan": "sum_apps",
+  "train_generations": null,
+  "val_set": null,
+  "val_every": 10,
+  "val_generations": 300,
+  "rank_metric": "IGD",
+  "summary_only": false,
+  "width_scale": null,
+  "edge_queue": false,
+  "trace": true,
+  "git_commit": "1abefe30a606f8d5a2ab2e1b5518bf21576c749d",
+  "git_dirty": true
+}

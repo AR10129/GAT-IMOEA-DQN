@@ -55,6 +55,7 @@ from typing import Optional
 
 import numpy as np
 
+from . import trace
 from .algorithm import RunResult
 from .chromosome import (DagIndex, Population, allowed_for, init_population, is_allowed, is_topological,
                          repair_allocation, repair_order)
@@ -99,6 +100,7 @@ def _child(x1, o1, x2, o2, allowed, dag, rng, crossover: bool):
 
 
 def _final(pop: Population, F_lo, F_hi, t0: float) -> RunResult:
+    trace.final(F_lo, F_hi)
     front = nondominated_fronts(interval_dominance_matrix(F_lo, F_hi))[0]
     return RunResult(population=pop, F_lo=F_lo, F_hi=F_hi, front=np.sort(front),
                      history={"action": [], "reward": []}, seconds=time.perf_counter() - t0)
@@ -161,7 +163,8 @@ def run_ip_moea(wf, sc, cfg: BaselineConfig, dominance=imprecise_dominance_matri
     N = cfg.pop_size
     pop = init_population(wf, sc, N, rng, dag)
     F_lo, F_hi = ev.evaluate_population(pop.X, pop.O)
-    for _ in range(cfg.generations):
+    trace.record(0, F_lo, F_hi)
+    for gen in range(cfg.generations):
         _, rank, crowd = _rank_and_crowd(F_lo, F_hi, dominance)
 
         def tournament() -> int:
@@ -190,6 +193,7 @@ def run_ip_moea(wf, sc, cfg: BaselineConfig, dominance=imprecise_dominance_matri
                 break
         keep = np.asarray(keep, dtype=np.int64)
         pop, F_lo, F_hi = merged[keep], M_lo[keep], M_hi[keep]
+        trace.record(gen + 1, F_lo, F_hi)
     return _final(pop, F_lo, F_hi, t0)
 
 
@@ -225,6 +229,7 @@ def run_imoead(wf, sc, cfg: BaselineConfig) -> RunResult:
         nlo, nhi = (lo - ideal) / span, (hi - ideal) / span
         return np.max(w * nlo, axis=-1), np.max(w * nhi, axis=-1)
 
+    trace.record(0, F_lo, F_hi)
     for gen in range(cfg.generations):
         for i in rng.permutation(N):
             pool = B[i] if rng.random() < cfg.delta else np.arange(N)
@@ -252,6 +257,7 @@ def run_imoead(wf, sc, cfg: BaselineConfig) -> RunResult:
             direction = np.maximum((nlo[best] + nhi[best]) / 2.0, 1e-6)
             W[worst] = direction / direction.sum()
             B = _neighbourhoods(W, min(cfg.neighbours, N))
+        trace.record(gen + 1, F_lo, F_hi)
     return _final(pop, F_lo, F_hi, t0)
 
 
@@ -329,7 +335,8 @@ def run_nsga3(wf, sc, cfg: BaselineConfig) -> RunResult:
     Z = _weights(N)
     pop = init_population(wf, sc, N, rng, dag)
     F_lo, F_hi = ev.evaluate_population(pop.X, pop.O)
-    for _ in range(cfg.generations):
+    trace.record(0, F_lo, F_hi)
+    for gen in range(cfg.generations):
         Xc = np.empty_like(pop.X)
         Oc = np.empty_like(pop.O)
         for i in range(N):
@@ -341,6 +348,7 @@ def run_nsga3(wf, sc, cfg: BaselineConfig) -> RunResult:
         fronts = nondominated_fronts(midpoint_dominance_matrix(M_lo, M_hi))
         keep = niching_select((M_lo + M_hi) / 2.0, fronts, N, Z, rng)
         pop, F_lo, F_hi = merged[keep], M_lo[keep], M_hi[keep]
+        trace.record(gen + 1, F_lo, F_hi)
     return _final(pop, F_lo, F_hi, t0)
 
 

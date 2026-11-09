@@ -348,6 +348,9 @@ def job(spec) -> str:
         cfg = None
     else:
         cfg = RunConfig(**base, policy="fixed", fixed_action=tuple(d["action"]), **_backbone(d.get("backbone")))
+    from gat_imoea_dqn import trace
+    if spec.get("trace"):
+        trace.start(spec["generations"])
     if d["kind"] == "heuristic":
         from gat_imoea_dqn.heuristics import run_heuristics
         res = run_heuristics(wf, sc, _ecfg(env))       # deterministic: the same plans for every seed
@@ -362,6 +365,8 @@ def job(spec) -> str:
            "train_seed": spec.get("train_seed"), "seconds": round(res.seconds, 2),
            "front_lo": lo.tolist(), "front_hi": hi.tolist(),
            "actions": res.history["action"], "reward": res.history["reward"]}
+    if spec.get("trace"):
+        rec["trace"] = {str(g): f for g, f in sorted(trace.stop().items())}   # gen -> (front_lo, front_hi)
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(rec))
     os.replace(tmp, path)
@@ -617,6 +622,7 @@ def main() -> int:
     ap.add_argument("--summary-only", action="store_true")
     ap.add_argument("--width-scale", type=float, default=None, help="E6: scale every interval half-width")
     ap.add_argument("--edge-queue", action="store_true", help="E6: edge servers queue tasks (multi-core)")
+    ap.add_argument("--trace", action="store_true", help="E5: store the first front at checkpoint generations")
     args = ap.parse_args()
     env = {"scenario": args.scenario, "data_multiplier": args.data_multiplier, "energy_scope": args.energy_scope,
            "external_io": args.external_io, "makespan": args.makespan,
@@ -662,7 +668,7 @@ def main() -> int:
                     continue
                 for s in range(args.seeds):
                     common = {"workflow": w, "policy": p, "seed": s, "generations": args.generations,
-                              "pop": args.pop, "env": env}
+                              "pop": args.pop, "env": env, "trace": args.trace}
                     if agent_jobs:
                         for t in args.train_seeds:
                             out_specs.append({**common, "train_seed": t,

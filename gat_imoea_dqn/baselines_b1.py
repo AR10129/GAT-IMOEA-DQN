@@ -50,6 +50,7 @@ import time
 
 import numpy as np
 
+from . import trace
 from .algorithm import RunResult
 from .chromosome import DagIndex, Population, allowed_for, init_population
 from .evaluator import IntervalEvaluator
@@ -147,6 +148,7 @@ def run_imoead_awn(wf, sc, cfg) -> RunResult:
         return int(min(N, max(2, round(T_max * np.exp(-G / G_max)))))
 
     B = _neighbourhoods(W, T_at(1))
+    trace.record(0, F_lo, F_hi)
     for G in range(1, G_max):                              # Alg. 3: G = 1 .. G_max - 1
         Xo, Oo, Lo, Ho = [], [], [], []
         for i in range(N):
@@ -215,6 +217,7 @@ def run_imoead_awn(wf, sc, cfg) -> RunResult:
                 W = np.vstack([Wk, W_new])
                 W = np.maximum(W / W.sum(axis=1, keepdims=True), 1e-6)
                 B = _neighbourhoods(W, T_at(G_next))
+        trace.record(G, F_lo, F_hi)
     return _final(pop, F_lo, F_hi, t0)
 
 
@@ -341,7 +344,8 @@ def run_imea_ied(wf, sc, cfg) -> RunResult:
     C_prev = np.zeros(len(Z))
     pop = init_population(wf, sc, N, rng, dag)
     F_lo, F_hi = ev.evaluate_population(pop.X, pop.O)
-    for _ in range(cfg.generations):
+    trace.record(0, F_lo, F_hi)
+    for gen in range(cfg.generations):
         Xc = np.empty_like(pop.X)
         Oc = np.empty_like(pop.O)
         for i in range(N):
@@ -355,4 +359,5 @@ def run_imea_ied(wf, sc, cfg) -> RunResult:
         nlo, nhi = _norm(M_lo, M_hi, lo_, hi_)
         keep, C_prev = ied_niche_select(nlo, nhi, fronts, N, Z, rng, C_prev)
         pop, F_lo, F_hi = merged[keep], M_lo[keep], M_hi[keep]
+        trace.record(gen + 1, F_lo, F_hi)
     return _final(pop, F_lo, F_hi, t0)
