@@ -604,7 +604,26 @@ setting for comparability and three-tier energy as a sensitivity study.
     dominance analysis and this pilot. The switches (`tch_bounds`, `axis_weights`) stay, default off.
   E2: `suite_a_e2`, `suite_b_e2` (final, imoead_orig, fixed_fav; seeds 0-9 copied, 10-29 new;
   3420 runs). The E2 set uses imoead_orig as IMOEA/D (B1 decision).
-- [ ] E7. Monte Carlo check of final fronts under sampled crisp values
+- [x] E7. Monte Carlo check of final fronts under sampled crisp values
+  Done 2026-11-10. Fronts: `scripts/run_e7.cmd` (experiments e7_a / e7_b, the E5 instances and
+  policies, 10 seeds, `--save-front` stores each final front's X / O; 400 runs, no errors).
+  `scripts/montecarlo.py`: 200 crisp scenarios per instance, every interval input (C, D, f, R,
+  e) drawn uniformly and independently, common to all policies; ~9k solutions per instance.
+  Output results/stats/e7_montecarlo.{md,csv}.
+  - Containment 100.00% on all four instances: every crisp outcome lies inside its predicted
+    interval in all three objectives (the interval evaluator is conservative, as designed).
+  - Crisp values sit slightly below the interval midpoint (mean position 0.44-0.48). The 95%
+    crisp spread covers 27-45% of the interval width on the Suite B instances, but only 9% for
+    makespan / energy on Suite A medium_250 (many independent applications summed: independent
+    draws average out, the interval is the joint worst case). Worth a sentence in R3: the
+    intervals are worst-case bounds, not likely ranges.
+  - Ranking holds: Kendall tau between the E3 interval IGD order and the Monte Carlo IGD order
+    0.96 / 0.91 / 0.96 / 1.00.
+  - final beats every policy in 100% of scenarios on HV and IGD on medium_250; on montage_400
+    and cybershake_1000 on HV in 100% of scenarios against all, and on IGD against all except
+    IMOEA/D (montage 0%: IMOEA/D 0.0103 vs 0.0115 although E3 interval IGD favours final;
+    cybershake_1000 88% although E3 favours IMOEA/D). epigenomics_1000: IMOEA/D better (final
+    wins 19% HV, 10% IGD), matching E3 / E5. Against all other policies: 100% everywhere.
 
 ### P3 — Paper
 - [ ] R1. One script builds every table and figure (LaTeX)

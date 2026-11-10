@@ -365,6 +365,9 @@ def job(spec) -> str:
            "train_seed": spec.get("train_seed"), "seconds": round(res.seconds, 2),
            "front_lo": lo.tolist(), "front_hi": hi.tolist(),
            "actions": res.history["action"], "reward": res.history["reward"]}
+    if spec.get("save_front"):                       # E7: genotypes of the final front
+        rec["front_X"] = res.population.X[res.front].tolist()
+        rec["front_O"] = res.population.O[res.front].tolist()
     if spec.get("trace"):
         rec["trace"] = {str(g): f for g, f in sorted(trace.stop().items())}   # gen -> (front_lo, front_hi)
     tmp = path.with_suffix(".tmp")
@@ -623,6 +626,7 @@ def main() -> int:
     ap.add_argument("--width-scale", type=float, default=None, help="E6: scale every interval half-width")
     ap.add_argument("--edge-queue", action="store_true", help="E6: edge servers queue tasks (multi-core)")
     ap.add_argument("--trace", action="store_true", help="E5: store the first front at checkpoint generations")
+    ap.add_argument("--save-front", action="store_true", help="E7: store the final front's genotypes (X, O)")
     args = ap.parse_args()
     env = {"scenario": args.scenario, "data_multiplier": args.data_multiplier, "energy_scope": args.energy_scope,
            "external_io": args.external_io, "makespan": args.makespan,
@@ -668,7 +672,8 @@ def main() -> int:
                     continue
                 for s in range(args.seeds):
                     common = {"workflow": w, "policy": p, "seed": s, "generations": args.generations,
-                              "pop": args.pop, "env": env, "trace": args.trace}
+                              "pop": args.pop, "env": env, "trace": args.trace,
+                              "save_front": args.save_front}
                     if agent_jobs:
                         for t in args.train_seeds:
                             out_specs.append({**common, "train_seed": t,
