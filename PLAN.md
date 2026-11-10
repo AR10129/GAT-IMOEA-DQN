@@ -641,6 +641,14 @@ setting for comparability and three-tier energy as a sensitivity study.
   - Every other policy stalls far above (IGD 0.04-0.33); IMOEA-DQN starts worse than the initial
     population on IGD (its early actions push to one region) and only slowly recovers, the
     fixed-action backbone plateaus by G~300. Paper figure: the 2x4 panel as is.
+  - Refreshed 2026-11-11 with the corrected baselines (`scripts/run_e57fix.cmd`, experiments
+    e57fix_{a,b}: ip_moea_hv + imoea_dqn, 10 seeds, --trace --save-front, 80 runs, no errors; copied
+    into e5_* and e7_*). Pools now include rerun_*; paper set as in stats.py. 400/400 final fronts
+    identical to the table runs. G=1000 IGD final / IMOEA/D: 0.012 / 0.035, 0.011 / 0.012,
+    0.028 / 0.033, 0.032 / 0.036; with the new pool final now ends ahead on both 1000-task cases
+    (pool-dependent, see the robustness check under B2). IP-MOEA 0.18 / 0.13 / 0.17 / 0.16 and
+    IMOEA-DQN 0.29 / 0.20 / 0.29 / 0.27 stay far above; IMOEA-DQN again starts worse than the
+    initial population.
 - [x] E6. Sensitivity: CCR, uncertainty width, edge count, bandwidth, energy scope, multi-core queueing
   Done 2026-11-07, no errors. Mean IGD (final / imoead_orig / nsga2_mid / fixed_fav) and final's
   record vs imoead_orig (IGD · HV_jin, better/worse/tie for imoead_orig, 5 cases):
@@ -705,6 +713,12 @@ setting for comparability and three-tier energy as a sensitivity study.
     IMOEA/D (montage 0%: IMOEA/D 0.0103 vs 0.0115 although E3 interval IGD favours final;
     cybershake_1000 88% although E3 favours IMOEA/D). epigenomics_1000: IMOEA/D better (final
     wins 19% HV, 10% IGD), matching E3 / E5. Against all other policies: 100% everywhere.
+  - Refreshed 2026-11-11 with the corrected baselines (same scenarios). Containment 100% on all 4;
+    Kendall tau 0.91 / 0.96 / 1.00 / 0.91. final vs IMOEA/D, share of scenarios final better
+    (HV / IGD): medium_250 100 / 100, montage_400 100 / 0, cybershake_1000 100 / 100,
+    epigenomics_1000 10 / 100. The 1000-task IGD shares moved with the pool (it also defines the
+    per-scenario crisp reference), so read them with the robustness caveat. Against IP-MOEA and
+    IMOEA-DQN final is better in 100% of scenarios on both metrics everywhere.
 
 ### P3 — Paper
 - [ ] R1. One script builds every table and figure (LaTeX)
