@@ -721,7 +721,21 @@ setting for comparability and three-tier energy as a sensitivity study.
     IMOEA-DQN final is better in 100% of scenarios on both metrics everywhere.
 
 ### P3 — Paper
-- [ ] R1. One script builds every table and figure (LaTeX)
+- [~] R1. One script builds every table and figure (LaTeX)
+  Built 2026-11-11: `scripts/build_paper.py` -> paper/tables/*.tex (14 booktabs tables), paper/figures/
+  (e5_convergence, a3_stall, a3_tradeoff PDFs, copied from results/figures) and paper/preview.tex
+  (elsarticle, inputs everything; `\ours` is the method's name, one line to rename). Each scored table
+  normalises per instance over its own policies, as E3; scores cached in results/stats/paper_*_runs.csv
+  (`--rescore` to redo, ~30 min). Checked: Suite A / B counts and Friedman ranks identical to
+  scripts/stats.py; column counts, braces and math balanced in every table. Not compiled (no LaTeX
+  on this machine; use Overleaf).
+  Tables: suite{a,b}_{igd,hv_jin,imprecision} (sideways, mean (sd) + Wilcoxon/Holm symbols), friedman,
+  heuristics (scored on the main normalisation without joining the pool), robustness, ablation
+  (build-up vs final, leave-one-out / sensitivity vs the T=20 default as in A1), sensitivity (E6),
+  scalability (2000 tasks), timing (B4), montecarlo (E7).
+  - [ ] Timing rows for ip_moea_hv and imoea_dqn are missing (the table prints a TODO): rerun
+    `scripts/run_timing.cmd` with those two policies (6 instances x 2 seeds, one at a time).
+  - [ ] Still to add: C4 figures (D1), front plots if wanted.
 - [ ] R2. System-model figure, pseudocode, complexity, parameter table
 - [ ] R3. Threats to validity and limitations (no link contention, no receive energy, interval
   bounds assumed to hold, fixed action chosen on training instances, at 1000-2000 tasks IMOEA/D
