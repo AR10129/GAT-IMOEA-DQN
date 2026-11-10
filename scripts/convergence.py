@@ -34,7 +34,8 @@ STYLE = {"final": ("#2a78d6", "-", 2.4), "imoead_orig": ("#eb6834", "-", 1.6),
          "imoead_awn": ("#eb6834", "--", 1.6), "imea_ied": ("#1baf7a", "-", 1.6),
          "ip_moea": ("#6250d6", "-", 1.6), "nsga2_mid": ("#eda100", "-", 1.6),
          "nsga2_int": ("#eda100", "--", 1.6), "nsga3_mid": ("#008300", "-", 1.6),
-         "fixed_fav": ("#c2477a", "--", 1.6), "trained_stable": ("#c2477a", "-", 1.6)}
+         "fixed_fav": ("#c2477a", "--", 1.6), "trained_stable": ("#c2477a", "-", 1.6),
+         "ip_moea_hv": ("#6250d6", "-", 1.6), "imoea_dqn": ("#c2477a", "-", 1.6)}
 
 
 def normalisation(pool):

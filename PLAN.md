@@ -460,7 +460,7 @@ setting for comparability and three-tier energy as a sensitivity study.
     on all 4, HV too); final 0.011 / 0.010 / 0.030 / 0.037, nsga2_mid 0.065 / 0.042 / 0.127 / 0.152.
     The HV-contribution version is both closer to the description and stronger, so it should
     replace ip_moea in the paper tables (needs Suite A + B reruns, 570 runs). Conclusions unchanged.
-- [~] B2. IMOEA-DQN (Jin et al.) on the DAG model = `trained_stable` on the Jin backbone (and
+- [x] B2. IMOEA-DQN (Jin et al.) on the DAG model = `trained_stable` on the Jin backbone (and
   `fresh` for the online version): check it against their Algorithm 1/2 and name it in tables
   - [x] Suite B runs done 2026-11-04 (`scripts/run_b2.cmd`, 1800 runs: Suite A GAT agents ×3
     training seeds, greedy, plus online `fresh`; agents trained on the default scenario, so this
@@ -487,6 +487,31 @@ setting for comparability and three-tier energy as a sensitivity study.
     Table naming: "IMOEA-DQN" = `imoea_dqn` (as published, needs Suite A + B reruns, 570 runs);
     "IMOEA-DQN, offline GAT" = `trained_stable` (the C4 analysis); "Jin backbone, fixed action" =
     `fixed_fav`.
+  - [x] Corrected-baseline reruns (2026-11-10, `scripts/run_rerun_imoeadqn.cmd`,
+    `scripts/run_rerun_ipmoea.cmd`; experiments rerun_{imoeadqn,ipmoea}_{a,b}; 570 + 570 runs, 40 of
+    each copied from the checks pilot (same settings and seeds); no errors). The E3 paper set now uses
+    `ip_moea_hv` (label IP-MOEA) and `imoea_dqn` (label IMOEA-DQN) instead of `ip_moea` and
+    `trained_stable`; still 10 policies. `scripts/stats.py` regenerated suite_{a,b}.md / *_runs.csv,
+    pooling suite_a_main + suite_a_e2 + rerun_*_a and suite_b + suite_b_e2 + rerun_*_b.
+    - Suite A: final better on IGD and HV against every policy on 12/12; Friedman IGD final 1.00,
+      IMOEA/D-AWN 2.42, IMOEA/D 2.83, ..., IP-MOEA 8.50, IMOEA-DQN 9.92. Mean IGD final 0.012,
+      IP-MOEA 0.147, IMOEA-DQN 0.254.
+    - Suite B: IGD vs final - IMOEA/D 1/43/1 (wins only inspiral_1000@x100), NSGA-II mid 4/40/1,
+      int 5/40/0 (the 100-task x1 cases), all others 0 wins. HV_jin - IMOEA/D 2/42/1
+      (inspiral_1000@x100, sipht_1000@x20), all others 0. Friedman IGD 1.29 vs 2.69 (IMOEA/D),
+      HV 1.09 vs 2.73, CD 2.02. Mean IGD final 0.019, IMOEA/D 0.026, IP-MOEA 0.122, IMOEA-DQN 0.229.
+    - IMOEA/D's IGD wins fell from 4 to 1; cybershake_1000@x1, epigenomics_1000@x20 and
+      inspiral_1000@x1 flipped to final (e.g. epigenomics_1000@x20 final / IMOEA/D 0.035 / 0.031 ->
+      0.030 / 0.038). No run of either changed: the cause is the pool. Dropping ip_moea removes the
+      cost nadir it set (2.7 -> 2.3, now IMOEA/D-AWN), and the reference front grows (595 -> 762
+      points there), so IGD weights shift. The 1000-task comparison with IMOEA/D is within the
+      sensitivity of the normalisation; do not claim it either way without a robustness check
+      (e.g. normalise over the union of every policy, or per-objective ranks).
+    - Imprecision: IMOEA-DQN ranks 1.00 on both suites because its front collapses to a few
+      solutions; report it next to front size.
+    - Not updated: E5 curves and E7 Monte Carlo still use ip_moea / trained_stable (the reruns did
+      not trace or save fronts). Redo with `--trace --save-front` on the 4 E5 instances if the
+      figures must show the corrected baselines (80 runs).
 - [x] B3. NSGA-II (midpoint and interval-dominance variants) and NSGA-III (midpoint), in
   `gat_imoea_dqn/baselines.py` (policies `nsga2_mid`, `nsga2_int`, `nsga3_mid`); IP-MOEA's loop is
   generalised over the dominance relation and stays bit-identical. Done 2026-11-05
