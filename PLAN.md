@@ -378,9 +378,20 @@ setting for comparability and three-tier energy as a sensitivity study.
     neighbourhood mating T = 10, p_local = 1.0.** Use these for all B and E runs.
   - The seconds column is not comparable: jin / full / conv / imoead were run in other batches
     under different machine load. B4 does timing properly.
-- [ ] A3. What the β (dominance) and γ (uncertainty) tiers buy under the new Rank C: IGD vs
+- [x] A3. What the β (dominance) and γ (uncertainty) tiers buy under the new Rank C: IGD vs
   Imprecision trade-off from the A2 sweep, and the Rank C tie counts per generation (the stall
   figure: R_IN vs Tchebycheff).
+  Done 2026-11-10, `scripts/a3_tiers.py` -> results/figures/a3_tradeoff.{png,pdf}, a3_stall.{png,pdf},
+  results/stats/a3_stall.csv.
+  - Trade-off (A2 sweep, 28 actions x 36 training instances): a small γ buys precision cheaply,
+    (5/6, 0, 1/6) has Imprecision 0.276 vs 0.307 per solution (-10%) for IGD ratio 1.15 vs 1.13;
+    β or γ above 1/6 costs IGD steeply (ratio > 2 below α = 1/2); pure γ reaches 0.20 at 52x IGD.
+    So the tiers trade convergence for precision along one curve; final keeps γ = 0 (chosen on IGD).
+  - Stall (medium_250_i0@x20, montage_400@x20, 3 seeds, G = 1000): share of the α N Rank C places
+    decided by the tie-break. Jin's R_IN: 43% / 10% in G 1-100, 99.5% / 86% in G 101-500, 100% /
+    99.9% after G 500; 117-121 pool members share R_IN = 0 at the end (> α N = 88), so selection is a
+    random draw from the first front. Tchebycheff Rank C: 21% / 14%, 21% / 23%, 11% / 14%; about 80
+    share the best rank. This is the mechanism behind the build-up in A1.
 - [x] B0. Reference heuristics (2026-11-03, `gat_imoea_dqn/heuristics.py`, policy `heuristics`):
   all_local, all_edge (nearest edge), all_cloud, and HEFT-style list scheduling in upward-rank
   order: heft_makespan = classic earliest-finish-time placement, heft_energy / heft_cost = greedy
@@ -436,7 +447,19 @@ setting for comparability and three-tier energy as a sensitivity study.
       - Options: report as is (IGD and dominance favour final, HV favours imoead_orig at 1000 tasks
         by reaching the cost extreme), or change the frozen method (e.g. keep each objective's
         extreme solution); a change means re-running every `final` run.
-  - [ ] Check IP-MOEA's tie-breaking / crowding against the original before the final runs.
+  - [x] Check IP-MOEA's tie-breaking / crowding against the original (2026-11-10). The original
+    (Limbourg & Aponte, CEC 2005) was not obtainable (ResearchGate 403). IMOEA/D-AWN (Sec. 1) and
+    IMaOEACI (Sec. 2) both describe its crowding as each individual's contribution to the
+    hypervolume of the interval upper and lower limits, not midpoint crowding. Jin et al. 2026
+    (Sec. 5.3.1) give the same reason for IP-MOEA's weakness that we see (the order-relation
+    dominance leaves too many solutions non-dominated). New policy `ip_moea_hv`: exclusive HV
+    contribution within each front, mean of lower and upper corners, normalised over the ranked
+    set, ref 1.1 (fast exact form; ~5x slower per generation than ip_moea). Pilot (`scripts/
+    run_checks.cmd`, checks_a / checks_b, the E5 instances, 10 seeds; E3 normalisation), IGD
+    ip_moea -> ip_moea_hv: 0.309 -> 0.184, 0.290 -> 0.123, 0.321 -> 0.189, 0.331 -> 0.206 (p < 0.001
+    on all 4, HV too); final 0.011 / 0.010 / 0.030 / 0.037, nsga2_mid 0.065 / 0.042 / 0.127 / 0.152.
+    The HV-contribution version is both closer to the description and stronger, so it should
+    replace ip_moea in the paper tables (needs Suite A + B reruns, 570 runs). Conclusions unchanged.
 - [~] B2. IMOEA-DQN (Jin et al.) on the DAG model = `trained_stable` on the Jin backbone (and
   `fresh` for the online version): check it against their Algorithm 1/2 and name it in tables
   - [x] Suite B runs done 2026-11-04 (`scripts/run_b2.cmd`, 1800 runs: Suite A GAT agents ×3
@@ -447,7 +470,23 @@ setting for comparability and three-tier energy as a sensitivity study.
     (342–372 of 450 runs per training seed). By size (IGD trained / fixed_fav): 0.096 / 0.046,
     0.108 / 0.082, 0.171 / 0.120. Supports C4: the learned controller adds nothing over a fixed
     action. (Adding policies changes the pooled reference front, so final's IGD moved 0.0105 → 0.011.)
-  - [ ] Still open: the Algorithm 1/2 fidelity check and table naming.
+  - [x] Algorithm 1/2 fidelity check (2026-11-10, against the EAAI 178 (2026) 115043 text). Match:
+    DAEC (interval ND sort, top half mates within the top half, uncertainty ND sort, p_c 0.7 / 0.9);
+    DQN-ES with R_IN (dominance-strength sum), ICD diversity rank, R_UN uncertainty rank, sequential
+    deduplicated α/β/γ selection; 28 Das-Dennis actions (H = 6); 7-feature state; PIBI-improvement
+    reward (sign flipped so improvement is positive); update every 50 generations; lr 1e-3; N 105,
+    G 1000. Differences: (1) the published learner is online with an MLP 32-64-32 on the 7 features;
+    our `trained_stable` is pre-trained offline with a GAT graph embedding and (64, 64) head, and
+    `fresh` is online but with the GAT; (2) ERB threshold and ε formula are not given in the paper
+    (ours: 250, 0.3^(t/100)); (3) operators are ours (their SBX cannot keep a DAG order valid).
+    New policy `imoea_dqn` = the published learner (online, no graph, MLP 32-64-32, agent seed = run
+    seed). Pilot IGD (E5 instances): imoea_dqn 0.276 / 0.186 / 0.283 / 0.300, fresh 0.275 / 0.253 /
+    0.309 / 0.320, trained_stable 0.162 / 0.123 / 0.256 / 0.260, fixed_fav 0.170 / 0.110 / 0.163 /
+    0.207: the published learner is no better than `fresh` (HV slightly better on Suite B) and loses
+    to the fixed-action backbone on IGD on 4/4 (p < 0.001).
+    Table naming: "IMOEA-DQN" = `imoea_dqn` (as published, needs Suite A + B reruns, 570 runs);
+    "IMOEA-DQN, offline GAT" = `trained_stable` (the C4 analysis); "Jin backbone, fixed action" =
+    `fixed_fav`.
 - [x] B3. NSGA-II (midpoint and interval-dominance variants) and NSGA-III (midpoint), in
   `gat_imoea_dqn/baselines.py` (policies `nsga2_mid`, `nsga2_int`, `nsga3_mid`); IP-MOEA's loop is
   generalised over the dominance relation and stays bit-identical. Done 2026-11-05

@@ -16,6 +16,11 @@ IP-MOEA (Limbourg & Aponte, 2005) - NSGA-II with the imprecise Pareto relation:
   Fronts by non-dominated sorting under that relation; crowding distance on
   interval midpoints (normalised); binary tournament on (front, crowding);
   crossover probability 0.9; (mu + lambda) survival with the last front cut by crowding.
+  ip_moea_hv (check of the tie-break): the same, but the crowding measure is each solution's
+  exclusive hypervolume contribution within its front, averaged over the lower- and upper-bound
+  corners (objectives normalised over the ranked set, reference point 1.1). The IMOEA/D-AWN and
+  IMaOEACI papers describe IP-MOEA's crowding this way ("contribution of individuals to the
+  hypervolume using interval upper and lower limits"); the original paper was not available.
 
 IMOEA/D (Gan et al., 2023) - decomposition with interval scalar functions:
   N Das-Dennis weight vectors (q = 13 gives 105 for 3 objectives), neighbourhood T = 20;
@@ -65,7 +70,7 @@ from .intervals import (interval_dominance_matrix, nondominated_fronts, normaliz
 from .operators import daec, mutate_allocation, mutate_order, pox
 from .selection import interval_crowding, simplex_weights
 
-BASELINES = ("ip_moea", "imoead", "imoead_orig", "nsga2_mid", "nsga2_int", "nsga3_mid", "imoead_awn", "imea_ied", "imoead_noadapt")
+BASELINES = ("ip_moea", "ip_moea_hv", "imoead", "imoead_orig", "nsga2_mid", "nsga2_int", "nsga3_mid", "imoead_awn", "imea_ied", "imoead_noadapt")
 
 
 @dataclass(frozen=True)
@@ -142,18 +147,40 @@ DOMINANCE = {"ip_moea": imprecise_dominance_matrix, "nsga2_mid": midpoint_domina
              "nsga2_int": interval_dominance_matrix}
 
 
-def _rank_and_crowd(F_lo, F_hi, dominance=imprecise_dominance_matrix):
+def hv_contributions(F: np.ndarray, ref: np.ndarray) -> np.ndarray:
+    """Exclusive hypervolume contribution of each point: its box [p, ref] minus the part the
+    other points cover (the HV of max(p, q) over q != p)."""
+    from .metrics import hypervolume_3d, nondominated
+    out = np.zeros(len(F))
+    for i in range(len(F)):
+        p = F[i]
+        if not np.all(p < ref):
+            continue
+        Q = np.maximum(np.delete(F, i, axis=0), p)
+        Q = Q[np.all(Q < ref, axis=1)]
+        out[i] = np.prod(ref - p) - (hypervolume_3d(nondominated(Q), ref) if len(Q) else 0.0)
+    return out
+
+
+def _rank_and_crowd(F_lo, F_hi, dominance=imprecise_dominance_matrix, crowd_mode: str = "mid"):
     fronts = nondominated_fronts(dominance(F_lo, F_hi))
     rank = np.empty(len(F_lo), dtype=np.int64)
     crowd = np.empty(len(F_lo))
     mid = (F_lo + F_hi) / 2.0
+    if crowd_mode == "hv":
+        lo_, span = F_lo.min(axis=0), np.maximum(F_hi.max(axis=0) - F_lo.min(axis=0), 1e-12)
+        nlo, nhi, ref = (F_lo - lo_) / span, (F_hi - lo_) / span, np.full(F_lo.shape[1], 1.1)
     for r, f in enumerate(fronts):
         rank[f] = r
-        crowd[f] = crowding_distance(mid[f])
+        if crowd_mode == "hv":
+            crowd[f] = 0.5 * (hv_contributions(nlo[f], ref) + hv_contributions(nhi[f], ref))
+        else:
+            crowd[f] = crowding_distance(mid[f])
     return fronts, rank, crowd
 
 
-def run_ip_moea(wf, sc, cfg: BaselineConfig, dominance=imprecise_dominance_matrix) -> RunResult:
+def run_ip_moea(wf, sc, cfg: BaselineConfig, dominance=imprecise_dominance_matrix,
+                crowd_mode: str = "mid") -> RunResult:
     """IP-MOEA; with another `dominance` relation, the matching NSGA-II variant."""
     t0 = time.perf_counter()
     rng = np.random.default_rng(cfg.seed)
@@ -165,7 +192,7 @@ def run_ip_moea(wf, sc, cfg: BaselineConfig, dominance=imprecise_dominance_matri
     F_lo, F_hi = ev.evaluate_population(pop.X, pop.O)
     trace.record(0, F_lo, F_hi)
     for gen in range(cfg.generations):
-        _, rank, crowd = _rank_and_crowd(F_lo, F_hi, dominance)
+        _, rank, crowd = _rank_and_crowd(F_lo, F_hi, dominance, crowd_mode)
 
         def tournament() -> int:
             a, b = rng.integers(N, size=2)
@@ -182,7 +209,7 @@ def run_ip_moea(wf, sc, cfg: BaselineConfig, dominance=imprecise_dominance_matri
         G_lo, G_hi = ev.evaluate_population(Xc, Oc)
         merged = Population.concat(pop, Population(Xc, Oc))
         M_lo, M_hi = np.concatenate([F_lo, G_lo]), np.concatenate([F_hi, G_hi])
-        fronts, _, crowd_m = _rank_and_crowd(M_lo, M_hi, dominance)
+        fronts, _, crowd_m = _rank_and_crowd(M_lo, M_hi, dominance, crowd_mode)
         keep = []
         for f in fronts:
             if len(keep) + len(f) <= N:
@@ -356,6 +383,8 @@ def run_baseline(name: str, wf, sc, cfg: Optional[BaselineConfig] = None) -> Run
     cfg = cfg or BaselineConfig()
     if name in DOMINANCE:
         return run_ip_moea(wf, sc, cfg, DOMINANCE[name])
+    if name == "ip_moea_hv":
+        return run_ip_moea(wf, sc, cfg, imprecise_dominance_matrix, crowd_mode="hv")
     if name == "nsga3_mid":
         return run_nsga3(wf, sc, cfg)
     if name == "imoead_awn":                     # B1, see baselines_b1.py

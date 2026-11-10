@@ -1,0 +1,44 @@
+{
+  "name": "checks_a",
+  "policies": [
+    "ip_moea_hv",
+    "imoea_dqn"
+  ],
+  "train_seeds": [
+    0
+  ],
+  "train_set": [
+    "montage_100",
+    "epigenomics_100",
+    "cybershake_100",
+    "inspiral_100",
+    "sipht_100"
+  ],
+  "test_set": [
+    "medium_250_i0@x20"
+  ],
+  "train_episodes": 40,
+  "generations": 1000,
+  "pop": 105,
+  "seeds": 10,
+  "workers": 12,
+  "reuse_from": null,
+  "reference": "ip_moea_hv",
+  "scenario": "default",
+  "data_multiplier": null,
+  "energy_scope": "device",
+  "external_io": "device",
+  "makespan": "sum_apps",
+  "train_generations": null,
+  "val_set": null,
+  "val_every": 10,
+  "val_generations": 300,
+  "rank_metric": "IGD",
+  "summary_only": false,
+  "width_scale": null,
+  "edge_queue": false,
+  "trace": false,
+  "save_front": false,
+  "git_commit": "555cda7a14aee9d1834d4c8a36e24cdc9cd16346",
+  "git_dirty": true
+}

@@ -89,6 +89,7 @@ POLICIES = {
     "trained_nogat_stable": {"kind": "greedy", "variant": "nogat_stable"},
     "schedule":       {"kind": "schedule"},
     "ip_moea":        {"kind": "baseline", "name": "ip_moea"},
+    "ip_moea_hv":     {"kind": "baseline", "name": "ip_moea_hv"},     # IP-MOEA, hypervolume-contribution crowding
     "imoead":         {"kind": "baseline", "name": "imoead"},
     "imoead_orig":    {"kind": "baseline", "name": "imoead_orig"},   # original schedule: T = 10, late adaptation
     "nsga2_mid":      {"kind": "baseline", "name": "nsga2_mid"},
@@ -97,6 +98,9 @@ POLICIES = {
     "imoead_awn":     {"kind": "baseline", "name": "imoead_awn"},
     "imea_ied":       {"kind": "baseline", "name": "imea_ied"},
     "fresh":          {"kind": "fresh"},
+    # B2: IMOEA-DQN as published (Jin et al. 2026, Sec. 4.3 / 5.1): learns online in every run, Q-network
+    # an MLP 32-64-32 on the 7 population features (no graph embedding), Jin backbone
+    "imoea_dqn":      {"kind": "fresh", "agent_cfg": {"use_graph": False, "hidden": (32, 64, 32)}},
     "random":         {"kind": "random"},
     "fixed":          {"kind": "fixed", "action": (1 / 3, 1 / 3, 1 / 3)},
     "fixed_fav":      {"kind": "fixed", "action": (5 / 6, 1 / 6, 0.0)},
@@ -340,6 +344,9 @@ def job(spec) -> str:
         cfg = RunConfig(**base, policy="dqn", greedy=True, learn=False, **_variant(d["variant"], 0)[1])
     elif d["kind"] == "fresh":
         cfg = RunConfig(**base, policy="dqn", **_backbone(d.get("backbone")))
+        if d.get("agent_cfg"):
+            from gat_imoea_dqn.dqn import DQNConfig
+            agent = DQNAgent(DQNConfig(**d["agent_cfg"], seed=spec["seed"]))
     elif d["kind"] == "random":
         cfg = RunConfig(**base, policy="random", action_set=d.get("action_set", "all"), **_backbone(d.get("backbone")))
     elif d["kind"] == "schedule":
