@@ -507,6 +507,23 @@ setting for comparability and three-tier energy as a sensitivity study.
       points there), so IGD weights shift. The 1000-task comparison with IMOEA/D is within the
       sensitivity of the normalisation; do not claim it either way without a robustness check
       (e.g. normalise over the union of every policy, or per-objective ranks).
+    - [x] Robustness check (2026-11-10, `scripts/robustness.py` -> results/stats/robustness.{md,csv}):
+      final vs IMOEA/D (30 + 30 seeds, Wilcoxon, alpha 0.05) with the normalisation and reference
+      front taken from four pools: paper10 (current tables), union12 (+ ip_moea, trained_stable),
+      strong5 (final, IMOEA/D, IMOEA/D-AWN, NSGA-II mid / int), pair2 (final, IMOEA/D).
+      - Suite A: final better on IGD and HV_jin on 12/12 in every pool.
+      - Suite B, HV_jin: 42/2/1 in paper10, union12, strong5; 42/1/2 in pair2. Stable.
+      - Suite B, IGD: 43/1/1, 42/1/2, 33/9/3, 34/6/5. Every change is at 1000 tasks (plus
+        montage_100@x100, a tie in 3 of 4). Without the weak baselines in the pool, IMOEA/D has the
+        lower IGD on 6-9 of the 15 1000-task instances (cybershake x1 / x20, epigenomics x1 / x20,
+        inspiral x1 / x20, sipht x20; montage / sipht x1 become ties). inspiral_1000@x100 goes to
+        IMOEA/D in every pool on both metrics.
+      - Reading: up to 400 tasks every conclusion is pool-independent. At 1000 tasks final keeps
+        the HV lead but the IGD verdict depends on what the reference front contains; the weak
+        baselines add reference points (likely at the extremes) that final covers and IMOEA/D does
+        not. Paper: use HV_jin as the headline metric at 1000 tasks, show the strong5 IGD as a
+        sensitivity table, and state that at 1000 tasks IMOEA/D is level or ahead on IGD (consistent
+        with E5: both still converging at G=1000).
     - Imprecision: IMOEA-DQN ranks 1.00 on both suites because its front collapses to a few
       solutions; report it next to front size.
     - Not updated: E5 curves and E7 Monte Carlo still use ip_moea / trained_stable (the reruns did
