@@ -1,0 +1,15 @@
+Offloading tasks to edge servers or the cloud trades completion time against device energy and cost, under uncertain
+bandwidth and server capacity. We formulate the offloading of directed acyclic graph (DAG) workflows over mobile devices,
+edge servers and a cloud as an interval multi-objective problem: task placement and task order are optimised for
+makespan along the interval critical path, device energy and cost, with uncertain quantities given as intervals.
+Extending a recent reinforcement-learning-driven interval evolutionary algorithm to this problem, we show that its
+convergence ranking, an interval dominance degree, stops selecting once most of the population is mutually
+non-dominated, and that its learned control of the selection weights does not beat a fixed choice because the
+per-generation reward is almost pure noise. The proposed \ours{} uses an interval best-position Tchebycheff rank as the
+convergence tier of the dominance-, diversity- and uncertainty-aware three-tier selection, mates neighbours in
+objective space and uses DAG-valid crossover and mutation. On 57 instances with up to 1000 tasks, it is compared with
+four interval evolutionary algorithms, NSGA-II, NSGA-III, the reinforcement-learning-driven predecessor and
+list-scheduling heuristics. \ours{} has the best IGD and hypervolume on all 12 instances of the predecessor's sizes and
+beats the strongest baseline on 43 of 45 workflow instances in IGD and 42 in hypervolume, at a similar running time.
+At 1000 and 2000 tasks it keeps the higher hypervolume, while IGD is level. A Monte Carlo check confirms that the
+predicted objective intervals contain the realised values.

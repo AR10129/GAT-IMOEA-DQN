@@ -288,8 +288,9 @@ def write(name, body):
     print("wrote", p.relative_to(ROOT))
 
 
-def table(caption, label, colspec, head, rows, size=r"\scriptsize", sideways=False, note=None):
-    env = "sidewaystable" if sideways else "table"
+def table(caption, label, colspec, head, rows, size=r"\scriptsize", sideways=False, note=None, wide=False):
+    """wide=True: table* (spans both columns of the two-column paper)."""
+    env = "sidewaystable" if sideways else ("table*" if wide else "table")
     L = [f"\\begin{{{env}}}[!htbp]", "\\centering", size, f"\\caption{{{caption}}}", f"\\label{{{label}}}",
          "\\setlength{\\tabcolsep}{3pt}", f"\\begin{{tabular}}{{{colspec}}}", "\\toprule", *head, "\\midrule", *rows,
          "\\bottomrule", "\\end{tabular}"]
@@ -340,6 +341,54 @@ def t_suite(suite, S, metric, scale, digits):
     return table(cap, f"tab:suite{suite.lower()}_{metric.lower()}", "l" + "c" * len(PAPER), head, rows,
                  size=r"\tiny", sideways=True, note=SYM_NOTE + (" Imprecision is the sum of the interval widths over the final front, so it grows with front size."
                                                                if metric == "Imprecision" else ""))
+
+
+def t_summary(SA, SB):
+    """Main-text results table: one row per method, both suites. Replaces the per-instance tables
+    (supplement) and the Friedman table in the paper body."""
+    others = [p for p in PAPER if p != "final"]
+    blocks = {}
+    for suite, S in (("A", SA), ("B", SB)):
+        keys = sorted(S, key=lambda k: natural(k[1]))
+        cnt = {m: {p: {"+": 0, "-": 0, "=": 0} for p in others} for m in ("IGD", "HV_jin")}
+        for k in keys:
+            for m in ("IGD", "HV_jin"):
+                sy = symbols(S[k], others, m)
+                for p in others:
+                    cnt[m][p][sy[p]] += 1
+        R = {m: dict(zip(PAPER, friedman(S, PAPER, m)[0])) for m in ("IGD", "HV_jin")}
+        cd = friedman(S, PAPER, "IGD")[3]
+        mean = {m: {p: np.mean([S[k][p][m].mean() for k in keys]) for p in PAPER} for m in ("IGD", "HV_jin")}
+        blocks[suite] = (cnt, R, mean, len(keys), cd)
+    rows = []
+    for p in PAPER:
+        cells = []
+        for suite in ("A", "B"):
+            cnt, R, mean, n, _ = blocks[suite]
+            bi = min(mean["IGD"].values())
+            bh = max(mean["HV_jin"].values())
+            ig = f"{mean['IGD'][p] * 100:.2f}"
+            hv = f"{mean['HV_jin'][p]:.3f}"
+            ig = f"\\textbf{{{ig}}}" if np.isclose(mean["IGD"][p], bi) else ig
+            hv = f"\\textbf{{{hv}}}" if np.isclose(mean["HV_jin"][p], bh) else hv
+            wl = ["--", "--"] if p == "final" else [
+                "/".join(str(cnt[m][p][s]) for s in "+-=") for m in ("IGD", "HV_jin")]
+            cells += [ig, hv, wl[0], wl[1], f"{R['IGD'][p]:.2f}"]
+        rows.append(SHORT_FULL.get(p, LABEL[p]) + " & " + " & ".join(cells) + r" \\")
+    (_, _, _, nA, cdA), (_, _, _, nB, cdB) = blocks["A"], blocks["B"]
+    head = [r"& \multicolumn{5}{c}{Suite A (" + str(nA) + r" instances)} & \multicolumn{5}{c}{Suite B (" + str(nB) +
+            r" instances)} \\",
+            r"\cmidrule(lr){2-6}\cmidrule(lr){7-11}",
+            r"Method & IGD & HV & IGD $+/-/\approx$ & HV $+/-/\approx$ & Rank & IGD & HV & IGD $+/-/\approx$ & "
+            r"HV $+/-/\approx$ & Rank \\"]
+    cap = (r"Results on both suites: mean IGD ($\times10^{-2}$) and HV over instances, the number of instances on which "
+           r"each method is significantly better / worse / not different from \ours{} (Wilcoxon rank-sum, Holm-corrected, "
+           r"$\alpha = 0.05$), and the mean Friedman rank by IGD (Nemenyi critical difference "
+           f"{cdA:.2f} on Suite A, {cdB:.2f} on Suite B). Per-instance results are in the supplementary material.")
+    return table(cap, "tab:summary", "l" + "c" * 10, head, rows, size=r"\footnotesize", wide=True)
+
+
+SHORT_FULL = {"nsga2_mid": "NSGA-II (mid)", "nsga2_int": "NSGA-II (int)", "nsga3_mid": "NSGA-III"}
 
 
 def t_friedman(SA, SB):
@@ -439,7 +488,7 @@ def t_ablation(S):
            "instances; $+/-/\\approx$ counts instances where the variant is significantly better / worse / not "
            "different from the reference in the last column (Wilcoxon rank-sum, $\\alpha = 0.05$). One normalisation "
            "per instance over all variants.")
-    return table(cap, "tab:ablation", "lccccc", head, rows, size=r"\scriptsize")
+    return table(cap, "tab:ablation", "lccccc", head, rows, size=r"\scriptsize", wide=True)
 
 
 def t_sensitivity(S):
@@ -460,7 +509,7 @@ def t_sensitivity(S):
            "Each row changes one setting of the base case. The last two columns count instances where IMOEA/D is "
            "significantly better / worse / not different from \\ours{} (Wilcoxon rank-sum, Holm over the three "
            "compared methods, $\\alpha = 0.05$).")
-    return table(cap, "tab:sensitivity", "lcccccc", head, rows, size=r"\scriptsize")
+    return table(cap, "tab:sensitivity", "lcccccc", head, rows, size=r"\scriptsize", wide=True)
 
 
 def t_scalability(S):
@@ -570,7 +619,7 @@ def t_learners(S):
            r"$+/-/\approx$ counts instances where the row is significantly better / worse / not different from the "
            r"best fixed action (Wilcoxon rank-sum, $\alpha = 0.05$; with 4 runs few differences can reach significance). "
            r"One normalisation per instance over all rows except IMOEA-DQN, which is scored on it without joining it (it lies far outside).")
-    return table(cap, "tab:learners", "lccccc", head, rows, size=r"\scriptsize")
+    return table(cap, "tab:learners", "lccccc", head, rows, size=r"\scriptsize", wide=True)
 
 
 def t_gat(S):
@@ -736,6 +785,7 @@ def main() -> int:
         for m, sc, dg in (("IGD", 100, 2), ("HV_jin", 1, 3), ("Imprecision", 1, 1)):
             tabs[f"suite{suite.lower()}_{m.lower()}"] = t_suite(suite, S, m, sc, dg)
     tabs["friedman"] = t_friedman(SA, SB)
+    tabs["summary"] = t_summary(SA, SB)
     tabs["heuristics"] = t_heuristics(SA, SB)
     tabs["robustness"] = t_robustness()
     tabs["ablation"] = t_ablation(read_scores("ablation"))
