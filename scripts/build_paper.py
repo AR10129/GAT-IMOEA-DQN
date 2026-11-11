@@ -89,12 +89,42 @@ def scored_tables():
          "suite_b": [("", None, SUITE_B, PAPER, ["heuristics"], {}, None)],
          "ablation": [("", None, ["ablation", "suite_a_main"], list(dict.fromkeys(r[1] for r in ABL_ROWS)), [], {}, 10)],
          "sensitivity": [(lvl, None, [lvl], E4, [], {}, None) for lvl, _ in E6_LEVELS],
-         "scalability": [("", None, ["scale_2000"], E4, [], {}, None)]}
+         "scalability": [("", None, ["scale_2000"], E4, [], {}, None)],
+         "learners": [("", w, ["dqn_fix_test", "suite_a_main", "rerun_imoeadqn_a"],
+                       [r[1] for r in LEARN_ROWS if r[1] != "imoea_dqn"], ["imoea_dqn"], {}, 4)   # far off; not in the pool
+                      for w in LEARN_CASES],
+         "gat": [(g, None, [e], [a, b], [], {}, None) for g, e, a, b, _ in GAT_PAIRS]}
     return T
 
 
+# D1 / C4: learned control of (alpha, beta, gamma). The learners and their references run on the
+# Tchebycheff backbone with the earlier mating default (T = 20, p_local = 0.9); final is the frozen method.
+LEARN_CASES = ["small_20_i0@x1", "basic_60_i0@x20", "medium_100_i0@x1", "medium_250_i0@x20"]
+LEARN_ROWS = [("Fixed actions", "tch_fixed_fav", "best fixed action $(5/6, 1/6, 0)$"),
+              ("Fixed actions", "tch_conv", "action $(1, 0, 0)$"),
+              ("Fixed actions", "tch_random_conv", r"random action each step, among the 10 with $\alpha \ge 1/2$"),
+              ("Learned control (DQN)", "tch_trained_stable", "every generation, PIBI reward, 28 actions, GAT"),
+              ("Learned control (DQN)", "tch_trained_nogat_stable", "every generation, PIBI reward, 28 actions, no GAT"),
+              ("Learned control (DQN)", "tch_trained_blk", "every 50 generations, HV-gain reward, 28 actions, GAT"),
+              ("Learned control (DQN)", "tch_trained_nogat_blk", "every 50 generations, HV-gain reward, 28 actions, no GAT"),
+              ("Learned control (DQN)", "tch_trained_l8", "every 25 generations, log-HV reward, 10 actions, GAT"),
+              ("Learned control (DQN)", "tch_trained_nogat_l8", "every 25 generations, log-HV reward, 10 actions, no GAT"),
+              ("For comparison", "final", r"\ours{} ($T = 10$, $p_{local} = 1.0$, fixed action)"),
+              ("For comparison", "imoea_dqn", r"IMOEA-DQN (Jin et al.\ backbone, online DQN)"),
+              ("For comparison", "imoead_orig", "IMOEA/D")]
+GAT_PAIRS = [("jin", "suite_a_main", "trained_stable", "trained_nogat_stable",
+              r"Jin et al.\ backbone, every generation, PIBI reward"),
+             ("tch", "suite_a_tch", "tch_trained_stable", "tch_trained_nogat_stable",
+              "Tchebycheff backbone, every generation, PIBI reward"),
+             ("blk", "dqn_fix_test", "tch_trained_blk", "tch_trained_nogat_blk",
+              "Tchebycheff backbone, every 50 generations, HV-gain reward"),
+             ("l8", "dqn_fix_test", "tch_trained_l8", "tch_trained_nogat_l8",
+              "Tchebycheff backbone, every 25 generations, log-HV reward, 10 actions")]
+
+
 FIGURES = {"e5_convergence": "scripts/convergence.py (E5)", "a3_stall": "scripts/a3_tiers.py --stall (A3)",
-           "a3_tradeoff": "scripts/a3_tiers.py (A3)"}
+           "a3_tradeoff": "scripts/a3_tiers.py (A3)", "d1_reward_audit": "scripts/d1_learning.py (D1)",
+           "d1_training": "scripts/d1_learning.py (D1)"}
 
 
 # ---------------------------------------------------------------- scoring
@@ -509,6 +539,55 @@ def t_timing():
                  note=" ".join(notes) or None)
 
 
+def _wlt(S, keys, p, ref, m):
+    s = [symbols({ref: S[k][ref], p: S[k][p]}, [p], m, ref=ref)[p] for k in keys]
+    return f"{s.count('+')}/{s.count('-')}/{s.count('=')}"
+
+
+def t_learners(S):
+    keys = sorted(S, key=lambda k: natural(k[1]))
+    ref = "tch_fixed_fav"
+    rows, last = [], None
+    for group, p, lab in LEARN_ROWS:
+        if group != last:
+            if last is not None:
+                rows.append(r"\midrule")
+            rows.append(f"\\multicolumn{{6}}{{l}}{{\\textit{{{group}}}}}" + r" \\")
+            last = group
+        igd = np.mean([S[k][p]["IGD"].mean() for k in keys]) * 100
+        hv = np.mean([S[k][p]["HV_jin"].mean() for k in keys])
+        imp = np.mean([S[k][p]["Imprecision"].mean() for k in keys])
+        w = ["--", "--"] if p == ref else [_wlt(S, keys, p, ref, m) for m in ("IGD", "HV_jin")]
+        rows.append(f"\\quad {lab} & {igd:.2f} & {hv:.3f} & {imp:.1f} & {w[0]} & {w[1]}" + r" \\")
+    head = [r"Control of $(\alpha, \beta, \gamma)$ & IGD ($\times10^{-2}$) & HV & Imprecision & "
+            r"IGD $+/-/\approx$ & HV $+/-/\approx$ \\"]
+    cap = (r"Learned control of the selection weights $(\alpha, \beta, \gamma)$ against fixed actions, on four Suite A "
+           r"instances (small-20 $\times$1, basic-60 $\times$20, medium-100 $\times$1, medium-250 $\times$20), 4 runs "
+           r"each; DQN agents trained on the training instances (2--3 training seeds, averaged per run). All rows above "
+           r"\ours{} use the Tchebycheff backbone with $T = 20$, $p_{local} = 0.9$. Means over the instances; "
+           r"$+/-/\approx$ counts instances where the row is significantly better / worse / not different from the "
+           r"best fixed action (Wilcoxon rank-sum, $\alpha = 0.05$; with 4 runs few differences can reach significance). "
+           r"One normalisation per instance over all rows except IMOEA-DQN, which is scored on it without joining it (it lies far outside).")
+    return table(cap, "tab:learners", "lccccc", head, rows, size=r"\scriptsize")
+
+
+def t_gat(S):
+    rows = []
+    for g, _, a, b, lab in GAT_PAIRS:
+        keys = sorted([k for k in S if k[0] == g], key=lambda k: natural(k[1]))
+        runs = len(S[keys[0]][a]["IGD"])
+        ia, ib = (np.mean([S[k][p]["IGD"].mean() for k in keys]) * 100 for p in (a, b))
+        ha, hb = (np.mean([S[k][p]["HV_jin"].mean() for k in keys]) for p in (a, b))
+        rows.append(f"{lab} & {len(keys)} & {runs} & {ia:.2f} / {ib:.2f} & {_wlt(S, keys, a, b, 'IGD')} & "
+                    f"{ha:.3f} / {hb:.3f} & {_wlt(S, keys, a, b, 'HV_jin')}" + r" \\")
+    head = [r"Learner & Inst. & Runs & IGD ($\times10^{-2}$) GAT / no GAT & GAT $+/-/\approx$ & "
+            r"HV GAT / no GAT & GAT $+/-/\approx$ \\"]
+    cap = (r"Graph attention (GAT) state encoder against the same learner without it, on Suite A instances. "
+           r"$+/-/\approx$ counts instances where the GAT agent is significantly better / worse / not different "
+           r"(Wilcoxon rank-sum, $\alpha = 0.05$). Each comparison is normalised per instance over its two agents only.")
+    return table(cap, "tab:gat", "lcccccc", head, rows, size=r"\scriptsize")
+
+
 def t_montecarlo():
     data, info = {}, {}
     with open(STATS / "e7_montecarlo.csv", encoding="utf-8") as f:
@@ -580,6 +659,8 @@ def main() -> int:
     tabs["scalability"] = t_scalability(read_scores("scalability"))
     tabs["timing"] = t_timing()
     tabs["montecarlo"] = t_montecarlo()
+    tabs["learners"] = t_learners(read_scores("learners"))
+    tabs["gat"] = t_gat(read_scores("gat"))
     for n, b in tabs.items():
         write(n, b)
 

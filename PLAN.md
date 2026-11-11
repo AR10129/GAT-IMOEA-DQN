@@ -566,9 +566,21 @@ setting for comparability and three-tier energy as a sensitivity study.
   - IMOEA-DQN vs the fixed-action backbone: +0-56% (none at cybershake 100/400, +33% at 1000,
     +43% at 2000, +56% on Suite A medium_250): the per-generation GAT inference over the DAG.
     final drops it, which is part of its case.
-- [ ] D1. Write-up material for C4: the reward-audit figures (per-step SNR by phase; reward
+- [x] D1. Write-up material for C4: the reward-audit figures (per-step SNR by phase; reward
   ranking vs IGD ranking), the three-learner table (stable / blk / l8), GAT vs no-GAT. A full Suite A
   retrain of L8 only if a reviewer asks.
+  Done 2026-11-11. `scripts/d1_learning.py` -> results/figures/d1_reward_audit (SNR per 50-generation
+  window: 0.19-0.27 in G 0-50, 0.02-0.08 after G 100; summed-reward rank vs IGD rank over the 28
+  actions, Spearman 0.92 / 0.90, (2/3, 0, 1/3) ranks 3rd / 5th on reward but 8th / 9th on IGD) and
+  d1_training (training reward per episode relative to the workflow's mean: flat for the
+  every-generation and L8 designs, rising for the 50-generation block design, which still tests
+  worst; validation scores of the stable agents flat at 0.47-0.52). Tables in build_paper.py:
+  `learners` (4 Suite A cases x 4 runs, tch backbone T=20 p=0.9): best fixed action IGD 1.43e-2;
+  every learner worse (L8 no-GAT 1.96, L8 GAT 2.23, stable 3.2-3.7, block 5.4-7.3, random among the
+  10 convergent actions 2.51); final 1.21; faithful IMOEA-DQN 23.9 (scored outside the pool).
+  `gat` (GAT vs no-GAT, Wilcoxon per instance): Jin backbone 12 inst. IGD 3/1/8, HV 9/0/3; tch
+  backbone IGD 3/2/7, HV 6/0/6; block IGD 0/3/1; L8 IGD 0/1/3. So the GAT helps HV a little on the
+  every-generation learner and hurts on the other two designs; no design beats a fixed action.
 
 ### P2 — Evaluation
 - [ ] E1. Suite A (3 scales × 2 device counts × CCR ×1 / ×20) and Suite B (5 families × 3 sizes × 3 CCR)
@@ -738,7 +750,7 @@ setting for comparability and three-tier energy as a sensitivity study.
     note). Median s: ip_moea_hv 204 / 218 / 173 / 171 / 175 / 191 (small_20, medium_250, cybershake
     100-2000): 4-7x final, the exact HV contributions per front; imoea_dqn 43 / 56 / 39 / 47 / 64 / 98,
     about the same as the offline-GAT version. Table drops the superseded ip_moea row.
-  - [ ] Still to add: C4 figures (D1), front plots if wanted.
+  - [x] C4 figures and tables (D1) added. Front plots only if wanted.
 - [ ] R2. System-model figure, pseudocode, complexity, parameter table
 - [ ] R3. Threats to validity and limitations (no link contention, no receive energy, interval
   bounds assumed to hold, fixed action chosen on training instances, at 1000-2000 tasks IMOEA/D
