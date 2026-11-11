@@ -124,7 +124,9 @@ GAT_PAIRS = [("jin", "suite_a_main", "trained_stable", "trained_nogat_stable",
 
 FIGURES = {"e5_convergence": "scripts/convergence.py (E5)", "a3_stall": "scripts/a3_tiers.py --stall (A3)",
            "a3_tradeoff": "scripts/a3_tiers.py (A3)", "d1_reward_audit": "scripts/d1_learning.py (D1)",
-           "d1_training": "scripts/d1_learning.py (D1)"}
+           "d1_training": "scripts/d1_learning.py (D1)", "system_model": "scripts/system_figure.py (R2)"}
+# hand-written LaTeX the preview also inputs (paths relative to paper/)
+STATIC = ["algorithms/drimoea", "sections/complexity"]
 
 
 # ---------------------------------------------------------------- scoring
@@ -336,7 +338,7 @@ def t_suite(suite, S, metric, scale, digits):
            f"30 runs, the other methods 10.")
     head = ["Instance & " + " & ".join(SHORT[p] for p in PAPER) + r" \\"]
     return table(cap, f"tab:suite{suite.lower()}_{metric.lower()}", "l" + "c" * len(PAPER), head, rows,
-                 size=r"\tiny", sideways=True, note=SYM_NOTE + (" Imprecision is per solution and does not account for front size."
+                 size=r"\tiny", sideways=True, note=SYM_NOTE + (" Imprecision is the sum of the interval widths over the final front, so it grows with front size."
                                                                if metric == "Imprecision" else ""))
 
 
@@ -588,6 +590,88 @@ def t_gat(S):
     return table(cap, "tab:gat", "lcccccc", head, rows, size=r"\scriptsize")
 
 
+def _iv(v, unit=""):
+    """[lo, hi] -> '$[lo, hi]$ unit'."""
+    lo, hi = v
+    f = lambda x: f"{x:g}"                                                    # noqa: E731
+    return f"$[{f(lo)}, {f(hi)}]$" + (f" {unit}" if unit else "")
+
+
+def t_params():
+    """Parameter table. Algorithm values are read from the frozen configuration in the code
+    (scripts/experiment.py POLICIES['final'] and the defaults it inherits), environment values
+    from datasets/scenarios/jin.yaml and dataset_tools/suite_a.py, so the table cannot drift."""
+    import yaml
+    import experiment as E
+    from dataset_tools.suite_a import CONFIGS, JIN_DEVICE_CPU, JIN_EDGE_CPU, JIN_TX_POWER
+    from gat_imoea_dqn.algorithm import RunConfig
+    from gat_imoea_dqn.selection import _das_dennis, selection_actions
+    sc = yaml.safe_load((ROOT / "datasets" / "scenarios" / "jin.yaml").read_text(encoding="utf-8"))
+    pol = E.POLICIES["final"]
+    bb = E._backbone(pol["backbone"])
+    sel, var = bb["selection"], bb["variation"]
+    N = RunConfig().pop_size
+    G = 1000
+    q = 1
+    while len(_das_dennis(q + 1, 3)) <= N:
+        q += 1
+    a = pol["action"]
+    n_C = int(round(a[0] * N))
+    n_D = min(int(round(a[1] * N)), N - n_C)
+    frac = {0.0: "0", 1 / 6: "1/6", 5 / 6: "5/6", 1.0: "1"}
+    act = ", ".join(next(v for k, v in frac.items() if abs(k - x) < 1e-9) for x in a)
+    k_icd = int(round(np.sqrt(2 * N)))
+    dev = sc["mobile_devices"]
+    edge, cloud, links, price = sc["edge_servers"], sc["cloud"], sc["links"], sc["pricing"]
+    up = links["wireless_uplink"]
+    ours = r"$^{\dagger}$"
+    S = lambda s: [r"\midrule", f"\\multicolumn{{2}}{{l}}{{\\textit{{{s}}}}} \\\\"]   # noqa: E731
+    R = lambda k, v: f"\\quad {k} & {v} \\\\"                                     # noqa: E731
+    rows = S("Environment (Jin et al.'s Table~1; Suite B uses their small scale)")[1:]
+    rows += [R("Mobile-device CPU frequency", ", ".join(_iv(v) for v in JIN_DEVICE_CPU) + " GHz, cycled over devices"),
+             R("Device energy per Gcycle" + ours, _iv(dev["energy_per_gcycle_j"][0], "J")),
+             R("Transmit / idle power", "\\{" + ", ".join(f"{x:g}" for x in JIN_TX_POWER) +
+               f"\\}} W / {dev['idle_power_w'][0]:g} W"),
+             R("Edge-server CPU (shared by its tasks)", ", ".join(_iv(v) for v in JIN_EDGE_CPU) + " GHz"),
+             R("Cloud CPU per task", _iv(cloud["cpu_ghz"], "GHz")),
+             R("Wireless bandwidth / channel gain / noise", f"{_iv(up['bandwidth_mhz'], 'MHz')} / {up['channel_gain']:g} / "
+               "$-100$ dBm"),
+             R("Edge--cloud link", _iv(links["backhaul_mbps"], "Mbps")),
+             R("Edge--edge link" + ours + " / downlink" + ours, f"{_iv(links['edge_to_edge_mbps'], 'Mbps')} / equal to the uplink"),
+             R("Prices $\\eta_E$ / $\\eta_C$", f"{price['edge_usd_per_ghz_s']:g} \\$/(GHz s) / {price['cloud_usd_per_s']:g} \\$/s"),
+             R("Task workload / data per DAG edge", "1--5 Gcycles / 500--3000 KB, data $\\times$1, $\\times$20, $\\times$100"),
+             R("Suite A (edge servers, tasks, devices)", "; ".join(f"{n.replace('_', '-')}: {e}, {k}, {d}"
+                                                               for n, (e, k, d) in CONFIGS.items())),
+             R("Suite B", "3 edge servers, 6 devices (one origin), 5 workflow families, 100 / 400 / 1000 / 2000 tasks")]
+    rows += S("\\ours{}")
+    rows += [R("Population size $N$ / generations $G$", f"{N} / {G} ({N * (G + 1):,} evaluations per run)"),
+             R("Selection weights $(\\alpha, \\beta, \\gamma)$", f"$({act})$: {n_C} places by Rank C, {n_D} by Rank D, "
+               f"{N - n_C - n_D} by Rank U"),
+             R("Rank C", f"interval Tchebycheff, {N} Das--Dennis weight vectors ($q = {q}$), objectives "
+               "normalised over the pool"),
+             R("Rank C tie-break", "descending interval crowding distance" if sel.tie_break == "icd" else sel.tie_break),
+             R("Interval crowding neighbours $k$", f"$\\mathrm{{round}}(\\sqrt{{2N}}) = {k_icd}$"),
+             R("Interval dominance threshold", f"possibility degree {sel.dominance_threshold:g}"),
+             R("Mating", f"partner among the $T = {var.neighbours}$ nearest (normalised midpoints) with probability "
+               f"{var.p_local:g}"),
+             R("Crossover", f"DAEC on the allocation string (gene from either parent with probability "
+               f"{var.elite_bias:g}), POX on the priority string; $p_c = {var.p_c_low:g}$ / ${var.p_c_high:g}$ "
+               "(top / bottom half by uncertainty front)"),
+             R("Mutation", "reassign each task with probability $1/K$; shift each task within its precedence window "
+               "with probability $1/K$"),
+             R("Clone removal", "yes (identical genotypes skipped in selection)" if sel.dedupe_genotypes else "no")]
+    rows += S("Protocol")
+    rows += [R("Runs", "30 for \\ours{}, IMOEA/D and the Jin backbone; 10 for the others; paired seeds"),
+             R("Metrics", "IGD on midpoints (pooled reference front), HV (mean of lower- and upper-bound HV, "
+               "reference 1.1), Imprecision"),
+             R("Statistics", "Wilcoxon rank-sum, Holm-corrected, $\\alpha = 0.05$; Friedman with Nemenyi CD"),
+             R("Action set of the learned controllers", f"{len(selection_actions())} Das--Dennis actions ($q = 6$)")]
+    head = [r"Parameter & Value \\"]
+    cap = (r"Parameters. $^{\dagger}$ Not given by Jin et al.; our choice. Every baseline uses the same encoding, "
+           r"operators, evaluator, population size and number of evaluations.")
+    return table(cap, "tab:params", r"p{0.32\linewidth}p{0.62\linewidth}", head, rows, size=r"\footnotesize")
+
+
 def t_montecarlo():
     data, info = {}, {}
     with open(STATS / "e7_montecarlo.csv", encoding="utf-8") as f:
@@ -628,7 +712,7 @@ def t_montecarlo():
 # ---------------------------------------------------------------- driver
 
 PREVIEW = r"""\documentclass[review]{elsarticle}
-\usepackage{booktabs,graphicx,rotating,amsmath}
+\usepackage{booktabs,graphicx,rotating,amsmath,amssymb,algorithm,algpseudocode}
 \newcommand{\ours}{DR-IMOEA}
 \begin{document}
 \title{Tables and figures (generated)}
@@ -659,6 +743,7 @@ def main() -> int:
     tabs["scalability"] = t_scalability(read_scores("scalability"))
     tabs["timing"] = t_timing()
     tabs["montecarlo"] = t_montecarlo()
+    tabs["params"] = t_params()
     tabs["learners"] = t_learners(read_scores("learners"))
     tabs["gat"] = t_gat(read_scores("gat"))
     for n, b in tabs.items():
@@ -666,7 +751,8 @@ def main() -> int:
 
     figs = PAPER_DIR / "figures"
     figs.mkdir(parents=True, exist_ok=True)
-    body = [f"\\input{{tables/{n}}}" for n in tabs]
+    body = [f"\\input{{{s}}}" for s in STATIC if (PAPER_DIR / f"{s}.tex").exists()]
+    body += [f"\\input{{tables/{n}}}" for n in tabs]
     for f, src in FIGURES.items():
         p = ROOT / "results" / "figures" / f"{f}.pdf"
         if not p.exists():

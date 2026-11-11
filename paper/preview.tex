@@ -1,9 +1,13 @@
 \documentclass[review]{elsarticle}
-\usepackage{booktabs,graphicx,rotating,amsmath}
+\usepackage{booktabs,graphicx,rotating,amsmath,amssymb,algorithm,algpseudocode}
 \newcommand{\ours}{DR-IMOEA}
 \begin{document}
 \title{Tables and figures (generated)}
 \maketitle
+\input{algorithms/drimoea}
+\clearpage
+\input{sections/complexity}
+\clearpage
 \input{tables/suitea_igd}
 \clearpage
 \input{tables/suitea_hv_jin}
@@ -32,6 +36,8 @@
 \clearpage
 \input{tables/montecarlo}
 \clearpage
+\input{tables/params}
+\clearpage
 \input{tables/learners}
 \clearpage
 \input{tables/gat}
@@ -45,4 +51,6 @@
 \begin{figure}[!htbp]\centering\includegraphics[width=\linewidth]{figures/d1_reward_audit.pdf}\caption{d1\_reward\_audit (from scripts/d1\_learning.py (D1))}\end{figure}
 \clearpage
 \begin{figure}[!htbp]\centering\includegraphics[width=\linewidth]{figures/d1_training.pdf}\caption{d1\_training (from scripts/d1\_learning.py (D1))}\end{figure}
+\clearpage
+\begin{figure}[!htbp]\centering\includegraphics[width=\linewidth]{figures/system_model.pdf}\caption{system\_model (from scripts/system\_figure.py (R2))}\end{figure}
 \end{document}

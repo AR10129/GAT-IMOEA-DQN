@@ -1,0 +1,103 @@
+% Pseudocode of the method (R2). Written by hand to match the code:
+%   Algorithm 1 gat_imoea_dqn/algorithm.py run() with policy "fixed" and backbone "final"
+%   Algorithm 2 gat_imoea_dqn/operators.py make_offspring() with partner "neighbours"
+%   Algorithm 3 gat_imoea_dqn/selection.py environmental_selection() with convergence "tchebycheff"
+%   Algorithm 4 gat_imoea_dqn/evaluator.py (interval critical-path calculus)
+% Needs \usepackage{algorithm,algpseudocode,amsmath} and \newcommand{\ours}{...}.
+
+\begin{algorithm}[!htbp]
+\caption{\ours{}: main loop}
+\label{alg:main}
+\begin{algorithmic}[1]
+\Require DAG $\mathcal{G} = (V, E)$ with $K = |V|$ tasks, environment, population size $N$, generations $G_{\max}$,
+  selection weights $(\alpha, \beta, \gamma)$, neighbourhood size $T$
+\Ensure first interval non-dominated front of the final population
+\State $W \gets$ $N$ Das--Dennis weight vectors in $\mathbb{R}^3$
+\State $P \gets \emptyset$
+\For{$i = 1, \dots, N$}
+  \State $\mathbf{x}_i \gets$ for every task, a node drawn uniformly from those its device can reach
+  \State $\mathbf{o}_i \gets$ randomised Kahn order of $\mathcal{G}$ (uniform among ready tasks)
+  \State $P \gets P \cup \{(\mathbf{x}_i, \mathbf{o}_i)\}$
+\EndFor
+\State $\tilde{F}(P) \gets \Call{Evaluate}{P}$ \Comment{Algorithm~\ref{alg:eval}}
+\For{$t = 1, \dots, G_{\max}$}
+  \State $Q \gets \Call{Variation}{P, \tilde{F}(P), T}$ \Comment{Algorithm~\ref{alg:var}; $|Q| = N$}
+  \State $\tilde{F}(Q) \gets \Call{Evaluate}{Q}$
+  \State $P \gets \Call{Select}{P \cup Q, N, (\alpha, \beta, \gamma), W}$ \Comment{Algorithm~\ref{alg:sel}}
+\EndFor
+\State \Return the first front of $P$ under interval dominance
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[!htbp]
+\caption{\textsc{Variation}: neighbourhood mating, DAEC / POX crossover and DAG-valid mutation}
+\label{alg:var}
+\begin{algorithmic}[1]
+\Require population $P = \{(\mathbf{x}_i, \mathbf{o}_i)\}_{i=1}^{N}$ with interval objectives $\tilde{F}_i = [F^L_i, F^U_i]$, neighbourhood size $T$
+\State $\bar{F}_i \gets$ midpoint of $\tilde{F}_i$, each objective scaled to $[0, 1]$ over $P$
+\State $B(i) \gets$ the $T$ members nearest to $i$ in Euclidean distance on $\bar{F}$
+\State $r_{IN}(i) \gets$ index of $i$'s front under interval dominance
+\State $r_{UN}(i) \gets$ index of $i$'s front under Pareto dominance on $(U_1, U_2)$ \Comment{sum and product of widths}
+\State $p_c(i) \gets 0.7$ if $i$ is in the better half by $r_{UN}$, else $0.9$
+\For{$i = 1, \dots, N$}
+  \State $j \gets$ uniform from $B(i)$
+  \State $(\mathbf{x}, \mathbf{o}) \gets (\mathbf{x}_i, \mathbf{o}_i)$
+  \If{$\mathrm{rand}() < p_c(i)$}
+    \State $b, w \gets$ the better and the worse of $i, j$ by $(r_{IN}, r_{UN})$
+    \State $\mathbf{x} \gets$ DAEC$(\mathbf{x}_b, \mathbf{x}_w)$ \Comment{each gene from either parent with probability $1/2$}
+    \State $\mathbf{o} \gets$ POX$(\mathbf{o}_i, \mathbf{o}_j)$ \Comment{precedence-preserving}
+  \EndIf
+  \For{each task $k$}
+    \State with probability $1/K$: $x_k \gets$ another node reachable from $k$'s device
+    \State with probability $1/K$: move $k$ in $\mathbf{o}$ to a random position after its last predecessor and before its first successor
+  \EndFor
+  \State $q_i \gets (\mathbf{x}, \mathbf{o})$ \Comment{valid by construction; no repair is needed}
+\EndFor
+\State \Return $Q = \{q_i\}_{i=1}^{N}$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[!htbp]
+\caption{\textsc{Select}: three-tier environmental selection with a Tchebycheff Rank C}
+\label{alg:sel}
+\begin{algorithmic}[1]
+\Require pool $M$ ($|M| = 2N$) with $\tilde{F} = [F^L, F^U]$, size $N$, weights $(\alpha, \beta, \gamma)$, weight vectors $W$
+\State $n_C \gets \mathrm{round}(\alpha N)$, \; $n_D \gets \min(\mathrm{round}(\beta N), N - n_C)$, \; $n_U \gets N - n_C - n_D$
+\State $G^L, G^U \gets$ $F^L, F^U$ scaled per objective by $(F - \min_M F^L) / (\max_M F^U - \min_M F^L)$
+\For{each $\mathbf{w} \in W$}
+  \State $g_{\mathbf{w}}(x) \gets \tfrac{1}{2}\big(\max_m w_m G^L_m(x) + \max_m w_m G^U_m(x)\big)$ for every $x \in M$
+  \State $\pi_{\mathbf{w}} \gets$ $M$ sorted by ascending $g_{\mathbf{w}}$
+\EndFor
+\State $R_C(x) \gets \min_{\mathbf{w} \in W}$ position of $x$ in $\pi_{\mathbf{w}}$ \Comment{Rank C (replaces $R_{IN}$)}
+\State $\mathrm{ICD}(x) \gets$ sum of $\mathrm{ICD}(x, y)$ over the $\mathrm{round}(\sqrt{2N})$ most similar $y$ \Comment{Rank D}
+\State $R_U(x) \gets$ dominance degree of $x$ under Pareto dominance on $(U_1, U_2)$ \Comment{Rank U}
+\State $L_C \gets M$ by ascending $R_C$, ties by descending ICD; \; $L_D \gets M$ by descending ICD; \; $L_U \gets M$ by ascending $R_U$
+\State $S \gets \emptyset$
+\For{$(L, n) \in \big((L_C, n_C), (L_D, n_D), (L_U, n_U)\big)$}
+  \State append to $S$ the first $n$ members of $L$ that are not in $S$ and are not genotype copies of a member of $S$
+\EndFor
+\State if $|S| < N$ (only copies were left), fill $S$ from $L_C$
+\State \Return $S$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[!htbp]
+\caption{\textsc{Evaluate}: interval critical-path calculus for one solution $(\mathbf{x}, \mathbf{o})$}
+\label{alg:eval}
+\begin{algorithmic}[1]
+\State $n_u \gets |\{k : x_k = u\}|$ for every edge server $u$; \; $\tilde{f}_k \gets$ $\tilde{f}_{\mathrm{dev}}$, $\tilde{f}_u / n_u$ or $\tilde{f}_C$ by the tier of $x_k$
+\State $\mathrm{avail}(d) \gets [0, 0]$ for every device $d$ \Comment{a device runs one task at a time}
+\For{$k$ in the order $\mathbf{o}$}
+  \State $\widetilde{AT}_k \gets$ upload time of $k$'s external input if $k$ is offloaded, else $[0, 0]$
+  \For{each predecessor $p$ of $k$}
+    \State $\widetilde{AT}_k \gets \max\big(\widetilde{AT}_k, \widetilde{FT}_p + \tilde{D}_{pk} / \tilde{R}(x_p, x_k)\big)$ \Comment{zero transfer if co-located}
+  \EndFor
+  \State $\widetilde{ST}_k \gets \max(\widetilde{AT}_k, \mathrm{avail}(x_k))$ if $x_k$ is a device, else $\widetilde{AT}_k$
+  \State $\widetilde{FT}_k \gets \widetilde{ST}_k + \tilde{C}_k / \tilde{f}_k$; \; if $x_k$ is a device, $\mathrm{avail}(x_k) \gets \widetilde{FT}_k$
+\EndFor
+\State $\tilde{F}_1 \gets \sum_{\text{applications}} \max_{k} \big(\widetilde{FT}_k + \text{return time of $k$'s external output}\big)$ \Comment{makespan}
+\State $\tilde{F}_2 \gets$ device energy: local computation, transmission and idle waiting \Comment{energy}
+\State $\tilde{F}_3 \gets$ edge and cloud usage charges \Comment{cost}
+\State \Return $\tilde{F} = [F^L, F^U]$; every step is monotone in each bound, so $F^L$ and $F^U$ come from the lower and upper inputs
+\end{algorithmic}
+\end{algorithm}

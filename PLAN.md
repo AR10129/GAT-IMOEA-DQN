@@ -751,7 +751,19 @@ setting for comparability and three-tier energy as a sensitivity study.
     100-2000): 4-7x final, the exact HV contributions per front; imoea_dqn 43 / 56 / 39 / 47 / 64 / 98,
     about the same as the offline-GAT version. Table drops the superseded ip_moea row.
   - [x] C4 figures and tables (D1) added. Front plots only if wanted.
-- [ ] R2. System-model figure, pseudocode, complexity, parameter table
+- [x] R2. System-model figure, pseudocode, complexity, parameter table
+  Done 2026-11-11. `scripts/system_figure.py` -> results/figures/system_model (cloud-edge-end
+  architecture of Jin's small scale with the interval quantities; an example DAG with x, o and the
+  interval critical path). paper/algorithms/drimoea.tex (hand-written, matches the code): Alg. 1 main
+  loop, Alg. 2 variation (neighbourhood mating, DAEC / POX, DAG-valid mutation), Alg. 3 three-tier
+  selection with Tchebycheff Rank C, Alg. 4 interval critical-path evaluation. paper/sections/
+  complexity.tex: per generation O(N^2 (M + F + log N) + N(K + |E|)), memory O(N^2 + NK); Tchebycheff
+  Rank C adds O(N^2 log N) over R_IN; same N(G+1) evaluations as every baseline; checked against the
+  timing table (final 1.8x from 100 to 2000 Cybershake tasks; IMOEA-DQN +2-52% over the fixed-action
+  backbone). `params` table in build_paper.py reads its values from the code and jin.yaml (ICD k =
+  round(sqrt(2N)) = 14, 105 weight vectors q = 13, 88 / 17 / 0 places). The preview inputs all of it
+  (adds algorithm / algpseudocode). Open: ef{sec:learned} must exist in the paper text.
+  Fixed on the way: the Imprecision table note said "per solution"; it is summed over the front.
 - [ ] R3. Threats to validity and limitations (no link contention, no receive energy, interval
   bounds assumed to hold, fixed action chosen on training instances, at 1000-2000 tasks IMOEA/D
   reaches cheaper solutions though final dominates the overlap; see the E6 / pilot notes)

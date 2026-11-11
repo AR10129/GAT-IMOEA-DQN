@@ -1,0 +1,39 @@
+% Computational complexity (R2). Derived from the code (gat_imoea_dqn/operators.py, selection.py,
+% intervals.py, evaluator.py); measured times in Table~\ref{tab:timing} (scripts/build_paper.py).
+\subsection{Computational complexity}
+\label{sec:complexity}
+
+Let $N$ be the population size, $M = 3$ the number of objectives, $K = |V|$ and $|E|$ the numbers of tasks
+and data dependencies, and $F$ the number of interval non-dominated fronts in a population
+($F \le N$, and small in practice because most of the population soon shares the first front).
+One generation of \ours{} costs the following.
+
+\begin{itemize}
+\item \emph{Variation} (Algorithm~\ref{alg:var}). The interval dominance matrix of $P$ takes $O(MN^2)$ and peeling
+  its fronts $O(FN^2)$; the uncertainty fronts on $(U_1, U_2)$ take the same. The neighbourhoods need all pairwise
+  midpoint distances, $O(MN^2)$, and a sort of each row, $O(N^2 \log N)$. Building one child takes $O(K + |E|)$:
+  DAEC and POX are linear in $K$, a shift mutation moves a task within its precedence window in $O(K)$, and with
+  mutation rate $1/K$ one task moves per child in expectation. In total $O\big(N^2(M + F + \log N) + N(K + |E|)\big)$.
+\item \emph{Evaluation} (Algorithm~\ref{alg:eval}). The interval critical-path calculus visits every task and every
+  dependency once, $O(K + |E|)$ per solution and $O\big(N(K + |E|)\big)$ per generation.
+\item \emph{Selection} (Algorithm~\ref{alg:sel}) on the pool of $2N$. The Tchebycheff values for $N$ weight vectors take
+  $O(MN^2)$ and sorting the pool once per vector $O(N^2 \log N)$; the interval crowding distance needs all pairs,
+  $O(MN^2)$; the uncertainty dominance degree $O(N^2)$; filling the three tiers with genotype de-duplication $O(NK)$.
+  In total $O\big(N^2(M + \log N) + NK\big)$.
+\end{itemize}
+
+A generation therefore costs $O\big(N^2(M + F + \log N) + N(K + |E|)\big)$, and a run of $G_{\max}$ generations
+$O\big(G_{\max}[N^2(M + F + \log N) + N(K + |E|)]\big)$ time with $O(N^2 + NK)$ memory. Jin et al.'s Rank C, the
+interval dominance degree $R_{IN}$, costs $O(MN^2)$ for the dominance matrix plus $O(N^2)$ for the degrees, so the
+Tchebycheff Rank C adds only the $O(N^2 \log N)$ of the per-vector sorts; neighbourhood mating adds the same order.
+Neither changes the number of evaluations, which is $N(G_{\max} + 1)$ for \ours{} and every baseline.
+
+With $N = 105$ the population terms are about $N^2(M + \log_2 2N) \approx 1.2 \times 10^5$ elementary operations per
+generation, while the evaluation term $N(K + |E|)$ grows from about $3 \times 10^4$ for the 100-task Cybershake
+workflow ($|E| = 192$) to $3 \times 10^5$ at 1000 tasks and $6 \times 10^5$ at 2000. The measured times
+(Table~\ref{tab:timing}) show that \ours{} needs about as long as IMOEA/D and the fixed-action Jin backbone on every
+instance, and that its time grows only 1.8-fold from 100 to 2000 Cybershake tasks: the evaluation loop is compiled and
+has a small constant, so the population terms, which do not depend on $K$, account for most of the run time. The
+learned controller of IMOEA-DQN adds a state computation and a network forward pass every generation and a training
+step every 50 generations; on the same instances this costs 2--52\% more time than the fixed-action backbone, without
+improving the result (Section~\ref{sec:learned}).
