@@ -781,6 +781,18 @@ setting for comparability and three-tier energy as a sensitivity study.
   learned-control result. Every number checked against paper/tables. Figures in the preview now carry
   labels fig:<name> (d1_ prefix dropped).
 
+- [~] W2. Paper text (started 2026-11-11). paper/main.tex (elsarticle, journal EAAI) assembles
+  sections/model.tex, sections/method.tex (inputs sections/complexity.tex), algorithms/drimoea.tex,
+  sections/experiments.tex, sections/validity.tex, the generated tables and the 6 figures with
+  proper captions; refs.bib (20 entries; jin2026imoeadqn author list / title and limbourg2005ipmoea
+  marked VERIFY). Checked: every ref and cite resolves, no duplicate labels, all figure files exist,
+  every number in the text traced to paper/tables or results/stats (fixes on the way: Nemenyi
+  statement on Suite A, IMOEA/D-AWN ties, 1000-task HV is 12/2/1 not 13/15, front sizes Suite B:
+  final 95, IMOEA/D 99, IMOEA-DQN 55, heuristics 3). Not compiled (no LaTeX here).
+  - [ ] Introduction, related work, conclusion, abstract (TODO in main.tex)
+  - [ ] Rename DR-IMOEA (one line: the ours macro in main.tex and build_paper.py PREVIEW)
+  - [ ] Verify the VERIFY entries in refs.bib
+
 ## Risks
 
 - C3 judged incremental ("just MSOPS inside Jin et al.") → W1 confirmed the rank is MSOPS's; make the diagnosis (tie

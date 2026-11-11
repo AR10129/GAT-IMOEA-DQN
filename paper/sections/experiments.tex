@@ -1,0 +1,165 @@
+% Experiments section (draft). Every number is from paper/tables/* (scripts/build_paper.py),
+% results/stats/e5_convergence.*, results/stats/e7_montecarlo.* or the PLAN.md entries named in comments.
+\section{Experiments}
+\label{sec:experiments}
+
+\subsection{Setup}
+\label{sec:setup}
+
+\paragraph{Benchmarks}
+\emph{Suite A} reproduces the instance sizes of Jin et al.~\cite{jin2026imoeadqn}: small (3 edge servers, 100 tasks,
+20 or 50 devices), basic (6, 300, 60 or 100) and medium (10, 500, 100 or 250). Each device submits one application, a
+layered random DAG; the total number of tasks is split among the devices at random. Workloads are 1--5 Gcycles and
+every arc and every input file carries 500--3000 KB, as in Jin et al.; tasks are crisp, so the uncertainty comes from the
+resources. Each configuration is used with the data sizes as given ($\times 1$) and multiplied by 20, which makes
+communication matter; this gives 12 test instances. Three further instances of each configuration (36 in total) were
+generated with other seeds and used only to choose the method's parameters (Section~\ref{sec:weights}).
+\emph{Suite B} uses five scientific workflow families from WfCommons~\cite{coleman2022wfcommons} (Cybershake,
+Epigenomics, Inspiral, Montage, Sipht) with 100, 400 and 1000 tasks, submitted by one device in Jin et al.'s small
+scenario (3 edge servers, 6 devices). Workloads and data sizes are mapped into Jin et al.'s ranges by an
+order-preserving logarithmic map, every quantity keeps a relative interval half-width of 5--30\%, and the data sizes are
+multiplied by 1, 20 or 100 to vary the communication-to-computation ratio: 45 instances. Table~\ref{tab:params} lists
+the environment.
+
+\paragraph{Compared methods}
+We compare \ours{} with four interval multi-objective evolutionary algorithms, IMOEA/D with the original settings
+reported in~\cite{cui2024imeaied}, IMOEA/D-AWN~\cite{jin2023imoeadawn}, IMEA-IED~\cite{cui2024imeaied} and
+IP-MOEA~\cite{limbourg2005ipmoea}; with NSGA-II~\cite{deb2002nsga2} using either interval midpoints or interval
+dominance and NSGA-III~\cite{deb2014nsga3} on midpoints; and with IMOEA-DQN~\cite{jin2026imoeadqn} as published (an
+online DQN that chooses $(\alpha, \beta, \gamma)$ every generation) and its evolutionary backbone with the fixed action
+$(5/6, 1/6, 0)$, called the Jin backbone. The last comparison isolates the effect of Rank C and the mating. All
+methods share the encoding, operators, evaluator, population size $N = 105$ and budget of $N(G_{\max} + 1)$ evaluations
+with $G_{\max} = 1000$ (IMOEA/D-AWN evaluates $NG_{\max}$, as published). Six list-scheduling heuristics (all tasks on
+the device, all on the nearest edge server, all in the cloud, and HEFT~\cite{topcuoglu2002heft} placing each task by
+earliest finish time, lowest energy or lowest cost) are reported separately.
+
+\paragraph{Metrics and statistics}
+Each instance is normalised once, over the final fronts of all compared methods. IGD is measured on interval midpoints
+against the non-dominated union of all final fronts, HV is the mean of the hypervolumes of the lower and upper bounds
+with reference point 1.1 per objective, as in Jin et al., and Imprecision is the sum of the interval widths over the
+front. \ours{}, IMOEA/D and the Jin backbone were run 30 times per instance, the other methods 10 times. Each method
+is compared with \ours{} per instance by the Wilcoxon rank-sum test with Holm's correction~\cite{holm1979} over the
+methods ($\alpha = 0.05$), and over instances by the Friedman test with the Nemenyi critical
+difference~\cite{demsar2006}.
+
+\subsection{Comparison on Suite A and Suite B}
+\label{sec:results}
+Tables~\ref{tab:suitea_igd}--\ref{tab:suiteb_hv_jin} give IGD and HV per instance and Table~\ref{tab:friedman} the
+Friedman ranks. On Suite A, \ours{} has the best IGD and HV on all 12 instances, significantly better than every other
+method on each. Its mean IGD is 0.0122 against 0.0291 for IMOEA/D-AWN and 0.0319 for IMOEA/D, the next best, and 0.048
+for the NSGA-II variants; its Friedman rank is 1.00 on both metrics. With 12 instances the Nemenyi critical difference
+is 3.91 ranks, so on ranks alone \ours{} is significantly ahead only of the five methods with a mean rank above 4.91
+(IMEA-IED, IP-MOEA, NSGA-III, the Jin backbone and IMOEA-DQN); the per-instance tests carry the rest of the evidence.
+
+On Suite B, \ours{} has a mean IGD of 0.0186 against 0.0257 for IMOEA/D and 0.0444 for IMOEA/D-AWN, and is
+significantly better than IMOEA/D on 43 of 45 instances on IGD (worse on 1, tied on 1) and on 42 on HV (worse on 2,
+inspiral-1000 $\times 100$ and sipht-1000 $\times 20$). IMEA-IED, IP-MOEA, NSGA-III, the Jin backbone and IMOEA-DQN
+are worse on every instance on both metrics, and IMOEA/D-AWN is never better (tied on 2 instances on IGD and 1 on HV).
+The NSGA-II variants reach a lower IGD on 4 and 5 instances, all 100-task workflows with data $\times 1$, and never a
+higher HV. The Friedman ranks
+are 1.29 (IGD) and 1.09 (HV) for \ours{} against 2.69 and 2.73 for IMOEA/D, the next best, with a critical difference of
+2.02. The Jin backbone with the same fixed action is far behind (mean IGD 0.116 against 0.0186), and its gap grows with
+the size of the DAG (0.052 at 100 tasks, 0.175 at 1000), as the stall analysis of Section~\ref{sec:stall} predicts.
+IMOEA-DQN as published is last on both suites (mean IGD 0.254 and 0.229).
+
+On Imprecision \ours{} ranks 7.50 and 8.02 of 10 (Table~\ref{tab:friedman}; per instance in
+Tables~\ref{tab:suitea_imprecision} and~\ref{tab:suiteb_imprecision}): the summed interval widths of its
+fronts are slightly larger than IMOEA/D's (Suite B mean 60.9 against 57.8). \ours{} spends no places on the uncertainty
+tier ($\gamma = 0$); Section~\ref{sec:weights} shows that a small $\gamma$ buys narrower intervals at a small cost in IGD.
+The methods with the smallest Imprecision, IMOEA-DQN and the heuristics, owe it to small fronts (on Suite B 55 and 3
+solutions on average, against 95 for \ours{} and 99 for IMOEA/D) and have the worst IGD and HV. The reference heuristics are an
+order of magnitude worse than every evolutionary method (Table~\ref{tab:heuristics}; mean IGD 0.403 on Suite A and
+0.296 on Suite B, 33 and 16 times \ours{}'s).
+
+\subsection{Robustness of the comparison with IMOEA/D}
+\label{sec:robustness}
+Because IGD and HV depend on the normalisation and on the reference front, we repeated the comparison with IMOEA/D
+with four different pools of methods defining them (Table~\ref{tab:robustness}). On Suite A, and on Suite B up to 400
+tasks, the verdict is the same in every pool, and on HV the Suite B record barely moves (\ours{} better on 42
+instances in every pool). On IGD at 1000 tasks it changes: \ours{} is better on 14 of the 15 instances when the pool
+contains all ten methods, but when the weak methods are left out IMOEA/D is better on 6--9 of them. We therefore read
+the 1000-task results on HV, where \ours{} is better on 12 of 15 (worse on 2, tied on 1), and regard IGD there as level
+or slightly in favour of IMOEA/D.
+
+\subsection{Convergence}
+\label{sec:convergence}
+Fig.~\ref{fig:e5_convergence} plots IGD and HV against the generation on one Suite A and three Suite B instances, all
+with data $\times 20$. On medium-250, \ours{} falls below every method by generation 100 and reaches IGD 0.012 at
+generation 1000; IMOEA/D ends at 0.035 and never reaches the value \ours{} has at generation 500 (0.028). On
+montage-400, IMOEA/D converges faster at first, \ours{} overtakes it at about generation 350 and both level off near
+0.011. On the 1000-task workflows IMOEA/D is slightly ahead until generation 500, \ours{} ends slightly ahead (0.028
+against 0.033 on cybershake-1000 and 0.032 against 0.036 on epigenomics-1000), and both curves are still falling at
+generation 1000: at this size the budget does not saturate either method. All other methods stall far above. IMOEA-DQN
+starts worse than the initial population on IGD, because its early actions concentrate the population in one region,
+and recovers only slowly.
+
+\subsection{Ablation}
+\label{sec:ablation}
+Table~\ref{tab:ablation} builds \ours{} from the Jin backbone on the 12 Suite A instances. Replacing $R_{IN}$ with the
+Tchebycheff Rank C halves the mean IGD (0.119 to 0.058), breaking its ties by crowding distance lowers it to 0.048,
+neighbourhood mating to 0.0135 and the tuned mating parameters to 0.0102. Every intermediate variant is significantly
+worse than \ours{} on all 12 instances, except the last one, with the untuned mating, which is worse on 9 and tied on 3.
+Rank C and neighbourhood mating interact: either one alone recovers only part of the gain (0.048 without mating, 0.068
+with mating but $R_{IN}$), together they are 3.5 times better than the better of the two. The ICD tie-break is a smaller,
+consistent improvement (worse without it on 8 instances, tied on 4). Smaller and more local neighbourhoods are better
+($T = 10$ beats $T = 20$ on 9 instances, $T = 40$ is worse on all 12, $p_{local} = 0.5$ worse on 11), and using as many
+weight vectors as the population size beats half or double that number. The action $(1, 0, 0)$, which needs no tuning,
+is worse than $(5/6, 1/6, 0)$ on 7 instances and tied on 5, and still clearly better than IMOEA/D (0.0175 against
+0.0314).
+
+\subsection{Sensitivity and scalability}
+\label{sec:sensitivity}
+Table~\ref{tab:sensitivity} changes one setting at a time on the five 400-task workflows with data $\times 20$.
+\ours{} keeps the best mean IGD under every change: half or double the interval widths, half or double the wireless
+bandwidth, one or six edge servers, and edge servers that queue tasks instead of sharing their capacity. Two settings
+narrow the gap to IMOEA/D. When the energy of all three tiers is counted, IMOEA/D is better on IGD on 3 of 5 workflows
+and on HV on 4 of 5, and with doubled interval widths it is better on HV on 2 of 5. The NSGA-II and Jin-backbone
+baselines lose on every workflow in every setting.
+
+Table~\ref{tab:scalability} uses the five workflows with 2000 tasks. \ours{} has the higher HV on 13 of 15 instances
+(0.886 against 0.857 for IMOEA/D, tied on 2) and narrower intervals (Imprecision 63.2 against 74.6), while IGD is
+level (0.0699 against 0.0692; IMOEA/D better on 5, worse on 6, tied on 4). Where the two fronts overlap, \ours{}'s
+dominates 64--79\% of IMOEA/D's and almost none of it is dominated; IMOEA/D's IGD wins come from reaching cheaper
+solutions at the cost end of the front (Section~\ref{sec:validity}).
+
+\subsection{Behaviour under realised values}
+\label{sec:montecarlo}
+Interval objectives are only useful if the realised values fall inside them. For four instances we evaluated every
+solution of every final front under 200 crisp scenarios, drawing each uncertain input uniformly from its interval
+(Table~\ref{tab:montecarlo}). All realised objective vectors lie inside their predicted intervals. On Suite B the
+central 95\% of the realised makespans and energies spans 36--47\% of the interval width, on Suite A only 9--10\%: the
+intervals are guaranteed but conservative bounds. The order of the methods by IGD on the realised values agrees with
+their order by interval IGD (Kendall $\tau$ 0.91--1.00). \ours{} has the lower realised IGD and the higher realised HV
+than every method in all 200 scenarios, except against IMOEA/D on montage-400, where IMOEA/D has the lower realised IGD
+in every scenario although its interval IGD is higher, and on epigenomics-1000, where IMOEA/D has the higher realised HV
+in 90\% of the scenarios.
+
+\subsection{Running time}
+\label{sec:runtime}
+Table~\ref{tab:timing} gives the wall-clock time per run. \ours{} needs 29--62 seconds, about as long as IMOEA/D
+(27--59 seconds) and the Jin backbone, less than IMOEA/D-AWN and IMEA-IED, and 1.3--1.7 times as long as the NSGA
+family. IP-MOEA, whose crowding needs exact hypervolume contributions, takes 171--218 seconds. Section~\ref{sec:complexity}
+analyses the cost.
+
+\subsection{Learned control of the selection weights}
+\label{sec:learned}
+IMOEA-DQN's central idea is to let a DQN choose $(\alpha, \beta, \gamma)$ during the run. We tested whether learned
+control helps on top of the Tchebycheff Rank C with three learner designs, each with and without a graph-attention
+(GAT)~\cite{velickovic2018gat} encoding of the DAG in its state: Jin et al.'s design (one decision per generation,
+reward the relative improvement of the population's PIBI, 28 actions); one decision per 50 generations with the
+hypervolume gain as reward; and one decision per 25 generations among the 10 actions with $\alpha \ge 1/2$ with the
+logarithmic hypervolume gain as reward. The agents were trained on the Suite A training instances (24--48 episodes, 2--3
+training seeds). No design beats the best fixed action (Table~\ref{tab:learners}): the best learner reaches a mean IGD
+of 0.0196 against 0.0143 for the fixed action on the same backbone, and a random action among the same 10 actions
+reaches 0.0251. The GAT encoder does not help consistently (Table~\ref{tab:gat}): it improves HV on some instances for
+the per-generation design and is equal or worse for the other two.
+
+Fig.~\ref{fig:reward_audit} explains why. Holding each action fixed for a whole run shows that the summed reward does
+rank the actions roughly like IGD (Spearman 0.90 and 0.92), but the reward the agent receives at each step is mostly
+noise: after generation 100 the spread between the actions' mean rewards is only 0.02--0.08 of the per-step standard
+deviation. The diversity-heavy action $(2/3, 0, 1/3)$ earns the third and fifth highest reward but ranks only eighth
+and ninth on IGD, and it is the action the per-generation agent picked most often. The reward collected during
+training stays flat for two of the three designs (Fig.~\ref{fig:training}); for the third it rises, yet that design
+tests worst. Since the best fixed action is already within about 10\% of the best action for each instance, an
+adaptive schedule has little to gain, and per-step learning signals of this quality cannot find it. \ours{} therefore
+uses a fixed action.
