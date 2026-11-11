@@ -18,3 +18,4 @@ results/**
 checkpoints/
 *.pt
 *.log
+paper/build/

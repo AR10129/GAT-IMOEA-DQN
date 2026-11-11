@@ -1,89 +1,70 @@
-% System model and problem formulation (draft). Matches gat_imoea_dqn/evaluator.py, intervals.py and
-% dataset_tools/loader.py with EvaluatorConfig(energy_scope="device", external_io="device", makespan="sum_apps").
-\section{System model and problem formulation}
+% Problem formulation (condensed for the two-column paper, step 2). Matches gat_imoea_dqn/evaluator.py,
+% intervals.py and dataset_tools/loader.py with EvaluatorConfig(energy_scope="device", external_io="device",
+% makespan="sum_apps").
+\section{Problem formulation}
 \label{sec:model}
 
 \subsection{Interval numbers}
 \label{sec:intervals}
-An uncertain quantity is a closed interval $\tilde a = [a^L, a^U]$ with midpoint $m(\tilde a) = (a^L + a^U)/2$ and width
-$w(\tilde a) = a^U - a^L$. Every operation the model needs (sum, maximum, and the quotient of a positive quantity by
-a positive interval) is monotone in each bound, so an interval result is obtained by applying the operation to the lower
-inputs and to the upper inputs; for example $\tilde C / \tilde f = [C^L / f^U, C^U / f^L]$. Two intervals are compared
-by the possibility degree \citep{jin2026imoeadqn}
+An uncertain quantity is an interval $\tilde a = [a^L, a^U]$ with midpoint $m(\tilde a)$ and width $w(\tilde a) =
+a^U - a^L$. Every operation of the model (sum, maximum, and a positive quantity divided by a positive interval) is
+monotone in each bound, so it is applied to the lower and to the upper inputs, e.g.\ $\tilde C / \tilde f = [C^L / f^U,
+C^U / f^L]$. Intervals are compared by the possibility degree \citep{jin2026imoeadqn}
 \begin{equation}
-P(\tilde a \le \tilde b) = \min\Big\{1, \max\Big\{0, \frac{b^U - a^L}{w(\tilde a) + w(\tilde b)}\Big\}\Big\},
+P(\tilde a \le \tilde b) = \min\Big\{1, \max\Big\{0, \frac{b^U - a^L}{w(\tilde a) + w(\tilde b)}\Big\}\Big\}.
 \label{eq:possibility}
 \end{equation}
-with $P = 1$, $0.5$ or $0$ for two crisp numbers with $a < b$, $a = b$ or $a > b$. For interval objective vectors
-$\tilde F(x)$ and $\tilde F(y)$ of a minimisation problem, $x$ \emph{interval-dominates} $y$, written $x \prec_{IN} y$,
-when $P(\tilde F_m(x) \le \tilde F_m(y)) \ge 0.5$ for every objective $m$ and $> 0.5$ for at least one. The uncertainty
-of a solution is summarised by $U_1(x) = \sum_m w(\tilde F_m(x))$ and $U_2(x) = \prod_m w(\tilde F_m(x))$, computed on
-objectives scaled to $[0, 1]$ over the population.
+Solution $x$ \emph{interval-dominates} $y$ ($x \prec_{IN} y$) when $P(\tilde F_m(x) \le \tilde F_m(y)) \ge 0.5$ for every
+objective $m$, with strict inequality for at least one. The uncertainty of a solution is measured by $U_1 = \sum_m
+w(\tilde F_m)$ and $U_2 = \prod_m w(\tilde F_m)$ on normalised objectives.
 
-\subsection{Cloud--edge--end architecture}
-The system (Fig.~\ref{fig:system_model}) has $D$ mobile devices, $n$ edge servers and one cloud data centre, the
-architecture of \citet{jin2026imoeadqn}. Device $d$ has CPU frequency $\tilde f_d$, energy per CPU cycle
-$\tilde e_d$, transmit power $p_d$ and idle power $p^{idle}_d$, and can reach the edge servers within its
-communication range. Edge server $u$ has aggregate CPU frequency $\tilde f_u$, which it shares equally among the tasks
-placed on it; the cloud gives every task the frequency $\tilde f_C$. The wireless rate between device $d$ and edge
-server $u$ is $\tilde R_{d,u} = \tilde B \log_2(1 + p_d g / v_0)$ with interval bandwidth $\tilde B$, channel gain $g$ and
-noise power $v_0$; the downlink uses the same rate. Edge servers are connected to each other and to the cloud by wired
-links of rate $\tilde W_E$ and $\tilde W_C$. A device reaches the cloud through its nearest edge server, so the rate of
-that route is the series combination $1 / (1/\tilde R_{d,u} + 1/\tilde W_C)$.
+\subsection{System and application model}
+The system (Fig.~\ref{fig:system_model}) follows \citet{jin2026imoeadqn}: $D$ mobile devices, $n$ edge servers and a
+cloud. Device $d$ has CPU frequency $\tilde f_d$, energy per cycle $\tilde e_d$, transmit power $p_d$ and idle power
+$p^{idle}_d$, and reaches the edge servers within its range at the wireless rate $\tilde R_{d,u} = \tilde B \log_2(1 + p_d
+g / v_0)$. Edge server $u$ shares its frequency $\tilde f_u$ equally among the tasks placed on it, and the cloud gives
+every task $\tilde f_C$. Edge servers are linked to each other and to the cloud at rates $\tilde W_E$ and $\tilde W_C$; a
+device reaches the cloud through its nearest edge server.
 
-\subsection{Application model}
-Every device submits one application, a directed acyclic graph whose nodes are tasks and whose arcs are data
-dependencies. The union of all applications is a DAG $\mathcal{G} = (V, E)$ with $K = |V|$ tasks. Task $k$ has workload
-$\tilde C_k$ CPU cycles; arc $(p, k) \in E$ carries $\tilde D_{pk}$ bits from $p$ to $k$; a task may also read external
-input data $\tilde D^{in}_k$ from its device and return external output data $\tilde D^{out}_k$ to it. A task cannot
-start before all its predecessors have finished and their data have arrived. A single-task application without data
-dependencies is the setting of Jin et al.; for it the model below reduces to theirs.
+Each device submits one application, a DAG of tasks; together they form $\mathcal{G} = (V, E)$ with $K = |V|$. Task $k$
+has workload $\tilde C_k$ cycles, arc $(p, k)$ carries $\tilde D_{pk}$ bits, and a task may read input from and return
+output to its device. A task starts only after all its predecessors have finished and their data have arrived. With one
+task per application the model reduces to that of \citet{jin2026imoeadqn}.
 
-\subsection{Decision variables}
-A solution is a pair of strings $(\mathbf{x}, \mathbf{o})$. The \emph{allocation string} $\mathbf{x} \in
-\{0, 1, \dots, n+1\}^K$ places task $k$ on its own device ($x_k = 0$), on edge server $x_k \in \{1, \dots, n\}$ or in
-the cloud ($x_k = n + 1$); $x_k$ must be a node that $k$'s device can reach. The \emph{priority string} $\mathbf{o}$ is a
-permutation of the tasks in topological order of $\mathcal{G}$, which fixes the order in which tasks are dispatched.
+A solution is a pair $(\mathbf{x}, \mathbf{o})$. The allocation string $\mathbf{x} \in \{0, \dots, n+1\}^K$ places each
+task on its device ($0$), an edge server ($1..n$) or the cloud ($n+1$); the priority string $\mathbf{o}$ is a topological
+order of $\mathcal{G}$ that fixes the dispatch order.
 
 \subsection{Interval critical-path timing}
-Let $\tilde f_k$ be the frequency task $k$ receives: $\tilde f_d$ on its device, $\tilde f_u / n_u$ on edge server $u$
-hosting $n_u$ tasks, and $\tilde f_C$ in the cloud. Its computation time is $\tilde t_k = \tilde C_k / \tilde f_k$. The
-transfer time of arc $(p, k)$ is $\tilde D_{pk} / \tilde R(x_p, x_k)$, zero when both tasks are on the same node.
-Visiting the tasks in the order $\mathbf{o}$,
+Task $k$ runs at $\tilde f_k = \tilde f_d$, $\tilde f_u / n_u$ or $\tilde f_C$ for $n_u$ tasks on server $u$, so it
+computes for $\tilde t_k = \tilde C_k / \tilde f_k$. Visiting the tasks in the order $\mathbf{o}$,
 \begin{align}
-\widetilde{AT}_k &= \max\Big\{\tilde\tau^{in}_k, \; \max_{(p, k) \in E} \big(\widetilde{FT}_p + \tilde D_{pk} / \tilde R(x_p, x_k)\big)\Big\}, \label{eq:at}\\
-\widetilde{ST}_k &= \max\{\widetilde{AT}_k, \widetilde{avail}(x_k)\}, \qquad \widetilde{FT}_k = \widetilde{ST}_k + \tilde t_k, \label{eq:ft}
+\widetilde{AT}_k &= \max\Big\{\tilde\tau^{in}_k, \max_{(p, k) \in E} \Big(\widetilde{FT}_p + \frac{\tilde D_{pk}}{\tilde R(x_p, x_k)}\Big)\Big\}, \label{eq:at}\\
+\widetilde{FT}_k &= \max\{\widetilde{AT}_k, \widetilde{av}(x_k)\} + \tilde t_k, \label{eq:ft}
 \end{align}
-where $\tilde\tau^{in}_k$ is the upload time of $k$'s external input when $k$ is offloaded (zero otherwise) and
-$\widetilde{avail}(x_k)$ is the finish time of the last task run on the same device, because a device executes one task at a
-time; edge servers and the cloud do not queue ($\widetilde{avail} = [0, 0]$), since the equal share of an edge server's
-capacity already models contention. All maxima are taken boundwise. The path of tasks and arcs that determines the
-latest finish time is the \emph{interval critical path}.
+where $\tilde\tau^{in}_k$ is the upload time of $k$'s input if $k$ is offloaded, transfers between co-located tasks
+take no time, and $\widetilde{av}(x_k)$ is the finish time of the previous task on the same device, since a device runs
+one task at a time. Maxima are taken boundwise; the chain that sets the latest finish time is the \emph{interval
+critical path}.
 
-\subsection{Objectives}
-The three objectives, all minimised, are the total makespan, the energy of the devices and the monetary cost:
+\subsection{Objectives and problem}
+The objectives are the total makespan, the devices' energy and the monetary cost:
 \begin{align}
-\tilde F_1(\mathbf{x}, \mathbf{o}) &= \sum_{a} \max_{k \in V_a} \big(\widetilde{FT}_k + \tilde\tau^{out}_k\big), \label{eq:f1}\\
-\tilde F_2(\mathbf{x}, \mathbf{o}) &= \sum_{k: x_k = 0} \tilde C_k \tilde e_{d(k)}
-  + \sum_{\substack{(p, k) \in E\\ x_p = 0, \, x_k \ne 0}} p_{d(p)} \frac{\tilde D_{pk}}{\tilde R_{d(p), x_k}}
-  + \sum_{k: x_k \ne 0} \Big(p_{d(k)} \frac{\tilde D^{in}_k}{\tilde R_{d(k), x_k}} + p^{idle}_{d(k)} \tilde t_k\Big), \label{eq:f2}\\
-\tilde F_3(\mathbf{x}, \mathbf{o}) &= \eta_E \sum_{k: 1 \le x_k \le n} \tilde f_k \tilde t_k + \eta_C \sum_{k: x_k = n+1} \tilde t_k. \label{eq:f3}
+\tilde F_1 &= \sum_{a} \max_{k \in V_a} \big(\widetilde{FT}_k + \tilde\tau^{out}_k\big), \label{eq:f1}\\
+\tilde F_2 &= \sum_{x_k = 0} \tilde C_k \tilde e_{d(k)} + \sum_{x_k \ne 0} \Big(p_{d(k)} \frac{\tilde D^{in}_k}{\tilde R_{d(k), x_k}} + p^{idle}_{d(k)} \tilde t_k\Big) \nonumber\\
+  &\quad + \sum_{\substack{(p, k) \in E:\\ x_p = 0,\, x_k \ne 0}} p_{d(p)} \frac{\tilde D_{pk}}{\tilde R_{d(p), x_k}}, \label{eq:f2}\\
+\tilde F_3 &= \eta_E \sum_{1 \le x_k \le n} \tilde f_k \tilde t_k + \eta_C \sum_{x_k = n+1} \tilde t_k, \label{eq:f3}
 \end{align}
-In~\eqref{eq:f1} $V_a$ are the tasks of application $a$ and $\tilde\tau^{out}_k$ is the time to return $k$'s external
-output to its device. In~\eqref{eq:f2} $d(k)$ is the device that submitted task $k$; the first sum is local computation,
-the other two are the transmission of data from the device to offloaded tasks and the idle power while offloaded tasks
-run. For a task sent to the cloud the device transmits only up to its nearest edge server and idles while the data cross
-the wired link. Following Jin et al., $\tilde F_2$ counts the devices' energy only; a variant that also counts the energy
-of edge servers and the cloud is studied in Section~\ref{sec:sensitivity}. In~\eqref{eq:f3} $\eta_E$ is the edge price
-per GHz and second and $\eta_C$ the cloud price per second; the product is evaluated with interval arithmetic.
-
-\subsection{Problem}
-The interval multi-objective DAG offloading problem is
+where $V_a$ are the tasks of application $a$, $\tilde\tau^{out}_k$ the time to return $k$'s output and $d(k)$ its
+device. $\tilde F_2$ counts local computation, transmission to offloaded tasks (for the cloud, up to the nearest edge
+server, idling while the data cross $\tilde W_C$) and idle waiting, i.e.\ the devices'
+energy only, as in \citet{jin2026imoeadqn} (all-tier energy is a sensitivity case in Section~\ref{sec:sensitivity});
+$\eta_E$ and $\eta_C$ are the edge and cloud prices. The problem is
 \begin{equation}
-\min_{(\mathbf{x}, \mathbf{o})} \; \tilde F(\mathbf{x}, \mathbf{o}) = \big(\tilde F_1, \tilde F_2, \tilde F_3\big)
-\quad \text{s.t.} \quad x_k \in \mathcal{A}_k \;\; \forall k \in V, \quad \mathbf{o} \text{ topological in } \mathcal{G},
+\min_{(\mathbf{x}, \mathbf{o})} \big(\tilde F_1, \tilde F_2, \tilde F_3\big) \;\; \text{s.t.} \;\; x_k \in \mathcal{A}_k\ \forall k,\;
+\mathbf{o} \text{ topological},
 \label{eq:problem}
 \end{equation}
-where $\mathcal{A}_k$ is the set of nodes reachable from task $k$'s device. Its solution is the set of solutions not
-interval-dominated by any other. Even with crisp data and one device, assigning the tasks of a DAG to processors under
-precedence constraints is NP-hard, which motivates an evolutionary approach.
+where $\mathcal{A}_k$ are the nodes reachable from $k$'s device; we seek the solutions that no other solution
+interval-dominates. Scheduling a DAG on heterogeneous processors is NP-hard even with crisp data
+\citep{topcuoglu2002heft}, which motivates an evolutionary approach.
