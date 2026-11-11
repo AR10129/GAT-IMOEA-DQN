@@ -126,7 +126,7 @@ FIGURES = {"e5_convergence": "scripts/convergence.py (E5)", "a3_stall": "scripts
            "a3_tradeoff": "scripts/a3_tiers.py (A3)", "d1_reward_audit": "scripts/d1_learning.py (D1)",
            "d1_training": "scripts/d1_learning.py (D1)", "system_model": "scripts/system_figure.py (R2)"}
 # hand-written LaTeX the preview also inputs (paths relative to paper/)
-STATIC = ["algorithms/drimoea", "sections/complexity", "sections/validity"]
+STATIC = ["algorithms/drimoea", "sections/complexity", "sections/discussion"]
 
 
 # ---------------------------------------------------------------- scoring

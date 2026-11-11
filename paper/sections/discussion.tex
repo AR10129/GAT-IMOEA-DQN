@@ -1,2 +1,43 @@
-% Discussion and limitations: placeholder until step 5 condenses sections/validity.tex into this file.
-\input{sections/validity}
+% Discussion and limitations (condensed for the two-column paper, step 5). Replaces the long threats-to-validity
+% draft (sections/validity.tex, in git history). Numbers from paper/tables (scripts/build_paper.py) and PLAN.md
+% entries B1, B4, E6, E7 and the 2000-task pilot.
+\section{Discussion and limitations}
+\label{sec:discussion}
+\label{sec:validity}
+
+\paragraph{Where \ours{} is weaker}
+Two results do not favour \ours{}. On the 100-task workflows with the smallest data sizes, plain NSGA-II reaches a lower
+IGD on 4--5 instances, presumably because the search space is small enough for non-dominated sorting to converge. At
+1000--2000 tasks, IMOEA/D reaches cheaper solutions at the cost end of the front: \ours{} keeps the higher HV and
+dominates most of IMOEA/D's front where the two overlap, but IGD there is level and depends on which methods define the
+reference front (Section~\ref{sec:results}). Neither a doubled budget, nor a running normalisation of the Tchebycheff
+rank, nor extra weight vectors near the axes closed this gap in a pilot study; we attribute it to IMOEA/D's steady-state
+replacement per subproblem, which combining with the three-tier selection is a natural next step.
+
+\paragraph{Model}
+The model simplifies the system in ways common in offloading studies: concurrent transfers do not share bandwidth, an
+edge server divides its capacity statically among its tasks (a variant that queues tasks gives the same ranking), the
+cloud runs every task in parallel, receiving data costs the device no energy, and the problem is static and offline.
+Following \citet{jin2026imoeadqn}, the main setting counts the devices' energy only; when all three tiers are counted,
+IMOEA/D comes close (Table~\ref{tab:sensitivity}). All results are from simulation.
+
+\paragraph{Uncertainty}
+The intervals were checked against realised values only for independent, uniform draws inside the bounds; correlated
+fluctuations and values outside the bounds were not tested. The interval widths of Suite B's workloads and data sizes
+are synthetic (5--30\%), and Suite A's tasks are crisp, as in Jin et al., so their uncertainty comes from the resources
+alone.
+
+\paragraph{Baselines and protocol}
+We implemented all baselines from their papers on the same encoding, operators and evaluator, with their published
+settings and without retuning; where a paper leaves a detail open we chose the most literal reading. In particular, the
+original IP-MOEA paper was not available, so its crowding follows later descriptions as hypervolume contributions;
+IMaOEACI was left out because its central indicator is defined only in an unpublished thesis; and IMOEA-DQN's replay
+threshold and exploration schedule, which its paper does not give, were set by us. \ours{}'s parameters were chosen on
+separate training instances. The Wilcoxon tests are Holm-corrected per instance, not across instances, and the main
+methods ran 30 times, the others 10.
+
+\paragraph{Learned control}
+The negative result of Section~\ref{sec:learned} covers three DQN designs trained for 24--48 episodes; another state
+representation, reward or a much larger training budget might change it. The reward audit suggests, however, that the
+obstacle is the problem rather than the learner: once the population converges, a single step's reward carries almost no
+information about which action is better, and the best fixed action leaves little to gain.
