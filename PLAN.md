@@ -808,6 +808,29 @@ setting for comparability and three-tier energy as a sensitivity study.
   - [ ] Rename DR-IMOEA (one line: the ours macro in main.tex and build_paper.py PREVIEW)
   - [ ] Verify the VERIFY entries in refs.bib
 
+- [x] W3. Journal-length paper (2026-11-11, steps 1-7 with the user). The first CAS draft compiled to 45 pages
+  (review double spacing, six sideways per-instance tables, 17 tables, 4 algorithms, ~8400 words). Now:
+  two-column cas-dc, no double spacing, 11 pages (10 + highlights page; real author block, CRediT and
+  declarations will bring it to ~12), supplement.tex 14 pages. Built locally with TinyTeX
+  (%APPDATA%\TinyTeX; scripts/compile_paper.py reports pages, unresolved refs and overfull boxes;
+  missing LaTeX packages are installed automatically).
+  - Body: Problem formulation 716 words, Method ~800 + one combined algorithm, Experiments ~1150,
+    Discussion and limitations 443, Introduction and Related work kept, abstract 214 words.
+  - Body floats (all next to their text): system model, stall figure, convergence, reward audit;
+    tables params_main, summary (one row per method, both suites; replaces 7 tables), ablation,
+    sensitivity (+ 2000-task row), montecarlo_main, learners (compact single-column versions).
+  - Supplement: parameters, Algorithms S1-S4 + complexity, per-instance tables, Friedman, full ablation /
+    sensitivity / scalability / robustness / heuristics / Monte Carlo / timing / learners / GAT tables,
+    training and trade-off figures. The paper cites them with \Sref{label}; build_paper.py writes
+    paper/supprefs.tex from supplement.tex, so S-numbers stay right when the supplement changes.
+  - CAS template quirks found: figure/figure* take [pos=htbp] (standard [!htbp] is silently ignored and
+    every figure goes to the end); the abstract must be inline (it is written to a side file); frontmatter
+    macros cannot contain \todo; the 123.6pt overfull box at \maketitle also appears in Elsevier's own
+    sample and is harmless.
+  - Open: authors and affiliations, CRediT, competing-interest and data-availability statements; two
+    citation placeholders in Related work; VERIFY entries in refs.bib; rename DR-IMOEA (ours macro in
+    main.tex and supplement.tex).
+
 ## Risks
 
 - C3 judged incremental ("just MSOPS inside Jin et al.") → W1 confirmed the rank is MSOPS's; make the diagnosis (tie

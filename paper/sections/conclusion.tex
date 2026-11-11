@@ -1,4 +1,4 @@
-% Conclusion (draft).
+% Conclusion (step 7). Numbers from paper/tables (scripts/build_paper.py).
 \section{Conclusion}
 \label{sec:conclusion}
 
@@ -10,7 +10,8 @@ mutually non-dominated, and that its learned control of the selection weights do
 replaces the convergence ranking with an interval version of the MSOPS best-position Tchebycheff rank, breaks its ties
 by crowding distance, mates neighbours in objective space and fixes the selection weights on training instances.
 
-On Jin et al.'s instance sizes \ours{} has the best IGD and hypervolume on every instance, and on five families of
+On Jin et al.'s instance sizes \ours{} has the best IGD and hypervolume on every instance, with a mean IGD 62\% below
+IMOEA/D's, and on five families of
 scientific workflows with 100 to 1000 tasks it is better than the strongest baseline, IMOEA/D, on 43 of 45 instances in
 IGD and 42 in hypervolume, at about the same running time. The ablation attributes the gain to the new rank and the
 neighbourhood mating together, and the predicted objective intervals contain every realised value in a Monte Carlo

@@ -51,7 +51,8 @@ critical path}.
 The objectives are the total makespan, the devices' energy and the monetary cost:
 \begin{align}
 \tilde F_1 &= \sum_{a} \max_{k \in V_a} \big(\widetilde{FT}_k + \tilde\tau^{out}_k\big), \label{eq:f1}\\
-\tilde F_2 &= \sum_{x_k = 0} \tilde C_k \tilde e_{d(k)} + \sum_{x_k \ne 0} \Big(p_{d(k)} \frac{\tilde D^{in}_k}{\tilde R_{d(k), x_k}} + p^{idle}_{d(k)} \tilde t_k\Big) \nonumber\\
+\tilde F_2 &= \sum_{x_k = 0} \tilde C_k \tilde e_{d(k)} \nonumber\\
+  &\quad + \sum_{x_k \ne 0} \Big(p_{d(k)} \frac{\tilde D^{in}_k}{\tilde R_{d(k), x_k}} + p^{idle}_{d(k)} \tilde t_k\Big) \nonumber\\
   &\quad + \sum_{\substack{(p, k) \in E:\\ x_p = 0,\, x_k \ne 0}} p_{d(p)} \frac{\tilde D_{pk}}{\tilde R_{d(p), x_k}}, \label{eq:f2}\\
 \tilde F_3 &= \eta_E \sum_{1 \le x_k \le n} \tilde f_k \tilde t_k + \eta_C \sum_{x_k = n+1} \tilde t_k, \label{eq:f3}
 \end{align}

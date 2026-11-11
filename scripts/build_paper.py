@@ -405,7 +405,7 @@ def t_friedman(SA, SB):
     head = ["Suite & Metric & " + " & ".join(SHORT[p] for p in PAPER) + r" & CD & $p$ \\"]
     cap = ("Mean Friedman ranks over the instances (lower is better), Nemenyi critical difference (CD, "
            "$\\alpha = 0.05$) and the Friedman test's $p$-value. Suite A has 12 instances, Suite B 45.")
-    return table(cap, "tab:friedman", "ll" + "c" * len(PAPER) + "cc", head, rows, size=r"\scriptsize")
+    return table(cap, "tab:friedman", "ll" + "c" * len(PAPER) + "cc", head, rows, size=r"\tiny")
 
 
 def t_heuristics(SA, SB):
@@ -740,7 +740,8 @@ def t_gat(S):
     cap = (r"Graph attention (GAT) state encoder against the same learner without it, on Suite A instances. "
            r"$+/-/\approx$ counts instances where the GAT agent is significantly better / worse / not different "
            r"(Wilcoxon rank-sum, $\alpha = 0.05$). Each comparison is normalised per instance over its two agents only.")
-    return table(cap, "tab:gat", "lcccccc", head, rows, size=r"\scriptsize")
+    return table(cap, "tab:gat", r">{\raggedright\arraybackslash}p{4.2cm}cc>{\centering\arraybackslash}p{1.6cm}c"
+                 r">{\centering\arraybackslash}p{1.6cm}c", head, rows, size=r"\scriptsize")
 
 
 def _iv(v, unit=""):
