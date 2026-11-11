@@ -789,7 +789,15 @@ setting for comparability and three-tier energy as a sensitivity study.
   every number in the text traced to paper/tables or results/stats (fixes on the way: Nemenyi
   statement on Suite A, IMOEA/D-AWN ties, 1000-task HV is 12/2/1 not 13/15, front sizes Suite B:
   final 95, IMOEA/D 99, IMOEA-DQN 55, heuristics 3). Not compiled (no LaTeX here).
-  - [ ] Introduction, related work, conclusion, abstract (TODO in main.tex)
+  - [x] Introduction (5 contributions), related work (4 subsections), conclusion, abstract (243
+    words) drafted 2026-11-11 in sections/intro.tex, related.tex, conclusion.tex and main.tex.
+    refs.bib now 24 entries (added Shi et al. 2023 [VERIFY: authors, full text], MOEA/DD, theta-DEA,
+    Ishibuchi 2008 [VERIFY pages]). All refs and cites resolve.
+  - [ ] Two citation placeholders (todo macro) in related.tex: crisp dependent-task offloading MOEAs,
+    and a survey of RL-assisted evolutionary algorithms. Find and verify real papers.
+  - [ ] Confirm from the full text that Shi et al. 2023 is migration, not placement, and has no cloud tier.
+  - [ ] Authors and affiliations; decide whether the benchmark and code are released (contribution 5
+    does not promise it yet).
   - [ ] Rename DR-IMOEA (one line: the ours macro in main.tex and build_paper.py PREVIEW)
   - [ ] Verify the VERIFY entries in refs.bib
 

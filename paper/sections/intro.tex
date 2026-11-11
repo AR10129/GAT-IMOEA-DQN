@@ -1,0 +1,61 @@
+% Introduction (draft). Numbers from paper/tables (scripts/build_paper.py) and results/stats/a3_stall.csv.
+\section{Introduction}
+\label{sec:intro}
+
+Mobile and Internet-of-Things devices run applications whose computation exceeds what the device can deliver within
+its time and energy budget. Offloading parts of an application to edge servers close to the device, or further to a
+cloud data centre, shortens execution but costs transmission time, energy and money, so where each part runs is a
+multi-objective decision. Two features of real deployments make it hard. First, applications are rarely a single
+task: a video analytics pipeline, a scientific workflow or a multi-stage inference service is a directed acyclic graph
+(DAG) of tasks that exchange data, and the completion time is set by the longest chain of dependent computation and
+transfer, not by any single task. Second, the quantities the decision depends on are uncertain at planning time:
+wireless bandwidth fluctuates, servers are shared, and task workloads vary with their input. When only bounds on
+these quantities are known, each objective becomes an interval, and the decision problem an interval multi-objective
+optimisation problem.
+
+Interval multi-objective evolutionary algorithms handle such problems by comparing solutions through interval
+dominance and by rewarding solutions whose objective intervals are narrow~\cite{limbourg2005ipmoea,jin2023imoeadawn,cui2024imeaied}.
+The most recent of them for offloading, IMOEA-DQN~\cite{jin2026imoeadqn}, selects each new population in three tiers:
+a share $\alpha$ of the places by convergence (an interval dominance degree), a share $\beta$ by diversity (an interval
+crowding distance) and a share $\gamma$ by uncertainty, and lets a deep Q-network choose $(\alpha, \beta, \gamma)$ in every
+generation. It was formulated for independent tasks in a cloud--edge--end system with interval resources.
+
+This paper extends that line of work to DAG applications and, in doing so, finds that two of its parts do not
+carry over. The interval dominance degree loses its selection pressure: once most of the merged population is mutually
+non-dominated, more pool members share the best value than there are convergence places, and the tier is filled by the
+tie-break, at random. On our instances this happens for 86--100\% of the convergence places from generation 100 on, and
+at the end of a run 117--121 of the 210 pool members share the best value for 88 places. On the 1000-task workflows the
+backbone of IMOEA-DQN, run with the same fixed action as our method, ends with an IGD about six times higher. And the learned controller of $(\alpha, \beta, \gamma)$ does not beat a well-chosen fixed action,
+because the per-generation reward it learns from is almost pure noise.
+
+We propose \ours{}, an interval multi-objective evolutionary algorithm for offloading DAG workflows in uncertain
+cloud--edge--end environments. Its contributions are:
+\begin{enumerate}
+\item An interval critical-path model of DAG offloading over devices, edge servers and the cloud, with makespan, device
+  energy and cost as interval objectives, task placement and task order as decision variables, and data transfer along
+  every dependency. For single-task applications it reduces exactly to the model of Jin et al.~\cite{jin2026imoeadqn}
+  (Section~\ref{sec:model}).
+\item A DAG-valid two-string encoding with precedence-preserving crossover and mutation, so that every offspring is
+  feasible without repair (Section~\ref{sec:variation}).
+\item A diagnosis of why the interval dominance degree stalls as a convergence tier, and a fix: an interval version of
+  the best-position Tchebycheff rank of MSOPS~\cite{hughes2003msops}, with ties broken by crowding distance, used as the
+  convergence tier inside the three-tier selection, together with mating among neighbours in objective space
+  (Sections~\ref{sec:stall} and~\ref{sec:rankc}). The rank itself is not new; its use inside the dominance-, diversity-
+  and uncertainty-aware selection, the diagnosis and the evidence are.
+\item An analysis of learned control of the selection weights: three learner designs with and without a
+  graph-attention encoder of the DAG, and a reward audit that explains why none of them beats a fixed action
+  (Section~\ref{sec:learned}).
+\item An evaluation on 57 instances (Jin et al.'s instance sizes and five scientific workflow families with up to 1000
+  tasks), plus 15 instances with 2000 tasks for scalability, against four interval evolutionary algorithms, NSGA-II, NSGA-III, IMOEA-DQN and list-scheduling heuristics,
+  with a robustness check of the normalisation, a Monte Carlo check of the interval objectives against realised
+  values, and an account of where the method is weaker (Sections~\ref{sec:experiments} and~\ref{sec:validity}).
+\end{enumerate}
+
+On Jin et al.'s instance sizes \ours{} has the best IGD and hypervolume on all 12 instances, with 62\% lower mean IGD
+than IMOEA/D. On the 45 workflow instances it is better than IMOEA/D on 43 instances in IGD and on 42 in hypervolume,
+at about the same running time. At 1000 and 2000 tasks it keeps the hypervolume lead, while IGD there is level and
+depends on the reference front.
+
+Section~\ref{sec:related} reviews related work, Section~\ref{sec:model} states the model and
+Section~\ref{sec:method} the method. Section~\ref{sec:experiments} reports the experiments,
+Section~\ref{sec:validity} the threats to validity, and Section~\ref{sec:conclusion} concludes.

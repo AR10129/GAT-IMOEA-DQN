@@ -1,0 +1,25 @@
+% Conclusion (draft).
+\section{Conclusion}
+\label{sec:conclusion}
+
+We formulated the offloading of DAG workflows in cloud--edge--end systems with interval-valued resources and workloads
+as an interval multi-objective problem over task placement and task order, with makespan computed along the interval
+critical path, device energy and cost as objectives. Extending the three-tier selection of IMOEA-DQN to this problem
+showed that its convergence ranking, the interval dominance degree, stops selecting once most of the population is
+mutually non-dominated, and that its learned control of the selection weights does not beat a fixed choice. \ours{}
+replaces the convergence ranking with an interval version of the MSOPS best-position Tchebycheff rank, breaks its ties
+by crowding distance, mates neighbours in objective space and fixes the selection weights on training instances.
+
+On Jin et al.'s instance sizes \ours{} has the best IGD and hypervolume on every instance, and on five families of
+scientific workflows with 100 to 1000 tasks it is better than the strongest baseline, IMOEA/D, on 43 of 45 instances in
+IGD and 42 in hypervolume, at about the same running time. The ablation attributes the gain to the new rank and the
+neighbourhood mating together, and the predicted objective intervals contain every realised value in a Monte Carlo
+check. At 1000 and 2000 tasks the advantage narrows: \ours{} keeps the higher hypervolume, but IMOEA/D reaches cheaper
+solutions at the cost end of the front and IGD becomes level and dependent on the reference front.
+
+Three directions follow. The first is to close the gap at the cost extreme on large workflows, for example by
+combining the three-tier selection with steady-state replacement per subproblem, which our analysis points to as the
+source of IMOEA/D's advantage there. The second is to make the model more realistic: shared link bandwidth, receive
+energy, time-varying edge capacity, correlated uncertainty and applications that arrive online. The third is a small
+uncertainty share in the selection weights, which narrowed the intervals by 10\% at a small cost in IGD on the training
+instances and may suit settings where predictable performance matters more than the best expected value.

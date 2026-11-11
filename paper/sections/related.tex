@@ -1,0 +1,54 @@
+% Related work (draft). Sources: docs/novelty_check.md (W1). \todo{} marks citations still to be found;
+% refs marked VERIFY in refs.bib were read from abstracts only.
+\section{Related work}
+\label{sec:related}
+
+\subsection{Offloading dependent tasks}
+Offloading in mobile edge computing was first studied for independent tasks, where each task is placed on its own and
+the objectives add up over tasks. Applications with dependent tasks need a scheduling view: the makespan follows the
+critical path of the task graph, and the data passed between tasks cost time and energy whenever the two tasks run on
+different nodes. List-scheduling heuristics such as HEFT~\cite{topcuoglu2002heft} build a schedule task by task in a
+priority order, and many multi-objective evolutionary algorithms optimise placement and order for crisp DAG
+offloading in edge or cloud--edge--end systems \todo{cite crisp dependent-task offloading MOEAs, e.g.\ the FGCS 2023
+MOEA/D cloud--edge--end paper and the FGCS 2025 IIoT dependency-aware paper noted in docs/novelty\_check.md}. These
+models treat bandwidth, CPU speed and workload as known values.
+% VERIFY against the full text of Shi et al. (only the abstract was read): migration rather than placement, no cloud tier.
+Shi et al.~\cite{shi2023workflowmigration} consider
+dependent workflows with interval bandwidth and computing power, but for workflow migration between edge servers
+rather than placement and ordering over devices, edge servers and the cloud. Our model is the first, to our knowledge,
+to compute interval makespan along the critical path of a DAG over all three tiers, with both placement and order as
+decision variables, and it reduces to the independent-task model of Jin et al.~\cite{jin2026imoeadqn} when every
+application has one task.
+
+\subsection{Interval multi-objective evolutionary algorithms}
+Interval multi-objective problems are solved either by turning them into crisp problems, for example through interval
+midpoints and widths, or by comparing intervals directly. IP-MOEA~\cite{limbourg2005ipmoea} extends Pareto dominance to
+interval vectors and crowds by hypervolume contributions of the interval bounds. Decomposition-based methods compare
+solutions on scalarised subproblems: IMOEA/D-AWN~\cite{jin2023imoeadawn} adapts the weight vectors and neighbourhood sizes
+using an interval sparsity measure, and IMOEA/D-DAW~\cite{zhang2026imoeaddaw} uses interval Tchebycheff and penalty-based
+scalarisations with dynamic neighbourhoods for robot path planning. IMEA-IED~\cite{cui2024imeaied} compares intervals by
+an information-entropy dominance and selects within niches. IMaOEACI~\cite{cai2025imaoeaci} steers an interval
+many-objective search by an individual comprehensive indicator for vehicle selection in federated learning. IMOEA-DQN~\cite{jin2026imoeadqn} is the method closest to ours: a three-tier
+environmental selection by interval dominance degree, interval crowding distance and uncertainty dominance, with the
+shares chosen by a deep Q-network~\cite{mnih2015dqn}. None of these methods uses a weight-vector rank as one tier of a
+dominance-, diversity- and uncertainty-aware selection.
+
+\subsection{Combining dominance and decomposition}
+The loss of selection pressure when most of a population is non-dominated is well known for problems with many
+objectives~\cite{ishibuchi2008review}; we show that it already occurs with three interval objectives under
+possibility-degree dominance. Several crisp algorithms combine Pareto dominance with weight vectors or reference
+points: NSGA-III~\cite{deb2014nsga3} niches the last front by reference directions, MOEA/DD~\cite{li2015moeadd} uses
+dominance and decomposition together, and $\theta$-DEA~\cite{yuan2016thetadea} defines a dominance relation on
+decomposition distances. The rank \ours{} uses comes from MSOPS~\cite{hughes2003msops}, which ranks a solution by its best
+position over the orderings induced by a set of weighted min--max scores; Global WASF-GA~\cite{saborido2017gwasfga}
+classifies a population into fronts by achievement scalarising functions over weight vectors. \ours{} applies the
+MSOPS rank to interval midpoints and uses it as the convergence tier inside the three-tier selection, which keeps the
+diversity and uncertainty tiers of the interval setting.
+
+\subsection{Learned control of evolutionary algorithms}
+Reinforcement learning has been used to choose operators, parameters or selection weights of evolutionary algorithms
+online \todo{cite surveys of RL-assisted evolutionary algorithms}. IMOEA-DQN~\cite{jin2026imoeadqn} learns the selection
+weights from the change in a population indicator after every generation. Negative results are rarely reported; our
+analysis in Section~\ref{sec:learned} shows that for this problem the per-generation reward is too noisy, and the room
+for an adaptive schedule too small, for learned control to beat a fixed action, and that a graph-attention
+encoder~\cite{velickovic2018gat} of the DAG does not change this.
