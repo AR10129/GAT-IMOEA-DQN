@@ -9,11 +9,11 @@ the objectives add up over tasks. Applications with dependent tasks need a sched
 critical path of the task graph, and the data passed between tasks cost time and energy whenever the two tasks run on
 different nodes. List-scheduling heuristics such as HEFT \citep{topcuoglu2002heft} build a schedule task by task in a
 priority order, and many multi-objective evolutionary algorithms optimise placement and order for crisp DAG
-offloading in edge or cloud--edge--end systems \todo{cite crisp dependent-task offloading MOEAs, e.g.\ the FGCS 2023
-MOEA/D cloud--edge--end paper and the FGCS 2025 IIoT dependency-aware paper noted in docs/novelty\_check.md}. These
-models treat bandwidth, CPU speed and workload as known values.
+offloading in edge or cloud--edge--end systems \todo{cite 2--3 crisp DAG-offloading MOEAs}.
+% Candidates in docs/novelty_check.md: the FGCS 2023 MOEA/D cloud-edge-end paper, the FGCS 2025 IIoT dependency-aware paper.
+These models treat bandwidth, CPU speed and workload as known values.
 % VERIFY against the full text of Shi et al. (only the abstract was read): migration rather than placement, no cloud tier.
-Shi et al. \citep{shi2023workflowmigration} consider
+\citet{shi2023workflowmigration} consider
 dependent workflows with interval bandwidth and computing power, but for workflow migration between edge servers
 rather than placement and ordering over devices, edge servers and the cloud. Our model is the first, to our knowledge,
 to compute interval makespan along the critical path of a DAG over all three tiers, with both placement and order as
@@ -47,7 +47,7 @@ diversity and uncertainty tiers of the interval setting.
 
 \subsection{Learned control of evolutionary algorithms}
 Reinforcement learning has been used to choose operators, parameters or selection weights of evolutionary algorithms
-online \todo{cite surveys of RL-assisted evolutionary algorithms}. IMOEA-DQN \citep{jin2026imoeadqn} learns the selection
+online \todo{cite a survey of RL-assisted EAs}. IMOEA-DQN \citep{jin2026imoeadqn} learns the selection
 weights from the change in a population indicator after every generation. Negative results are rarely reported; our
 analysis in Section~\ref{sec:learned} shows that for this problem the per-generation reward is too noisy, and the room
 for an adaptive schedule too small, for learned control to beat a fixed action, and that a graph-attention

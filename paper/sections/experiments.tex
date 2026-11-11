@@ -11,8 +11,9 @@ al., used as given and multiplied by 20; this gives 12 test instances. 36 furthe
 were used only to set the method's parameters. \emph{Suite B} takes five scientific workflow families from WfCommons
 \citep{coleman2022wfcommons} (Cybershake, Epigenomics, Inspiral, Montage, Sipht) with 100, 400 and 1000 tasks in Jin et
 al.'s small scenario (3 edge servers, 6 devices), with sizes mapped into Jin et al.'s ranges, interval half-widths of
-5--30\% and data multiplied by 1, 20 or 100: 45 instances. Table~\Sref{tab:params} of the supplementary material lists all
-parameters.
+5--30\% and data multiplied by 1, 20 or 100: 45 instances. Table~\ref{tab:params_main} lists the main parameters.
+
+\input{tables/params_main}
 
 We compare \ours{} with four interval evolutionary algorithms, IMOEA/D with the original settings reported by
 \citet{cui2024imeaied}, IMOEA/D-AWN \citep{jin2023imoeadawn}, IMEA-IED \citep{cui2024imeaied} and IP-MOEA
@@ -44,6 +45,14 @@ pools defining the normalisation and the reference front (Table~\Sref{tab:robust
 and up to 400 tasks, and every HV verdict, unchanged; at 1000 tasks, however, IMOEA/D has the lower IGD on 6--9 of 15
 instances when only the strong methods form the pool. We therefore read the 1000-task results on HV, where \ours{} is
 better on 12 of 15.
+
+For a decision maker, the two methods offer different parts of the trade-off at this size. Where their fronts overlap,
+\ours{}'s solutions dominate most of IMOEA/D's, so for most schedules IMOEA/D finds, \ours{} offers one that is at least
+as good in all three objectives. IMOEA/D additionally covers the cheapest schedules, which keep more tasks on the devices,
+where computation costs nothing, at the price of a longer makespan or more device energy. When cost is the overriding
+criterion on very large
+workflows, the cost end of IMOEA/D's front is therefore worth consulting; otherwise \ours{}'s front is the better
+choice, and the two fronts can simply be merged, since both are computed at a similar cost (Section~\ref{sec:runtime}).
 
 \subsection{Convergence and ablation}
 \label{sec:convergence}
@@ -80,11 +89,16 @@ reaches cheaper solutions at the cost end of the front, although \ours{}'s front
 they overlap.
 
 To check the intervals against reality, we evaluated every final front under 200 crisp scenarios drawn uniformly from
-the input intervals. Every realised objective vector lay inside its predicted interval, and the methods rank the same on
-realised as on interval IGD (Kendall $\tau$ 0.91--1.00; Table~\Sref{tab:montecarlo}). \ours{} needs 29--62\,s per run,
-about as long as IMOEA/D and less than IMOEA/D-AWN and IMEA-IED (Table~\Sref{tab:timing}).
+the input intervals (Table~\ref{tab:montecarlo_main}). Every realised objective vector lay inside its predicted interval,
+and the methods rank almost the same on realised as on interval IGD (Kendall $\tau$ 0.91--1.00). \ours{} has the lowest
+realised IGD on three of the four instances; on montage-400, IMOEA/D's front is slightly better under realised values
+although its interval IGD is slightly worse, so the two are effectively tied there (scenario-level comparisons in
+Table~\Sref{tab:montecarlo}). The intervals are conservative: on the Suite B workflows the central 95\% of realised
+makespans and energies spans 36--47\% of the interval width. \ours{} needs 29--62\,s per run, about as long as IMOEA/D
+and less than IMOEA/D-AWN and IMEA-IED (Table~\Sref{tab:timing}).
 
 \input{tables/sensitivity}
+\input{tables/montecarlo_main}
 
 \subsection{Learned control of the selection weights}
 \label{sec:learned}

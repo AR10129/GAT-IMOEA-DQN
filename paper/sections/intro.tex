@@ -25,8 +25,9 @@ carry over. The interval dominance degree loses its selection pressure: once mos
 non-dominated, more pool members share the best value than there are convergence places, and the tier is filled by the
 tie-break, at random. On our instances this happens for 86--100\% of the convergence places from generation 100 on, and
 at the end of a run 117--121 of the 210 pool members share the best value for 88 places. On the 1000-task workflows the
-backbone of IMOEA-DQN, run with the same fixed action as our method, ends with an IGD about six times higher. And the learned controller of $(\alpha, \beta, \gamma)$ does not beat a well-chosen fixed action,
-because the per-generation reward it learns from is almost pure noise.
+backbone of IMOEA-DQN, run with the same fixed action as our method, ends with an IGD about six times higher. And the
+learned controller of $(\alpha, \beta, \gamma)$ does not beat a well-chosen fixed action, because the per-generation reward it
+learns from is almost pure noise.
 
 We propose \ours{}, an interval multi-objective evolutionary algorithm for offloading DAG workflows in uncertain
 cloud--edge--end environments. Its contributions are:
@@ -46,16 +47,17 @@ cloud--edge--end environments. Its contributions are:
   graph-attention encoder of the DAG, and a reward audit that explains why none of them beats a fixed action
   (Section~\ref{sec:learned}).
 \item An evaluation on 57 instances (Jin et al.'s instance sizes and five scientific workflow families with up to 1000
-  tasks), plus 15 instances with 2000 tasks for scalability, against four interval evolutionary algorithms, NSGA-II, NSGA-III, IMOEA-DQN and list-scheduling heuristics,
-  with a robustness check of the normalisation, a Monte Carlo check of the interval objectives against realised
-  values, and an account of where the method is weaker (Sections~\ref{sec:experiments} and~\ref{sec:validity}).
+  tasks), plus 15 instances with 2000 tasks for scalability, against four interval evolutionary algorithms, NSGA-II,
+  NSGA-III, IMOEA-DQN and list-scheduling heuristics, with a robustness check of the normalisation, a Monte Carlo check
+  of the interval objectives against realised values, and an account of where the method is weaker
+  (Sections~\ref{sec:experiments} and~\ref{sec:discussion}).
 \end{enumerate}
 
 On Jin et al.'s instance sizes \ours{} has the best IGD and hypervolume on all 12 instances, with 62\% lower mean IGD
 than IMOEA/D. On the 45 workflow instances it is better than IMOEA/D on 43 instances in IGD and on 42 in hypervolume,
-at about the same running time. At 1000 and 2000 tasks it keeps the hypervolume lead, while IGD there is level and
-depends on the reference front.
+at about the same running time. At 1000 and 2000 tasks it keeps the hypervolume lead, while IMOEA/D covers the cheapest
+schedules better and IGD is level.
 
 Section~\ref{sec:related} reviews related work, Section~\ref{sec:model} states the model and
 Section~\ref{sec:method} the method. Section~\ref{sec:experiments} reports the experiments,
-Section~\ref{sec:validity} the threats to validity, and Section~\ref{sec:conclusion} concludes.
+Section~\ref{sec:discussion} discusses limitations, and Section~\ref{sec:conclusion} concludes.

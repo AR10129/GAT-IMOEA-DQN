@@ -825,6 +825,84 @@ def t_params():
     return table(cap, "tab:params", r"p{0.32\linewidth}p{0.62\linewidth}", head, rows, size=r"\footnotesize")
 
 
+def t_montecarlo_c():
+    """Compact single-column Monte Carlo table for the paper body: realised IGD per method and instance, plus the
+    containment and rank agreement per instance. Full version (with 'better in % of scenarios') in the supplement."""
+    data, info = {}, {}
+    with open(STATS / "e7_montecarlo.csv", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            data[(r["instance"], r["policy"])] = r
+    md = (STATS / "e7_montecarlo.md").read_text(encoding="utf-8")
+    for blk in md.split("\n## ")[1:]:
+        inst = blk.split("\n", 1)[0].strip()
+        c = re.search(r"\*\*([\d.]+)%\*\*", blk)
+        t = re.search(r"Kendall tau[^:]*: ([\-\d.]+)", blk)
+        info[inst] = (c[1] if c else "?", t[1].rstrip(".") if t else "?")
+    insts = sorted({i for i, _ in data}, key=lambda w: (not w.startswith("medium"), natural(w)))
+    abbrev = {"medium": "Med.", "cybershake": "Cyb.", "epigenomics": "Epi.", "montage": "Mon.", "inspiral": "Ins.",
+              "sipht": "Sip."}
+    short = {w: abbrev.get(w.split("_")[0], w.split("_")[0]) + "-" + re.search(r"_(\d+)", w)[1] for w in insts}
+    rows = []
+    for p in PAPER:
+        vals = [float(data[(w, p)]["IGD_mean"]) * 100 if (w, p) in data else None for w in insts]
+        best = [min(float(data[(w, q)]["IGD_mean"]) for q in PAPER if (w, q) in data) * 100 for w in insts]
+        cells = ["--" if v is None else (f"\\textbf{{{v:.2f}}}" if np.isclose(v, b) else f"{v:.2f}")
+                 for v, b in zip(vals, best)]
+        rows.append(SHORT_FULL.get(p, LABEL[p]) + " & " + " & ".join(cells) + r" \\")
+    rows.append(r"\midrule")
+    rows.append("Containment (\\%) & " + " & ".join(f"{float(info[w][0]):.0f}" for w in insts) + r" \\")
+    rows.append("Kendall $\\tau$ & " + " & ".join(info[w][1] for w in insts) + r" \\")
+    head = ["Method & " + " & ".join(short[w] for w in insts) + r" \\"]
+    cap = (r"Realised values: IGD ($\times10^{-2}$) of each method's final fronts re-evaluated under 200 crisp scenarios "
+           r"drawn uniformly from the input intervals (mean over scenarios; data $\times 20$; Med.-250 is Suite A's "
+           r"medium-250, the others are the Cybershake, Epigenomics and Montage workflows). Containment: share of "
+           r"solution--scenario pairs whose realised objectives fall inside the predicted intervals; Kendall $\tau$: "
+           r"agreement between the methods' order by realised and by interval IGD.")
+    return table(cap, "tab:montecarlo_main", "l" + "c" * len(insts), head, rows, size=r"\footnotesize")
+
+
+def t_params_c():
+    """Compact single-column parameter table for the paper body; values from the code and jin.yaml as t_params."""
+    import yaml
+    import experiment as E
+    from dataset_tools.suite_a import JIN_DEVICE_CPU, JIN_EDGE_CPU
+    from gat_imoea_dqn.algorithm import RunConfig
+    from gat_imoea_dqn.selection import _das_dennis
+    sc = yaml.safe_load((ROOT / "datasets" / "scenarios" / "jin.yaml").read_text(encoding="utf-8"))
+    pol = E.POLICIES["final"]
+    var = E._backbone(pol["backbone"])["variation"]
+    N, G = RunConfig().pop_size, 1000
+    q = 1
+    while len(_das_dennis(q + 1, 3)) <= N:
+        q += 1
+    lo = lambda v: min(x[0] for x in v)                                  # noqa: E731
+    hi = lambda v: max(x[1] for x in v)                                  # noqa: E731
+    links, price = sc["links"], sc["pricing"]
+    R = lambda k, v: f"{k} & {v}" + r" \\"                               # noqa: E731
+    rows = [r"\multicolumn{2}{l}{\textit{Environment}} \\",
+            R("Device / edge CPU", f"${lo(JIN_DEVICE_CPU):g}$--${hi(JIN_DEVICE_CPU):g}$ / ${lo(JIN_EDGE_CPU):g}$--${hi(JIN_EDGE_CPU):g}$ GHz"),
+            R("Cloud CPU per task", f"{_iv(sc['cloud']['cpu_ghz'], 'GHz')}"),
+            R("Bandwidth / edge--cloud", f"{_iv(links['wireless_uplink']['bandwidth_mhz'], 'MHz')} / "
+                                         f"{_iv(links['backhaul_mbps'], 'Mbps')}"),
+            R("Prices $\\eta_E$ / $\\eta_C$", f"{price['edge_usd_per_ghz_s']:g} \\$/(GHz\\,s) / {price['cloud_usd_per_s']:g} \\$/s"),
+            R("Workload / data", "1--5 Gcycles / 500--3000 KB"),
+            r"\midrule", r"\multicolumn{2}{l}{\textit{\ours{}}} \\",
+            R("$N$ / $G_{\max}$", f"{N} / {G}"),
+            R("$(\\alpha, \\beta, \\gamma)$", "$(5/6, 1/6, 0)$"),
+            R("Weight vectors", f"{N} (Das--Dennis, $q = {q}$)"),
+            R("ICD neighbours $k$", f"{int(round(np.sqrt(2 * N)))}"),
+            R("Mating $T$ / $p_{local}$", f"{var.neighbours} / {var.p_local:g}"),
+            R("$p_c$ / mutation", f"{var.p_c_low:g}, {var.p_c_high:g} / $1/K$"),
+            r"\midrule", r"\multicolumn{2}{l}{\textit{Protocol}} \\",
+            R("Runs", "30 (\\ours{}, IMOEA/D, Jin backbone), 10 others"),
+            R("Evaluations per run", f"{N * (G + 1):,}")]
+    head = [r"Parameter & Value \\"]
+    cap = (r"Main parameters (Jin et al.'s small scenario). All environment values and the remaining settings are in "
+           r"Table~\Sref{tab:params} of the supplementary material.")
+    return table(cap, "tab:params_main", r"l>{\raggedright\arraybackslash}p{0.52\columnwidth}", head, rows,
+                 size=r"\footnotesize")
+
+
 def t_montecarlo():
     data, info = {}, {}
     with open(STATS / "e7_montecarlo.csv", encoding="utf-8") as f:
@@ -835,7 +913,7 @@ def t_montecarlo():
         inst = blk.split("\n", 1)[0].strip()
         c = re.search(r"\*\*([\d.]+)%\*\*", blk)
         t = re.search(r"Kendall tau[^:]*: ([\-\d.]+)", blk)
-        info[inst] = (c[1] if c else "?", t[1] if t else "?")
+        info[inst] = (c[1] if c else "?", t[1].rstrip(".") if t else "?")
     insts = sorted({i for i, _ in data}, key=lambda w: (not w.startswith("medium"), natural(w)))
     rows = []
     for p in PAPER:
@@ -953,6 +1031,8 @@ def main() -> int:
     tabs["timing"] = t_timing()
     tabs["montecarlo"] = t_montecarlo()
     tabs["params"] = t_params()
+    tabs["params_main"] = t_params_c()
+    tabs["montecarlo_main"] = t_montecarlo_c()
     S_learn = read_scores("learners")
     tabs["learners"] = t_learners_c(S_learn)
     tabs["learners_full"] = t_learners(S_learn)
