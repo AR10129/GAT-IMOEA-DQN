@@ -1,96 +1,83 @@
-% Method section (draft). Numbers: A1 / A1b ablation (paper/tables/ablation.tex), A2 action sweep
-% (results/experiments/action_sweep/summary.md), A3 stall and trade-off (results/stats/a3_stall.csv,
-% results/figures/a3_*). Settings: scripts/experiment.py POLICIES["final"].
+% Method (condensed for the two-column paper, step 3). Numbers: A1 / A1b ablation (paper/tables/ablation.tex),
+% A2 action sweep (results/experiments/action_sweep/summary.md), A3 stall and trade-off (results/stats/a3_stall.csv).
+% Settings: scripts/experiment.py POLICIES["final"]. Full pseudocode and complexity: supplement S2.
 \section{The proposed method: \ours{}}
 \label{sec:method}
 
-\ours{} keeps the evolutionary framework of IMOEA-DQN \citep{jin2026imoeadqn} wherever the DAG model allows and changes
-it in three places. First, the convergence ranking of the three-tier environmental selection, Jin et al.'s interval
-dominance degree, is replaced by a decomposition rank that does not lose its selection pressure once most of the
-population is mutually non-dominated (Sections~\ref{sec:stall}--\ref{sec:rankc}). Second, parents mate with
-neighbours in objective space (Section~\ref{sec:variation}). Third, the selection weights $(\alpha, \beta, \gamma)$,
-which IMOEA-DQN chooses every generation with a deep Q-network, are fixed to a value chosen on training instances
-(Section~\ref{sec:weights}); Section~\ref{sec:learned} shows that the learned controller does not beat it.
-Algorithm~\ref{alg:main} gives the main loop.
+\ours{} keeps the evolutionary framework of IMOEA-DQN \citep{jin2026imoeadqn} and changes it in three places: a
+decomposition rank replaces the interval dominance degree as the convergence ranking
+(Sections~\ref{sec:stall}--\ref{sec:rankc}), parents mate with neighbours in objective space
+(Section~\ref{sec:variation}), and the selection weights $(\alpha, \beta, \gamma)$, which IMOEA-DQN chooses every
+generation with a deep Q-network, are fixed (Section~\ref{sec:weights}). Algorithm~\ref{alg:drimoea} summarises it.
+
+\input{algorithms/main}
 
 \subsection{Encoding and variation}
 \label{sec:variation}
-A solution is the pair $(\mathbf{x}, \mathbf{o})$ of Section~\ref{sec:model}. The initial population draws every
-allocation gene uniformly from the nodes the task's device can reach and every priority string from a randomised
-Kahn's algorithm, which picks uniformly among the ready tasks. Algorithm~\ref{alg:var} creates one child per member of
-the population. The partner of member $i$ is drawn from its $T$ nearest neighbours by Euclidean distance between
-normalised interval midpoints, the mating restriction of MOEA/D \citep{zhang2007moead}. Crossover keeps the
-dual-adaptive scheme of Jin et al.: the crossover probability is 0.7 for the better half of the population by
-uncertainty front and 0.9 for the other half, and the allocation string is recombined gene by gene (DAEC), taking each
-gene from either parent with equal probability. Jin et al.'s simulated binary crossover cannot be applied to a task
-order, so the priority strings are recombined by precedence-preserving order-based crossover
-(POX) \citep{bierwirth1996permutation}: a random binary mask decides, position by position, which parent supplies its
-leftmost task not yet used, and any mask yields a topological order. Mutation reassigns each allocation gene with
-probability $1/K$ to another reachable node and moves each task with probability $1/K$ to a random position after its
-last predecessor and before its first successor. Every child is therefore feasible by construction.
+The initial population draws each allocation gene uniformly from the nodes the task's device can reach and each priority
+string from a randomised Kahn's algorithm. Every member creates one child with a partner drawn from its $T$ nearest
+neighbours by distance between normalised interval midpoints, the mating restriction of MOEA/D \citep{zhang2007moead}.
+As in Jin et al., the crossover probability is 0.7 for the better half of the population by uncertainty front and 0.9 for
+the rest, and the allocation strings are recombined gene by gene (DAEC). Their simulated binary crossover cannot keep a
+task order valid, so the priority strings use precedence-preserving order-based crossover
+\citep{bierwirth1996permutation}, which yields a topological order for any mask. Mutation reassigns each gene with
+probability $1/K$ to another reachable node and moves each task with probability $1/K$ to a random position between its
+last predecessor and first successor, so every child is feasible without repair.
 
-\subsection{Three-tier environmental selection}
-Jin et al.'s selection ranks the merged population $P \cup Q$ of $2N$ solutions in three ways:
-\begin{itemize}
-\item \emph{Rank C} (convergence): the interval dominance degree $R_{IN}(x) = \sum_{y \prec_{IN} x} S(y)$, where $S(y)$ is
-  the number of pool members $y$ interval-dominates; lower is better.
-\item \emph{Rank D} (diversity): the interval crowding distance $\mathrm{ICD}(x) = \sum_{y} \mathrm{ICD}(x, y)$ over the
-  $k = \mathrm{round}(\sqrt{2N})$ most similar solutions $y$, with
-  $\mathrm{ICD}(x, y) = \sum_m |m(\tilde F_m(x)) - m(\tilde F_m(y))| / (\mu(x, y) + V(x) + V(y) + 1)$, where $V$ is the
-  volume of a solution's objective box and $\mu$ the overlap volume of two boxes; higher is better.
-\item \emph{Rank U} (uncertainty): the dominance degree $R_U$ under Pareto dominance on $(U_1, U_2)$; lower is better.
-\end{itemize}
-Given $(\alpha, \beta, \gamma)$ with $\alpha + \beta + \gamma = 1$, the next population takes the best $\mathrm{round}(\alpha N)$
-solutions by Rank C, then the best $\mathrm{round}(\beta N)$ not yet chosen by Rank D, and the rest by Rank U
-(Algorithm~\ref{alg:sel}). Exact copies of a chosen genotype are skipped, so clones cannot fill the population.
-
-\subsection{Why the interval dominance degree stalls}
+\subsection{Three-tier selection and why it stalls}
 \label{sec:stall}
-$R_{IN}$ separates solutions only while some of them dominate others. Under interval dominance two solutions are
-incomparable whenever their intervals overlap enough in some objective, so after a few hundred generations most of the
-merged population has $R_{IN} = 0$. When more than $\alpha N$ pool members share the best value, Rank C no longer
-selects: the $\alpha N$ convergence places are filled by the tie-break, which Jin et al.\ leave unspecified and which
-is random in a literal implementation. Figure~\ref{fig:a3_stall} measures this on two instances. With $R_{IN}$, the
-share of Rank C places decided by the tie-break rises to 86--100\% after generation 100 and to almost 100\% after
-generation 500, when 117--121 of the 210 pool members share $R_{IN} = 0$ for $\alpha N = 88$ places. The convergence tier
-then draws at random from the first front, and the population drifts along it instead of approaching the Pareto front.
-The effect grows with the size of the DAG: the fixed-action Jin backbone has a mean IGD of 0.052 on the 100-task
-workflows of Suite~B and 0.175 on the 1000-task ones (Section~\ref{sec:results}).
+Jin et al.\ rank the merged population of $2N$ solutions three ways: \emph{Rank C} by the interval dominance degree
+$R_{IN}(x) = \sum_{y \prec_{IN} x} S(y)$, with $S(y)$ the number of solutions $y$ dominates; \emph{Rank D} by the interval
+crowding distance (ICD) over the $\mathrm{round}(\sqrt{2N})$ most similar solutions; and \emph{Rank U} by Pareto dominance on
+$(U_1, U_2)$. The next population takes the best $\mathrm{round}(\alpha N)$ solutions by Rank C, then $\mathrm{round}(\beta N)$
+by Rank D and the rest by Rank U, skipping duplicates.
+
+$R_{IN}$ separates solutions only while some dominate others. Intervals that overlap are often incomparable, so after a
+few hundred generations most of the pool has $R_{IN} = 0$; once more than $\alpha N$ solutions share the best value, the
+convergence places are filled by the tie-break, which Jin et al.\ leave unspecified and which is random in a literal
+implementation. Fig.~\ref{fig:a3_stall} measures this. With $R_{IN}$, 86--100\% of the convergence places are decided by
+the tie-break after generation 100, and at the end 117--121 of the 210 pool members share $R_{IN} = 0$ for 88 places:
+the convergence tier draws at random from the first front, and the population drifts along it. The effect grows with
+the DAG; the fixed-action Jin backbone reaches a mean IGD of 0.052 on the 100-task workflows and 0.175 on the 1000-task
+ones (Section~\ref{sec:results}).
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{figures/a3_stall.pdf}
+\caption{Share of the $\alpha N$ convergence places decided by the tie-break (top) and number of pool members sharing
+the best Rank C value (bottom): Jin et al.'s $R_{IN}$ against the Tchebycheff Rank C of \ours{}, mean of 3 runs.}
+\label{fig:a3_stall}
+\end{figure}
 
 \subsection{Tchebycheff Rank C}
 \label{sec:rankc}
-\ours{} replaces $R_{IN}$ by a rank that orders every solution. Let $W$ be a set of $N$ Das--Dennis weight vectors and let
-$G^L, G^U$ be the objectives scaled per objective to $[0, 1]$ over the pool. For each $\mathbf{w} \in W$ the interval
-Tchebycheff value of a solution is
+\ours{} uses a rank that orders every solution. With $N$ Das--Dennis weight vectors $W$ and the objectives scaled to
+$[0, 1]$ over the pool ($G^L, G^U$), each $\mathbf{w}$ defines the interval Tchebycheff value
 \begin{equation}
-\tilde g(x \mid \mathbf{w}) = \Big[\max_m w_m G^L_m(x), \; \max_m w_m G^U_m(x)\Big],
+\tilde g(x \mid \mathbf{w}) = \big[\max_m w_m G^L_m(x),\ \max_m w_m G^U_m(x)\big].
 \label{eq:tch}
 \end{equation}
-and the pool is sorted by it. Sorting intervals by the possibility degree~\eqref{eq:possibility} at threshold 0.5 is
-sorting by midpoint, which is how IMOEA/D compares two solutions on a subproblem. Let $\pi_{\mathbf{w}}(x) \in
-\{0, \dots, 2N - 1\}$ be the position of $x$ when the pool is sorted by ascending $m(\tilde g(\cdot \mid \mathbf{w}))$.
-The new Rank C of a solution is its best position over all these orders,
+Comparing intervals by possibility degree at threshold 0.5 equals comparing midpoints, as IMOEA/D does on a subproblem.
+With $\pi_{\mathbf{w}}(x)$ the position of $x$ when the pool is sorted by $m(\tilde g(\cdot \mid \mathbf{w}))$,
 \begin{equation}
 R_C(x) = \min_{\mathbf{w} \in W} \pi_{\mathbf{w}}(x),
 \label{eq:rankc}
 \end{equation}
-so the best solution of every subproblem has $R_C = 0$, and a solution is ranked well when it is close to the best on at
-least one direction. This is the ranking of MSOPS \citep{hughes2003msops} applied to interval midpoints. What \ours{}
-adds is its use as the convergence tier inside the dominance-, diversity- and uncertainty-aware selection of Jin et al.,
-with ties broken by descending interval crowding distance rather than at random. With this rank the share of
-convergence places decided by the tie-break stays at 11--23\% throughout the run (Fig.~\ref{fig:a3_stall}). Unlike
-MOEA/D-style methods, \ours{} keeps a generational population and Jin et al.'s diversity and uncertainty tiers.
+so the best solution of every subproblem has $R_C = 0$. This is the rank of MSOPS \citep{hughes2003msops} on interval
+midpoints; \ours{} uses it as the convergence tier of Jin et al.'s selection and breaks its ties by descending ICD.
+The tie-break then decides only 11--23\% of the convergence places (Fig.~\ref{fig:a3_stall}). Unlike MOEA/D,
+\ours{} keeps a generational population and the diversity and uncertainty tiers.
 
-\subsection{Selection weights}
+\subsection{Selection weights and complexity}
 \label{sec:weights}
-The weights $(\alpha, \beta, \gamma)$ are fixed to $(5/6, 1/6, 0)$, which gives 88 places by Rank C and 17 by Rank D in
-a population of 105. The value was chosen before any test run by holding each of the 28 actions of IMOEA-DQN's action
-set fixed on 36 training instances that are separate from the test instances (three further instances of each Suite~A
-configuration, with data $\times 1$ and $\times 20$). It had the best mean IGD rank (2.25 of 28); on average its IGD was 1.13 times
-the best action's on each instance, and 1.71 times at worst. Only four actions, all with $\alpha \ge 2/3$, were ever
-best on an instance. The other weights trade convergence for precision along one curve
-(Fig.~\ref{fig:a3_tradeoff}): a small uncertainty share, $(5/6, 0, 1/6)$, lowers the imprecision per solution by 10\%
-for an IGD ratio of 1.15 instead of 1.13, while more weight on Rank D or Rank U raises IGD steeply. The neighbourhood
-size $T = 10$ and the probability of mating with a neighbour, 1.0, were tuned on the same training instances.
+\label{sec:complexity}
+The weights are fixed to $(5/6, 1/6, 0)$: 88 places by Rank C and 17 by Rank D for $N = 105$. We chose them before any
+test run by holding each of IMOEA-DQN's 28 actions fixed on 36 training instances separate from the test set; this action
+had the best mean IGD rank (2.25 of 28), within 13\% of the best action's IGD on average. Only actions with
+$\alpha \ge 2/3$ were ever best; more weight on Rank D or U raises IGD steeply, while a small uncertainty share
+$(5/6, 0, 1/6)$ narrows the intervals by 10\% at an IGD ratio of 1.15 instead of 1.13 (Fig.~S2). $T = 10$ and always
+mating with a neighbour were tuned on the same instances.
 
-\input{sections/complexity}
+A generation costs $O\big(N^2(M + F + \log N) + N(K + |E|)\big)$ for $M$ objectives and $F$ interval fronts: the
+Tchebycheff rank adds $O(N^2 \log N)$ sorting to Jin et al.'s $O(MN^2)$ dominance degree, and evaluation is linear in the
+size of the DAG. The number of evaluations, $N(G_{\max} + 1)$, equals every baseline's; the derivation is in Section~S2.

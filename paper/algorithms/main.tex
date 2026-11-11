@@ -1,0 +1,26 @@
+% Compact pseudocode of the method for the two-column paper (one column wide). The four detailed algorithms
+% are in algorithms/drimoea.tex (supplement). Matches gat_imoea_dqn/algorithm.py run() with the "final" backbone.
+\begin{algorithm}[!t]
+\caption{\ours{}}
+\label{alg:drimoea}
+\small
+\begin{algorithmic}[1]
+\Require DAG $\mathcal{G}$, $N$, $G_{\max}$, $(\alpha, \beta, \gamma)$, $T$
+\State $W \gets N$ Das--Dennis weight vectors
+\State $P \gets N$ random reachable allocations and random topological orders; evaluate $P$
+\For{$t = 1, \dots, G_{\max}$}
+  \State $B(i) \gets$ $T$ nearest members of $i$ (normalised midpoints)
+  \State $p_c(i) \gets 0.7$ if $i$ is in the better half by $(U_1, U_2)$ front, else $0.9$
+  \For{each $i \in P$}
+    \State $j \gets$ uniform from $B(i)$
+    \State with prob.\ $p_c(i)$: $\mathbf{x} \gets$ DAEC$(\mathbf{x}_i, \mathbf{x}_j)$, $\mathbf{o} \gets$ POX$(\mathbf{o}_i, \mathbf{o}_j)$
+    \State mutate $\mathbf{x}$ and $\mathbf{o}$ (rate $1/K$, DAG-valid); add to $Q$
+  \EndFor
+  \State evaluate $Q$ by the interval critical-path calculus; $M \gets P \cup Q$
+  \State $R_C \gets$ Eq.~\eqref{eq:rankc}; ICD; $R_U$ on $(U_1, U_2)$
+  \State $P \gets$ best $\mathrm{round}(\alpha N)$ of $M$ by $(R_C \uparrow, \mathrm{ICD} \downarrow)$, then
+    $\mathrm{round}(\beta N)$ by ICD$\downarrow$, rest by $R_U \uparrow$, skipping duplicates
+\EndFor
+\State \Return the first interval front of $P$
+\end{algorithmic}
+\end{algorithm}
