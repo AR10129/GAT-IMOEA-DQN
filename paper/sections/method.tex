@@ -41,7 +41,7 @@ the convergence tier draws at random from the first front, and the population dr
 the DAG; the fixed-action Jin backbone reaches a mean IGD of 0.052 on the 100-task workflows and 0.175 on the 1000-task
 ones (Section~\ref{sec:results}).
 
-\begin{figure}[!t]
+\begin{figure}[pos=htbp]
 \centering
 \includegraphics[width=\columnwidth]{figures/a3_stall.pdf}
 \caption{Share of the $\alpha N$ convergence places decided by the tie-break (top) and number of pool members sharing
@@ -75,9 +75,10 @@ The weights are fixed to $(5/6, 1/6, 0)$: 88 places by Rank C and 17 by Rank D f
 test run by holding each of IMOEA-DQN's 28 actions fixed on 36 training instances separate from the test set; this action
 had the best mean IGD rank (2.25 of 28), within 13\% of the best action's IGD on average. Only actions with
 $\alpha \ge 2/3$ were ever best; more weight on Rank D or U raises IGD steeply, while a small uncertainty share
-$(5/6, 0, 1/6)$ narrows the intervals by 10\% at an IGD ratio of 1.15 instead of 1.13 (Fig.~S2). $T = 10$ and always
+$(5/6, 0, 1/6)$ narrows the intervals by 10\% at an IGD ratio of 1.15 instead of 1.13 (Fig.~\Sref{fig:a3_tradeoff}). $T = 10$ and always
 mating with a neighbour were tuned on the same instances.
 
 A generation costs $O\big(N^2(M + F + \log N) + N(K + |E|)\big)$ for $M$ objectives and $F$ interval fronts: the
 Tchebycheff rank adds $O(N^2 \log N)$ sorting to Jin et al.'s $O(MN^2)$ dominance degree, and evaluation is linear in the
-size of the DAG. The number of evaluations, $N(G_{\max} + 1)$, equals every baseline's; the derivation is in Section~S2.
+size of the DAG. The number of evaluations, $N(G_{\max} + 1)$, equals every baseline's; Section~\Sref{sec:complexity}
+of the supplementary material gives the derivation and Algorithms~\Sref{alg:main}--\Sref{alg:eval} the full pseudocode.

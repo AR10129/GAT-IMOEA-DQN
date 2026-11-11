@@ -590,6 +590,110 @@ def t_timing():
                  note=" ".join(notes) or None)
 
 
+# ---------------------------------------------------------------- compact single-column tables (paper body)
+
+ABL_SHORT = [("Build-up (vs \\ours{})", "jin", "Jin et al.\\ backbone", "final"),
+             ("Build-up (vs \\ours{})", "ptch", "+ Tchebycheff Rank C", "final"),
+             ("Build-up (vs \\ours{})", "ptchpicd", "+ ICD tie-break", "final"),
+             ("Build-up (vs \\ours{})", "full", "+ mating, $T{=}20$, $p{=}0.9$", "final"),
+             ("Build-up (vs \\ours{})", "final", "\\ours{} ($T{=}10$, $p{=}1$)", None),
+             ("Leave one out (vs $T{=}20$)", "mtch", "without Tchebycheff", "full"),
+             ("Leave one out (vs $T{=}20$)", "micd", "without ICD tie-break", "full"),
+             ("Leave one out (vs $T{=}20$)", "ptchpicd", "without mating", "full"),
+             ("Parameters (vs $T{=}20$)", "T10", "$T = 10$", "full"),
+             ("Parameters (vs $T{=}20$)", "T40", "$T = 40$", "full"),
+             ("Parameters (vs $T{=}20$)", "p05", "$p_{local} = 0.5$", "full"),
+             ("Parameters (vs $T{=}20$)", "w53", "$N/2$ weight vectors", "full"),
+             ("Parameters (vs $T{=}20$)", "w210", "$2N$ weight vectors", "full"),
+             ("Parameters (vs $T{=}20$)", "conv", "action $(1, 0, 0)$", "full")]
+
+
+def t_ablation_c(S):
+    keys = sorted(S, key=lambda k: natural(k[1]))
+    rows, last = [], None
+    for group, p, lab, ref in ABL_SHORT:
+        if group != last:
+            if last is not None:
+                rows.append(r"\midrule")
+            rows.append(f"\\multicolumn{{4}}{{l}}{{\\textit{{{group}}}}}" + r" \\")
+            last = group
+        igd = np.mean([S[k][p]["IGD"].mean() for k in keys]) * 100
+        hv = np.mean([S[k][p]["HV_jin"].mean() for k in keys])
+        w = "--" if ref is None else _wlt(S, keys, p, ref, "IGD")
+        rows.append(f"\\quad {lab} & {igd:.2f} & {hv:.3f} & {w}" + r" \\")
+    head = [r"Variant & IGD & HV & IGD $+/-/\approx$ \\"]
+    cap = (r"Ablation on the 12 Suite A instances (10 runs; IGD $\times10^{-2}$, means over instances). "
+           r"$+/-/\approx$: instances where the variant is significantly better / worse / not different from the "
+           r"reference in the group heading (Wilcoxon rank-sum, $\alpha = 0.05$).")
+    return table(cap, "tab:ablation", "lccc", head, rows, size=r"\footnotesize")
+
+
+SENS_SHORT = {"e6_base": "Base case", "e6_energy_all": "All-tier energy", "e6_width05": "Widths $\\times 0.5$",
+              "e6_width2": "Widths $\\times 2$", "e6_bw05": "Bandwidth $\\times 0.5$",
+              "e6_bw2": "Bandwidth $\\times 2$", "e6_edges1": "1 edge server", "e6_edges6": "6 edge servers",
+              "e6_edgequeue": "Edge queueing"}
+
+
+def t_sensitivity_c(S, SC):
+    rows = []
+
+    def row(lab, keys, S_):
+        f = np.mean([S_[k]["final"]["IGD"].mean() for k in keys]) * 100
+        d = np.mean([S_[k]["imoead_orig"]["IGD"].mean() for k in keys]) * 100
+        rec = []
+        for m in ("IGD", "HV_jin"):
+            s = [symbols(S_[k], ["imoead_orig", "nsga2_mid", "fixed_fav"], m)["imoead_orig"] for k in keys]
+            rec.append(f"{s.count('+')}/{s.count('-')}/{s.count('=')}")
+        fb, db = (f"\\textbf{{{f:.2f}}}", f"{d:.2f}") if f <= d else (f"{f:.2f}", f"\\textbf{{{d:.2f}}}")
+        return f"{lab} & {fb} & {db} & {rec[0]} & {rec[1]}" + r" \\"
+
+    for lvl, _ in E6_LEVELS:
+        keys = sorted([k for k in S if k[0] == lvl], key=lambda k: natural(k[1]))
+        rows.append(row(SENS_SHORT[lvl], keys, S))
+    rows.append(r"\midrule")
+    rows.append(row("2000 tasks", sorted(SC, key=lambda k: natural(k[1])), SC))
+    head = [r"& \multicolumn{2}{c}{IGD ($\times10^{-2}$)} & \multicolumn{2}{c}{IMOEA/D $+/-/\approx$} \\",
+            r"\cmidrule(lr){2-3}\cmidrule(lr){4-5}",
+            r"Setting & Ours & IMOEA/D & IGD & HV \\"]
+    cap = (r"Sensitivity on the five 400-task workflows (data $\times 20$, 10 runs), one setting changed at a time, and "
+           r"scalability to 2000 tasks. Last two columns: instances where IMOEA/D is significantly better / worse / not "
+           r"different from \ours{} (Wilcoxon rank-sum, Holm, $\alpha = 0.05$). NSGA-II and the Jin backbone are worse on "
+           r"every instance in every setting (Table~\Sref{tab:sensitivity} of the supplementary material).")
+    return table(cap, "tab:sensitivity", "lcccc", head, rows, size=r"\footnotesize")
+
+
+LEARN_SHORT = {"tch_fixed_fav": "Fixed $(5/6, 1/6, 0)$", "tch_conv": "Fixed $(1, 0, 0)$",
+               "tch_random_conv": "Random, $\\alpha \\ge 1/2$",
+               "tch_trained_stable": "Every gen., PIBI, GAT", "tch_trained_nogat_stable": "Every gen., PIBI",
+               "tch_trained_blk": "Every 50 gen., HV, GAT", "tch_trained_nogat_blk": "Every 50 gen., HV",
+               "tch_trained_l8": "Every 25 gen., 10 act., GAT", "tch_trained_nogat_l8": "Every 25 gen., 10 act.",
+               "final": "\\ours{}", "imoea_dqn": "IMOEA-DQN", "imoead_orig": "IMOEA/D"}
+
+
+def t_learners_c(S):
+    keys = sorted(S, key=lambda k: natural(k[1]))
+    ref = "tch_fixed_fav"
+    rows, last = [], None
+    groups = {"Fixed actions": "Fixed or random action", "Learned control (DQN)": "DQN control (interval, reward, actions)",
+              "For comparison": "For comparison"}
+    for group, p, _ in LEARN_ROWS:
+        if group != last:
+            if last is not None:
+                rows.append(r"\midrule")
+            rows.append(f"\\multicolumn{{4}}{{l}}{{\\textit{{{groups[group]}}}}}" + r" \\")
+            last = group
+        igd = np.mean([S[k][p]["IGD"].mean() for k in keys]) * 100
+        hv = np.mean([S[k][p]["HV_jin"].mean() for k in keys])
+        w = "--" if p == ref else _wlt(S, keys, p, ref, "IGD")
+        rows.append(f"\\quad {LEARN_SHORT[p]} & {igd:.2f} & {hv:.3f} & {w}" + r" \\")
+    head = [r"Control of $(\alpha, \beta, \gamma)$ & IGD & HV & IGD $+/-/\approx$ \\"]
+    cap = (r"Learned against fixed control of the selection weights on four Suite A instances (4 runs; IGD "
+           r"$\times10^{-2}$). All rows above \ours{} use the Tchebycheff backbone with $T = 20$, $p_{local} = 0.9$. "
+           r"$+/-/\approx$: instances where the row is significantly better / worse / not different from the fixed action "
+           r"$(5/6, 1/6, 0)$ (Wilcoxon rank-sum, $\alpha = 0.05$).")
+    return table(cap, "tab:learners", "lccc", head, rows, size=r"\footnotesize")
+
+
 def _wlt(S, keys, p, ref, m):
     s = [symbols({ref: S[k][ref], p: S[k][p]}, [p], m, ref=ref)[p] for k in keys]
     return f"{s.count('+')}/{s.count('-')}/{s.count('=')}"
@@ -758,6 +862,58 @@ def t_montecarlo():
     return table(cap, "tab:montecarlo", "l" + "cc" * len(insts), head, rows, size=r"\tiny")
 
 
+def write_supprefs():
+    """Number the supplement's sections, tables, figures and algorithms the way LaTeX will (S1, S2, ...) by
+    reading paper/supplement.tex in order, and write paper/supprefs.tex so the paper can cite them with
+    \\Sref{label} without hard-coded numbers."""
+    sup = PAPER_DIR / "supplement.tex"
+    if not sup.exists():
+        return
+    n = {"section": 0, "subsection": 0, "table": 0, "figure": 0, "algorithm": 0}
+    refs = {}
+
+    def scan(text):
+        # environments and \input in document order
+        for m in re.finditer(r"\\(sub)?section\{|\\begin\{(table\*?|sidewaystable|figure\*?|algorithm)\}"
+                             r"|\\label\{([^}]+)\}|\\input\{([^}]+)\}", text):
+            g = [None, m[2], m[3], m[4]]
+            if m[0].startswith("\\subsection"):
+                n["subsection"] += 1
+                cur["kind"] = "subsection"
+                continue
+            if m[0].startswith("\\section"):
+                n["section"] += 1
+                n["subsection"] = 0
+                cur["kind"] = "section"
+                continue
+            m = g
+            if m[1]:
+                kind = {"sidewaystable": "table", "table*": "table", "figure*": "figure"}.get(m[1], m[1])
+                n[kind] += 1
+                cur["kind"] = kind
+            elif m[2]:
+                k = cur["kind"]
+                refs[m[2]] = (f"S{n['section']}.{n['subsection']}" if k == "subsection"
+                              else f"S{n[k]}" if k else "S?")
+            elif m[3]:
+                p = PAPER_DIR / (m[3] if m[3].endswith(".tex") else m[3] + ".tex")
+                if p.exists():
+                    scan("\n".join(line for line in p.read_text(encoding="utf-8").splitlines()
+                                   if not line.lstrip().startswith("%")))
+
+    cur = {"kind": None}
+    body = sup.read_text(encoding="utf-8")
+    body = body[body.find("\\begin{document}"):]
+    scan("\n".join(line for line in body.splitlines() if not line.lstrip().startswith("%")))
+    L = ["% generated by scripts/build_paper.py from supplement.tex; do not edit by hand",
+         r"\makeatletter",
+         r"\newcommand{\Sref}[1]{\ifcsname Sref@#1\endcsname\csname Sref@#1\endcsname\else S??\fi}"]
+    L += [f"\\expandafter\\def\\csname Sref@{k}\\endcsname{{{v}}}" for k, v in refs.items()]
+    L.append(r"\makeatother")
+    (PAPER_DIR / "supprefs.tex").write_text("\n".join(L) + "\n", encoding="utf-8")
+    print("wrote paper/supprefs.tex:", ", ".join(f"{k}={v}" for k, v in refs.items()))
+
+
 # ---------------------------------------------------------------- driver
 
 PREVIEW = r"""\documentclass[review]{elsarticle}
@@ -788,16 +944,22 @@ def main() -> int:
     tabs["summary"] = t_summary(SA, SB)
     tabs["heuristics"] = t_heuristics(SA, SB)
     tabs["robustness"] = t_robustness()
-    tabs["ablation"] = t_ablation(read_scores("ablation"))
-    tabs["sensitivity"] = t_sensitivity(read_scores("sensitivity"))
-    tabs["scalability"] = t_scalability(read_scores("scalability"))
+    S_abl, S_sens, S_scal = read_scores("ablation"), read_scores("sensitivity"), read_scores("scalability")
+    tabs["ablation"] = t_ablation_c(S_abl)                 # paper body (single column)
+    tabs["ablation_full"] = t_ablation(S_abl)              # supplement
+    tabs["sensitivity"] = t_sensitivity_c(S_sens, S_scal)
+    tabs["sensitivity_full"] = t_sensitivity(S_sens)
+    tabs["scalability"] = t_scalability(S_scal)
     tabs["timing"] = t_timing()
     tabs["montecarlo"] = t_montecarlo()
     tabs["params"] = t_params()
-    tabs["learners"] = t_learners(read_scores("learners"))
+    S_learn = read_scores("learners")
+    tabs["learners"] = t_learners_c(S_learn)
+    tabs["learners_full"] = t_learners(S_learn)
     tabs["gat"] = t_gat(read_scores("gat"))
     for n, b in tabs.items():
         write(n, b)
+    write_supprefs()
 
     figs = PAPER_DIR / "figures"
     figs.mkdir(parents=True, exist_ok=True)
