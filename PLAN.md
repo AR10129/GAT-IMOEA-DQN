@@ -733,8 +733,11 @@ setting for comparability and three-tier energy as a sensitivity study.
   heuristics (scored on the main normalisation without joining the pool), robustness, ablation
   (build-up vs final, leave-one-out / sensitivity vs the T=20 default as in A1), sensitivity (E6),
   scalability (2000 tasks), timing (B4), montecarlo (E7).
-  - [ ] Timing rows for ip_moea_hv and imoea_dqn are missing (the table prints a TODO): rerun
-    `scripts/run_timing.cmd` with those two policies (6 instances x 2 seeds, one at a time).
+  - [x] Timing for ip_moea_hv and imoea_dqn (2026-11-11, `scripts/run_timing2.cmd`, timing2_a / timing2_b,
+    36 runs one at a time, final re-timed as a control: 0.82-1.21x its B4 time, stated in the table
+    note). Median s: ip_moea_hv 204 / 218 / 173 / 171 / 175 / 191 (small_20, medium_250, cybershake
+    100-2000): 4-7x final, the exact HV contributions per front; imoea_dqn 43 / 56 / 39 / 47 / 64 / 98,
+    about the same as the offline-GAT version. Table drops the superseded ip_moea row.
   - [ ] Still to add: C4 figures (D1), front plots if wanted.
 - [ ] R2. System-model figure, pseudocode, complexity, parameter table
 - [ ] R3. Threats to validity and limitations (no link contention, no receive energy, interval

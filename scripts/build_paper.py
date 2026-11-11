@@ -464,28 +464,49 @@ TIMING_POLS = ["final", "imoead_orig", "imoead_awn", "imea_ied", "ip_moea_hv", "
                "nsga3_mid", "fixed_fav", "imoea_dqn", "trained_stable"]
 
 
-def t_timing():
+def _seconds(exps):
     sec = {}
-    for e in ("timing_a", "timing_b"):
+    for e in exps:
         for p in (EXP / e / "runs").glob("*.json"):
             m = RUN_NAME.match(p.name)
             if m:
                 sec.setdefault((m["wf"], m["pol"]), []).append(json.loads(p.read_text())["seconds"])
-    insts = sorted({w for w, _ in sec}, key=lambda w: (not w.startswith(("small", "medium")), natural(w)))
-    pols = [p for p in TIMING_POLS if any((w, p) in sec for w in insts)]
+    return sec
+
+
+def t_timing():
+    """B4 timing (timing_a / timing_b); the corrected baselines come from timing2_a / timing2_b, which
+    also re-time `final` so machine drift between the two batches can be stated."""
+    sec, sec2 = _seconds(("timing_a", "timing_b")), _seconds(("timing2_a", "timing2_b"))
+    insts = sorted({w for w, _ in sec}, key=lambda w: (not w.startswith(("small", "medium")),
+                                                       int(re.search(r"_(\d+)", w)[1])))
+    for p in ("ip_moea_hv", "imoea_dqn"):
+        for w in insts:
+            if (w, p) in sec2:
+                sec[(w, p)] = sec2[(w, p)]
+    pols = [p for p in PAPER + ["trained_stable"] if any((w, p) in sec for w in insts)]
     missing = [p for p in ("ip_moea_hv", "imoea_dqn") if p not in pols]
     rows = []
     for p in pols:
+        if p == "trained_stable":
+            rows.append("\\midrule")
         rows.append(LABEL[p] + " & " + " & ".join(f"{np.median(sec[(w, p)]):.1f}" if (w, p) in sec else "--"
                                                   for w in insts) + r" \\")
     head = ["Method & " + " & ".join(inst_name(w).replace(" $\\times20$", "") for w in insts) + r" \\"]
     cap = ("Wall-clock time per run in seconds (median of 2 runs, $G = 1000$, $N = 105$, one run at a time on the same "
-           "machine). Suite A instances first, then Cybershake with 100--2000 tasks (data $\\times 20$).")
-    note = None
+           "machine). Suite A instances first, then Cybershake with 100--2000 tasks (data $\\times 20$). The last row "
+           "is IMOEA-DQN with the offline-trained GAT controller of the learned-control analysis.")
+    notes = []
+    ctl = [np.median(sec2[(w, "final")]) / np.median(sec[(w, "final")]) for w in insts if (w, "final") in sec2]
+    if ctl:
+        notes.append(f"IP-MOEA and IMOEA-DQN were timed in a later batch together with \\ours{{}} as a control; "
+                     f"\\ours{{}}'s time in that batch was {min(ctl):.2f}--{max(ctl):.2f} times its time here.")
+        print(f"timing control: final later / earlier = {min(ctl):.2f}-{max(ctl):.2f}")
     if missing:
-        note = "TODO: timing runs for " + ", ".join(LABEL[p] for p in missing) + " are missing."
+        notes.append("TODO: timing runs for " + ", ".join(LABEL[p] for p in missing) + " are missing.")
         print("WARNING: timing table lacks", missing)
-    return table(cap, "tab:timing", "l" + "c" * len(insts), head, rows, size=r"\scriptsize", note=note)
+    return table(cap, "tab:timing", "l" + "c" * len(insts), head, rows, size=r"\scriptsize",
+                 note=" ".join(notes) or None)
 
 
 def t_montecarlo():
