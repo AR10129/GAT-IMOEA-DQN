@@ -1,0 +1,87 @@
+% Threats to validity and limitations (R3). Every number is from the generated tables in paper/tables
+% (scripts/build_paper.py) or from PLAN.md entries B1, B4, E2, E6, E7, A1b and the scalability study.
+\section{Threats to validity and limitations}
+\label{sec:validity}
+
+\paragraph{Metrics and normalisation (construct validity)}
+IGD and HV are computed after normalising each instance once, over the final fronts of all compared methods, and
+IGD is measured against the non-dominated union of those fronts. The verdict between two strong methods can depend
+on which methods form that pool. Table~\ref{tab:robustness} repeats the comparison of \ours{} with IMOEA/D under four
+pools. On Suite A and on the Suite B workflows with up to 400 tasks, every pool gives the same verdict. On HV the
+Suite B record is also stable (42 wins, 2 losses, 1 tie in three of the four pools, 42/1/2 in the fourth). On IGD
+at 1000 tasks it is not: with the pool of the main tables \ours{} is better on 14 of the 15 instances, but when the
+weak baselines are left out of the pool IMOEA/D has the lower IGD on 6--9 of them. We therefore report HV as the
+headline metric at 1000 tasks and state that IGD there is level or favours IMOEA/D. The Monte Carlo shares of
+Table~\ref{tab:montecarlo} are subject to the same caveat, because each scenario's crisp reference front is pooled
+over the same methods. Imprecision is the sum of the interval widths over the final front, so methods whose fronts
+collapse to a few solutions, such as IMOEA-DQN, score best on it; it has to be read together with IGD and HV.
+
+\paragraph{Uncertainty model}
+The model assumes that every uncertain quantity stays inside its interval. The Monte Carlo check
+(Table~\ref{tab:montecarlo}) confirms that the predicted objective intervals contain the realised values in all of
+200 scenarios per instance, but those scenarios draw every input uniformly and independently; correlated
+fluctuations (for example a shared channel degrading for all devices at once) and values outside the stated bounds
+were not tested. The interval half-widths of task workloads and data sizes in Suite B are synthetic (5--30\% of the
+midpoint, drawn per task), and Suite A tasks are crisp, as in Jin et al., so that uncertainty there comes only from
+the resources. A sensitivity run with half and double the half-widths (Table~\ref{tab:sensitivity}) keeps \ours{}
+ahead on IGD, but with doubled widths IMOEA/D wins HV on 2 of 5 workflows.
+
+\paragraph{System model simplifications (external validity)}
+The evaluator makes the following simplifications. Concurrent transfers do not share bandwidth, so there is no link
+contention. An edge server divides its capacity equally and statically among all tasks placed on it instead of
+scheduling them over time; a variant in which edge servers queue tasks gives the same ranking
+(Table~\ref{tab:sensitivity}). The cloud runs every task in parallel. The device spends energy on local computation,
+on transmission and while idle, but not on receiving data. Following Jin et al., the main setting counts only the
+device's energy and uses a fixed channel gain. When the energy of all three tiers is counted instead, the comparison
+with IMOEA/D becomes close (IMOEA/D better on IGD in 3 of 5 workflows and on HV in 4 of 5,
+Table~\ref{tab:sensitivity}). Finally, the problem is static and offline: every application is known before the
+optimisation starts, and no tasks arrive during execution. All results are from simulation; we have not run the
+schedules on a testbed.
+
+\paragraph{Benchmarks}
+Suite A follows Jin et al.'s instance sizes with randomly generated layered DAGs; Suite B uses five WfCommons
+workflow families whose workloads and data sizes were mapped into Jin et al.'s ranges by an order-preserving
+logarithmic map. The instances cover 3--10 edge servers and up to 2000 tasks. Other application structures, larger
+edge deployments or real traces may behave differently.
+
+\paragraph{Baselines (internal validity)}
+All baselines were re-implemented on the same encoding, operators, evaluator, population size and number of
+evaluations as \ours{}, from the descriptions in their papers rather than the authors' code. Where a paper leaves a detail open
+we chose the most literal reading and documented it. The original IP-MOEA paper was not obtainable; its crowding is
+implemented as the hypervolume contribution described by later papers that use it as a baseline, which is both closer
+to that description and stronger than a midpoint crowding distance. IMOEA/D uses the original settings reported in
+the IMEA-IED paper ($T = 10$, weight adaptation from $G_{\max}/2$ every $G_{\max}/6$). IMOEA/D-AWN evaluates
+$NG_{\max}$ solutions instead of $N(G_{\max} + 1)$, as published (0.1\% fewer). IMaOEACI was left out because its
+central indicator is defined only in an unpublished thesis. For IMOEA-DQN, the experience-replay threshold and the
+exploration schedule are not given in the paper (we use 250 transitions and $\varepsilon_t = 0.3^{t/100}$), and its
+simulated binary crossover cannot keep a task order topological, so it uses our operators. Baselines run with their
+published parameters, not retuned for this problem.
+
+\paragraph{Tuning and statistics (conclusion validity)}
+The selection weights $(5/6, 1/6, 0)$ and the mating parameters $T = 10$, $p_{local} = 1.0$ were chosen on separate
+training instances of Suite A (instances i1--i3) and frozen before any test run; the test instances (i0 and Suite B)
+were never used for tuning. \ours{}, IMOEA/D and the Jin backbone were run 30 times per instance and every other
+method 10 times. The Wilcoxon tests are Holm-corrected over the methods compared on one instance, not across the 57
+instances; across instances we rely on the Friedman test, whose Nemenyi critical difference is large on Suite A's 12
+instances (3.91 ranks). Wall-clock times come from one laptop; re-timing \ours{} with the same settings in a later batch gave times 0.82--1.21
+times the first ones, so differences below about 20\% are not meaningful.
+
+\paragraph{Remaining weaknesses of the method}
+Two results do not favour \ours{}. First, on the 100-task Suite B workflows with the smallest data sizes, NSGA-II
+reaches a lower IGD on 4--5 of 45 instances (Table~\ref{tab:suiteb_igd}), probably because the search space is small
+enough for plain non-dominated sorting to converge. Second, at 1000--2000 tasks IMOEA/D reaches cheaper solutions
+at the cost end of the front. Where the two fronts overlap, \ours{}'s dominates 61--90\% of IMOEA/D's and almost none
+the other way, and \ours{} keeps the higher HV on 13 of the 15 2000-task instances (Table~\ref{tab:scalability}). Yet
+IMOEA/D's better coverage of the cost extreme decides IGD at that size: there, IMOEA/D is better on 5, worse on 6
+and tied on 4 instances. Neither a doubled budget ($G_{\max} = 2000$), nor a running normalisation of the Tchebycheff
+rank, nor extra weight vectors near the axes closed this gap in a pilot study; it appears to come from IMOEA/D's
+steady-state replacement per subproblem.
+
+\paragraph{Scope of the negative result on learned control}
+The finding that learned control of $(\alpha, \beta, \gamma)$ does not beat the best fixed action
+(Tables~\ref{tab:learners} and \ref{tab:gat}) holds for the three learner designs we tried: per-generation, per-block
+and restricted-action DQN, with and without a graph-attention state encoder, trained for 24--48 episodes on the
+Suite A training instances. A different state representation, reward or much larger training budget might change it.
+The reward audit (Fig.~\ref{fig:reward_audit}) explains the difficulty: once the population has converged, the
+per-generation reward carries a signal-to-noise ratio of 0.02--0.08, and the best fixed action is already within
+about 10\% of the best per-instance action, which leaves little room for an adaptive schedule to gain.

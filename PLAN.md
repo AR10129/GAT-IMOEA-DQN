@@ -764,9 +764,22 @@ setting for comparability and three-tier energy as a sensitivity study.
   round(sqrt(2N)) = 14, 105 weight vectors q = 13, 88 / 17 / 0 places). The preview inputs all of it
   (adds algorithm / algpseudocode). Open: the label sec:learned must exist; it must exist in the paper text.
   Fixed on the way: the Imprecision table note said "per solution"; it is summed over the front.
-- [ ] R3. Threats to validity and limitations (no link contention, no receive energy, interval
+- [x] R3. Threats to validity and limitations (no link contention, no receive energy, interval
   bounds assumed to hold, fixed action chosen on training instances, at 1000-2000 tasks IMOEA/D
   reaches cheaper solutions though final dominates the overlap; see the E6 / pilot notes)
+  Done 2026-11-11: paper/sections/validity.tex, in the preview. Paragraphs: metrics and normalisation
+  (robustness table; HV the headline at 1000 tasks, IGD level or favouring IMOEA/D there; Imprecision
+  summed over the front), uncertainty model (containment 100% under uniform independent draws only;
+  synthetic 5-30% half-widths; Suite A tasks crisp; width x2 HV 2/1/2), system-model simplifications
+  (no link contention, static edge sharing, unlimited cloud, no receive energy, device-only energy,
+  fixed channel gain, static offline problem, simulation only; all-tier energy IGD 3/1/1, HV 4/0/1),
+  benchmarks, baselines (re-implemented from the papers; IP-MOEA original unavailable; IMOEA/D original
+  settings; AWN N*G evaluations; IMaOEACI dropped; IMOEA-DQN ERB 250 / eps 0.3^(t/100) / our operators;
+  baselines not retuned), tuning and statistics (training instances only; 30 / 10 runs; Holm per
+  instance; Nemenyi CD 3.91 on Suite A; timing +-20%), remaining weaknesses (NSGA-II on the 100-task
+  x1 workflows; cost extreme at 1000-2000 tasks, 2000-task IGD 5/6/4, HV 13/15), scope of the negative
+  learned-control result. Every number checked against paper/tables. Figures in the preview now carry
+  labels fig:<name> (d1_ prefix dropped).
 
 ## Risks
 
