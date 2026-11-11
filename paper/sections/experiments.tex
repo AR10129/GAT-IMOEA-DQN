@@ -7,14 +7,14 @@
 \label{sec:setup}
 
 \paragraph{Benchmarks}
-\emph{Suite A} reproduces the instance sizes of Jin et al.~\cite{jin2026imoeadqn}: small (3 edge servers, 100 tasks,
+\emph{Suite A} reproduces the instance sizes of \citet{jin2026imoeadqn}: small (3 edge servers, 100 tasks,
 20 or 50 devices), basic (6, 300, 60 or 100) and medium (10, 500, 100 or 250). Each device submits one application, a
 layered random DAG; the total number of tasks is split among the devices at random. Workloads are 1--5 Gcycles and
 every arc and every input file carries 500--3000 KB, as in Jin et al.; tasks are crisp, so the uncertainty comes from the
 resources. Each configuration is used with the data sizes as given ($\times 1$) and multiplied by 20, which makes
 communication matter; this gives 12 test instances. Three further instances of each configuration (36 in total) were
 generated with other seeds and used only to choose the method's parameters (Section~\ref{sec:weights}).
-\emph{Suite B} uses five scientific workflow families from WfCommons~\cite{coleman2022wfcommons} (Cybershake,
+\emph{Suite B} uses five scientific workflow families from WfCommons \citep{coleman2022wfcommons} (Cybershake,
 Epigenomics, Inspiral, Montage, Sipht) with 100, 400 and 1000 tasks, submitted by one device in Jin et al.'s small
 scenario (3 edge servers, 6 devices). Workloads and data sizes are mapped into Jin et al.'s ranges by an
 order-preserving logarithmic map, every quantity keeps a relative interval half-width of 5--30\%, and the data sizes are
@@ -23,14 +23,14 @@ the environment.
 
 \paragraph{Compared methods}
 We compare \ours{} with four interval multi-objective evolutionary algorithms, IMOEA/D with the original settings
-reported in~\cite{cui2024imeaied}, IMOEA/D-AWN~\cite{jin2023imoeadawn}, IMEA-IED~\cite{cui2024imeaied} and
-IP-MOEA~\cite{limbourg2005ipmoea}; with NSGA-II~\cite{deb2002nsga2} using either interval midpoints or interval
-dominance and NSGA-III~\cite{deb2014nsga3} on midpoints; and with IMOEA-DQN~\cite{jin2026imoeadqn} as published (an
+reported by \citet{cui2024imeaied}, IMOEA/D-AWN \citep{jin2023imoeadawn}, IMEA-IED \citep{cui2024imeaied} and
+IP-MOEA \citep{limbourg2005ipmoea}; with NSGA-II \citep{deb2002nsga2} using either interval midpoints or interval
+dominance and NSGA-III \citep{deb2014nsga3} on midpoints; and with IMOEA-DQN \citep{jin2026imoeadqn} as published (an
 online DQN that chooses $(\alpha, \beta, \gamma)$ every generation) and its evolutionary backbone with the fixed action
 $(5/6, 1/6, 0)$, called the Jin backbone. The last comparison isolates the effect of Rank C and the mating. All
 methods share the encoding, operators, evaluator, population size $N = 105$ and budget of $N(G_{\max} + 1)$ evaluations
 with $G_{\max} = 1000$ (IMOEA/D-AWN evaluates $NG_{\max}$, as published). Six list-scheduling heuristics (all tasks on
-the device, all on the nearest edge server, all in the cloud, and HEFT~\cite{topcuoglu2002heft} placing each task by
+the device, all on the nearest edge server, all in the cloud, and HEFT \citep{topcuoglu2002heft} placing each task by
 earliest finish time, lowest energy or lowest cost) are reported separately.
 
 \paragraph{Metrics and statistics}
@@ -38,9 +38,9 @@ Each instance is normalised once, over the final fronts of all compared methods.
 against the non-dominated union of all final fronts, HV is the mean of the hypervolumes of the lower and upper bounds
 with reference point 1.1 per objective, as in Jin et al., and Imprecision is the sum of the interval widths over the
 front. \ours{}, IMOEA/D and the Jin backbone were run 30 times per instance, the other methods 10 times. Each method
-is compared with \ours{} per instance by the Wilcoxon rank-sum test with Holm's correction~\cite{holm1979} over the
+is compared with \ours{} per instance by the Wilcoxon rank-sum test with Holm's correction \citep{holm1979} over the
 methods ($\alpha = 0.05$), and over instances by the Friedman test with the Nemenyi critical
-difference~\cite{demsar2006}.
+difference \citep{demsar2006}.
 
 \subsection{Comparison on Suite A and Suite B}
 \label{sec:results}
@@ -145,7 +145,7 @@ analyses the cost.
 \label{sec:learned}
 IMOEA-DQN's central idea is to let a DQN choose $(\alpha, \beta, \gamma)$ during the run. We tested whether learned
 control helps on top of the Tchebycheff Rank C with three learner designs, each with and without a graph-attention
-(GAT)~\cite{velickovic2018gat} encoding of the DAG in its state: Jin et al.'s design (one decision per generation,
+(GAT) \citep{velickovic2018gat} encoding of the DAG in its state: Jin et al.'s design (one decision per generation,
 reward the relative improvement of the population's PIBI, 28 actions); one decision per 50 generations with the
 hypervolume gain as reward; and one decision per 25 generations among the 10 actions with $\alpha \ge 1/2$ with the
 logarithmic hypervolume gain as reward. The agents were trained on the Suite A training instances (24--48 episodes, 2--3

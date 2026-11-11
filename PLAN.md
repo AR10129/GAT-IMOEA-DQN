@@ -796,6 +796,13 @@ setting for comparability and three-tier energy as a sensitivity study.
   - [ ] Two citation placeholders (todo macro) in related.tex: crisp dependent-task offloading MOEAs,
     and a survey of RL-assisted evolutionary algorithms. Find and verify real papers.
   - [ ] Confirm from the full text that Shi et al. 2023 is migration, not placement, and has no cloud tier.
+  - [x] Moved to Elsevier's CAS template (user-supplied paper_template.zip, v2.4), 2026-11-11:
+    paper/main.tex now uses cas-sc (single column, review option) with natbib author-year and
+    cas-model2-names.bst; class files and thumbnails copied into paper/. All 41 citations converted
+    (textual \citet for 'Jin et al. (2026)' and 'by Cui et al. (2024)', \citep elsewhere). Added
+    highlights (5, max 83 characters), keywords, author block, CRediT, competing-interest and data
+    availability placeholders (todo macro). For two columns change cas-sc to cas-dc. paper/preview.tex
+    stays on elsarticle (internal table/figure preview only).
   - [ ] Authors and affiliations; decide whether the benchmark and code are released (contribution 5
     does not promise it yet).
   - [ ] Rename DR-IMOEA (one line: the ours macro in main.tex and build_paper.py PREVIEW)

@@ -4,7 +4,7 @@
 \section{The proposed method: \ours{}}
 \label{sec:method}
 
-\ours{} keeps the evolutionary framework of IMOEA-DQN~\cite{jin2026imoeadqn} wherever the DAG model allows and changes
+\ours{} keeps the evolutionary framework of IMOEA-DQN \citep{jin2026imoeadqn} wherever the DAG model allows and changes
 it in three places. First, the convergence ranking of the three-tier environmental selection, Jin et al.'s interval
 dominance degree, is replaced by a decomposition rank that does not lose its selection pressure once most of the
 population is mutually non-dominated (Sections~\ref{sec:stall}--\ref{sec:rankc}). Second, parents mate with
@@ -19,12 +19,12 @@ A solution is the pair $(\mathbf{x}, \mathbf{o})$ of Section~\ref{sec:model}. Th
 allocation gene uniformly from the nodes the task's device can reach and every priority string from a randomised
 Kahn's algorithm, which picks uniformly among the ready tasks. Algorithm~\ref{alg:var} creates one child per member of
 the population. The partner of member $i$ is drawn from its $T$ nearest neighbours by Euclidean distance between
-normalised interval midpoints, the mating restriction of MOEA/D~\cite{zhang2007moead}. Crossover keeps the
+normalised interval midpoints, the mating restriction of MOEA/D \citep{zhang2007moead}. Crossover keeps the
 dual-adaptive scheme of Jin et al.: the crossover probability is 0.7 for the better half of the population by
 uncertainty front and 0.9 for the other half, and the allocation string is recombined gene by gene (DAEC), taking each
 gene from either parent with equal probability. Jin et al.'s simulated binary crossover cannot be applied to a task
 order, so the priority strings are recombined by precedence-preserving order-based crossover
-(POX)~\cite{bierwirth1996permutation}: a random binary mask decides, position by position, which parent supplies its
+(POX) \citep{bierwirth1996permutation}: a random binary mask decides, position by position, which parent supplies its
 leftmost task not yet used, and any mask yields a topological order. Mutation reassigns each allocation gene with
 probability $1/K$ to another reachable node and moves each task with probability $1/K$ to a random position after its
 last predecessor and before its first successor. Every child is therefore feasible by construction.
@@ -75,7 +75,7 @@ R_C(x) = \min_{\mathbf{w} \in W} \pi_{\mathbf{w}}(x),
 \label{eq:rankc}
 \end{equation}
 so the best solution of every subproblem has $R_C = 0$, and a solution is ranked well when it is close to the best on at
-least one direction. This is the ranking of MSOPS~\cite{hughes2003msops} applied to interval midpoints. What \ours{}
+least one direction. This is the ranking of MSOPS \citep{hughes2003msops} applied to interval midpoints. What \ours{}
 adds is its use as the convergence tier inside the dominance-, diversity- and uncertainty-aware selection of Jin et al.,
 with ties broken by descending interval crowding distance rather than at random. With this rank the share of
 convergence places decided by the tie-break stays at 11--23\% throughout the run (Fig.~\ref{fig:a3_stall}). Unlike

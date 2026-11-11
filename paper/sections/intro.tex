@@ -14,8 +14,8 @@ these quantities are known, each objective becomes an interval, and the decision
 optimisation problem.
 
 Interval multi-objective evolutionary algorithms handle such problems by comparing solutions through interval
-dominance and by rewarding solutions whose objective intervals are narrow~\cite{limbourg2005ipmoea,jin2023imoeadawn,cui2024imeaied}.
-The most recent of them for offloading, IMOEA-DQN~\cite{jin2026imoeadqn}, selects each new population in three tiers:
+dominance and by rewarding solutions whose objective intervals are narrow \citep{limbourg2005ipmoea,jin2023imoeadawn,cui2024imeaied}.
+The most recent of them for offloading, IMOEA-DQN \citep{jin2026imoeadqn}, selects each new population in three tiers:
 a share $\alpha$ of the places by convergence (an interval dominance degree), a share $\beta$ by diversity (an interval
 crowding distance) and a share $\gamma$ by uncertainty, and lets a deep Q-network choose $(\alpha, \beta, \gamma)$ in every
 generation. It was formulated for independent tasks in a cloud--edge--end system with interval resources.
@@ -33,12 +33,12 @@ cloud--edge--end environments. Its contributions are:
 \begin{enumerate}
 \item An interval critical-path model of DAG offloading over devices, edge servers and the cloud, with makespan, device
   energy and cost as interval objectives, task placement and task order as decision variables, and data transfer along
-  every dependency. For single-task applications it reduces exactly to the model of Jin et al.~\cite{jin2026imoeadqn}
+  every dependency. For single-task applications it reduces exactly to the model of \citet{jin2026imoeadqn}
   (Section~\ref{sec:model}).
 \item A DAG-valid two-string encoding with precedence-preserving crossover and mutation, so that every offspring is
   feasible without repair (Section~\ref{sec:variation}).
 \item A diagnosis of why the interval dominance degree stalls as a convergence tier, and a fix: an interval version of
-  the best-position Tchebycheff rank of MSOPS~\cite{hughes2003msops}, with ties broken by crowding distance, used as the
+  the best-position Tchebycheff rank of MSOPS \citep{hughes2003msops}, with ties broken by crowding distance, used as the
   convergence tier inside the three-tier selection, together with mating among neighbours in objective space
   (Sections~\ref{sec:stall} and~\ref{sec:rankc}). The rank itself is not new; its use inside the dominance-, diversity-
   and uncertainty-aware selection, the diagnosis and the evidence are.

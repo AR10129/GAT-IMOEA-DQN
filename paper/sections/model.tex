@@ -9,7 +9,7 @@ An uncertain quantity is a closed interval $\tilde a = [a^L, a^U]$ with midpoint
 $w(\tilde a) = a^U - a^L$. Every operation the model needs (sum, maximum, and the quotient of a positive quantity by
 a positive interval) is monotone in each bound, so an interval result is obtained by applying the operation to the lower
 inputs and to the upper inputs; for example $\tilde C / \tilde f = [C^L / f^U, C^U / f^L]$. Two intervals are compared
-by the possibility degree~\cite{jin2026imoeadqn}
+by the possibility degree \citep{jin2026imoeadqn}
 \begin{equation}
 P(\tilde a \le \tilde b) = \min\Big\{1, \max\Big\{0, \frac{b^U - a^L}{w(\tilde a) + w(\tilde b)}\Big\}\Big\},
 \label{eq:possibility}
@@ -22,7 +22,7 @@ objectives scaled to $[0, 1]$ over the population.
 
 \subsection{Cloud--edge--end architecture}
 The system (Fig.~\ref{fig:system_model}) has $D$ mobile devices, $n$ edge servers and one cloud data centre, the
-architecture of Jin et al.~\cite{jin2026imoeadqn}. Device $d$ has CPU frequency $\tilde f_d$, energy per CPU cycle
+architecture of \citet{jin2026imoeadqn}. Device $d$ has CPU frequency $\tilde f_d$, energy per CPU cycle
 $\tilde e_d$, transmit power $p_d$ and idle power $p^{idle}_d$, and can reach the edge servers within its
 communication range. Edge server $u$ has aggregate CPU frequency $\tilde f_u$, which it shares equally among the tasks
 placed on it; the cloud gives every task the frequency $\tilde f_C$. The wireless rate between device $d$ and edge
