@@ -762,7 +762,7 @@ setting for comparability and three-tier energy as a sensitivity study.
   timing table (final 1.8x from 100 to 2000 Cybershake tasks; IMOEA-DQN +2-52% over the fixed-action
   backbone). `params` table in build_paper.py reads its values from the code and jin.yaml (ICD k =
   round(sqrt(2N)) = 14, 105 weight vectors q = 13, 88 / 17 / 0 places). The preview inputs all of it
-  (adds algorithm / algpseudocode). Open: ef{sec:learned} must exist in the paper text.
+  (adds algorithm / algpseudocode). Open: the label sec:learned must exist; it must exist in the paper text.
   Fixed on the way: the Imprecision table note said "per solution"; it is summed over the front.
 - [ ] R3. Threats to validity and limitations (no link contention, no receive energy, interval
   bounds assumed to hold, fixed action chosen on training instances, at 1000-2000 tasks IMOEA/D
