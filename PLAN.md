@@ -844,6 +844,13 @@ setting for comparability and three-tier energy as a sensitivity study.
   IMOEA/D reaches the cheapest schedules. 6 figures, 7 tables, 1 algorithm in the body; supplement 14 pages.
   sections/experiments.tex replaced by sections/setup.tex and sections/results.tex.
 
+- [x] W5. References checked against Crossref (2026-11-19): DOIs added to all 20 entries that have one (Demsar 2006
+  JMLR, Velickovic 2018 ICLR and Holm 1979 have none registered); Jin et al. 2026 resolved to
+  10.1016/j.engappai.2026.115043 with authors Jin, Ding, Xie, Li, Zhao (Crossref title ends "uncertain cloud-edge");
+  full authors for Shi et al. 2023 and Limbourg & Salazar Aponte 2005; MOEA/DD is 10.1109/TEVC.2014.2373386.
+  VERIFY notes removed from printed bib fields (they showed in the reference list). Still open: confirm the
+  Shi et al. differences claimed in Related work from the full text; two citation placeholders in Related work.
+
 ## Risks
 
 - C3 judged incremental ("just MSOPS inside Jin et al.") → W1 confirmed the rank is MSOPS's; make the diagnosis (tie
