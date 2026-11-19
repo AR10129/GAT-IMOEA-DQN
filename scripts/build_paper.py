@@ -50,7 +50,7 @@ PAPER = ["final", "imoead_orig", "imoead_awn", "imea_ied", "ip_moea_hv", "nsga2_
          "nsga3_mid", "fixed_fav", "imoea_dqn"]
 LABEL = {"final": r"\ours{}", "imoead_orig": "IMOEA/D", "imoead_awn": "IMOEA/D-AWN", "imea_ied": "IMEA-IED",
          "ip_moea_hv": "IP-MOEA", "nsga2_mid": "NSGA-II (mid)", "nsga2_int": "NSGA-II (int)",
-         "nsga3_mid": "NSGA-III", "fixed_fav": "Jin backbone", "imoea_dqn": "IMOEA-DQN",
+         "nsga3_mid": "NSGA-III", "fixed_fav": "IMOEA-DQN (fixed)", "imoea_dqn": "IMOEA-DQN",
          "trained_stable": "IMOEA-DQN (offline GAT)", "ip_moea": "IP-MOEA (mid crowding)",
          "heuristics": "Heuristics"}
 SHORT = {"final": r"\ours{}", "imoead_orig": "IMOEA/D", "imoead_awn": "AWN", "imea_ied": "IED",
@@ -61,7 +61,7 @@ SUITE_A = ["suite_a_main", "suite_a_e2", "rerun_ipmoea_a", "rerun_imoeadqn_a"]
 SUITE_B = ["suite_b", "suite_b_e2", "rerun_ipmoea_b", "rerun_imoeadqn_b"]
 E4 = ["final", "imoead_orig", "nsga2_mid", "fixed_fav"]             # the E6 / scalability policy set
 
-ABL_ROWS = [("Build-up", "jin", "Jin et al.\\ backbone ($R_{IN}$, random ties, DAEC mating)"),
+ABL_ROWS = [("Build-up", "jin", "IMOEA-DQN (fixed) ($R_{IN}$, random ties, DAEC mating)"),
             ("Build-up", "ptch", "+ Tchebycheff Rank C"),
             ("Build-up", "ptchpicd", "+ ICD tie-break"),
             ("Build-up", "full", "+ neighbourhood mating ($T=20$, $p_{local}=0.9$)"),
@@ -336,7 +336,7 @@ def t_suite(suite, S, metric, scale, digits):
     sc = "" if scale == 1 else f" ($\\times 10^{{-{int(np.log10(scale))}}}$)"
     n = len(keys)
     cap = (f"Suite {suite}: {mname}{sc} per instance, mean (standard deviation) over the runs "
-           f"({'lower' if lb else 'higher'} is better). {n} instances; \\ours{{}}, IMOEA/D and the Jin backbone "
+           f"({'lower' if lb else 'higher'} is better). {n} instances; \\ours{{}}, IMOEA/D and IMOEA-DQN (fixed) "
            f"30 runs, the other methods 10.")
     head = ["Instance & " + " & ".join(SHORT[p] for p in PAPER) + r" \\"]
     return table(cap, f"tab:suite{suite.lower()}_{metric.lower()}", "l" + "c" * len(PAPER), head, rows,
@@ -360,6 +360,8 @@ def t_summary(SA, SB):
         R = {m: dict(zip(PAPER, friedman(S, PAPER, m)[0])) for m in ("IGD", "HV_jin")}
         cd = friedman(S, PAPER, "IGD")[3]
         mean = {m: {p: np.mean([S[k][p][m].mean() for k in keys]) for p in PAPER} for m in ("IGD", "HV_jin")}
+        from stats import a12
+        mean["A12"] = {p: np.mean([a12(S[k]["final"]["IGD"], S[k][p]["IGD"], True) for k in keys]) for p in others}
         blocks[suite] = (cnt, R, mean, len(keys), cd)
     rows = []
     for p in PAPER:
@@ -374,19 +376,21 @@ def t_summary(SA, SB):
             hv = f"\\textbf{{{hv}}}" if np.isclose(mean["HV_jin"][p], bh) else hv
             wl = ["--", "--"] if p == "final" else [
                 "/".join(str(cnt[m][p][s]) for s in "+-=") for m in ("IGD", "HV_jin")]
-            cells += [ig, hv, wl[0], wl[1], f"{R['IGD'][p]:.2f}"]
+            a = "--" if p == "final" else f"{mean['A12'][p]:.2f}"
+            cells += [ig, hv, wl[0], wl[1], a, f"{R['IGD'][p]:.2f}"]
         rows.append(SHORT_FULL.get(p, LABEL[p]) + " & " + " & ".join(cells) + r" \\")
     (_, _, _, nA, cdA), (_, _, _, nB, cdB) = blocks["A"], blocks["B"]
-    head = [r"& \multicolumn{5}{c}{Suite A (" + str(nA) + r" instances)} & \multicolumn{5}{c}{Suite B (" + str(nB) +
+    head = [r"& \multicolumn{6}{c}{Suite A (" + str(nA) + r" instances)} & \multicolumn{6}{c}{Suite B (" + str(nB) +
             r" instances)} \\",
-            r"\cmidrule(lr){2-6}\cmidrule(lr){7-11}",
-            r"Method & IGD & HV & IGD $+/-/\approx$ & HV $+/-/\approx$ & Rank & IGD & HV & IGD $+/-/\approx$ & "
-            r"HV $+/-/\approx$ & Rank \\"]
+            r"\cmidrule(lr){2-7}\cmidrule(lr){8-13}",
+            r"Method & IGD & HV & IGD $+/-/\approx$ & HV $+/-/\approx$ & $A_{12}$ & Rank & IGD & HV & IGD $+/-/\approx$ & "
+            r"HV $+/-/\approx$ & $A_{12}$ & Rank \\"]
     cap = (r"Results on both suites: mean IGD ($\times10^{-2}$) and HV over instances, the number of instances on which "
            r"each method is significantly better / worse / not different from \ours{} (Wilcoxon rank-sum, Holm-corrected, "
-           r"$\alpha = 0.05$), and the mean Friedman rank by IGD (Nemenyi critical difference "
+           r"$\alpha = 0.05$), the mean Vargha--Delaney $A_{12}$ by IGD (probability that a run of \ours{} has the lower "
+           r"IGD), and the mean Friedman rank by IGD (Nemenyi critical difference "
            f"{cdA:.2f} on Suite A, {cdB:.2f} on Suite B). Per-instance results are in the supplementary material.")
-    return table(cap, "tab:summary", "l" + "c" * 10, head, rows, size=r"\footnotesize", wide=True)
+    return table(cap, "tab:summary", "l" + "c" * 12, head, rows, size=r"\footnotesize", wide=True)
 
 
 SHORT_FULL = {"nsga2_mid": "NSGA-II (mid)", "nsga2_int": "NSGA-II (int)", "nsga3_mid": "NSGA-III"}
@@ -593,12 +597,12 @@ def t_timing():
 
 # ---------------------------------------------------------------- compact single-column tables (paper body)
 
-ABL_SHORT = [("Build-up (vs \\ours{})", "jin", "Jin et al.\\ backbone", "final"),
+ABL_SHORT = [("Build-up (vs \\ours{})", "jin", "IMOEA-DQN (fixed)", "final"),
              ("Build-up (vs \\ours{})", "ptch", "+ Tchebycheff Rank C", "final"),
              ("Build-up (vs \\ours{})", "ptchpicd", "+ ICD tie-break", "final"),
              ("Build-up (vs \\ours{})", "full", "+ mating, $T{=}20$, $p{=}0.9$", "final"),
              ("Build-up (vs \\ours{})", "final", "\\ours{} ($T{=}10$, $p{=}1$)", None),
-             ("Leave one out (vs $T{=}20$)", "mtch", "without Tchebycheff", "full"),
+             ("Leave one out (vs $T{=}20$)", "mtch", "without Tchebycheff ($R_{IN}$)", "full"),
              ("Leave one out (vs $T{=}20$)", "micd", "without ICD tie-break", "full"),
              ("Leave one out (vs $T{=}20$)", "ptchpicd", "without mating", "full"),
              ("Parameters (vs $T{=}20$)", "T10", "$T = 10$", "full"),
@@ -606,7 +610,8 @@ ABL_SHORT = [("Build-up (vs \\ours{})", "jin", "Jin et al.\\ backbone", "final")
              ("Parameters (vs $T{=}20$)", "p05", "$p_{local} = 0.5$", "full"),
              ("Parameters (vs $T{=}20$)", "w53", "$N/2$ weight vectors", "full"),
              ("Parameters (vs $T{=}20$)", "w210", "$2N$ weight vectors", "full"),
-             ("Parameters (vs $T{=}20$)", "conv", "action $(1, 0, 0)$", "full")]
+             ("Parameters (vs $T{=}20$)", "conv", "action $(1, 0, 0)$", "full"),
+             ("Reference (vs $T{=}20$)", "imoead_orig", "IMOEA/D", "full")]
 
 
 def t_ablation_c(S):
@@ -623,7 +628,8 @@ def t_ablation_c(S):
         w = "--" if ref is None else _wlt(S, keys, p, ref, "IGD")
         rows.append(f"\\quad {lab} & {igd:.2f} & {hv:.3f} & {w}" + r" \\")
     head = [r"Variant & IGD & HV & IGD $+/-/\approx$ \\"]
-    cap = (r"Ablation on the 12 Suite A instances (10 runs; IGD $\times10^{-2}$, means over instances). "
+    cap = (r"Ablation on the 12 Suite A instances (10 runs; IGD $\times10^{-2}$, means over instances; normalisation "
+           r"and reference front over the rows of this table, so the values differ from Table~\ref{tab:summary}). "
            r"$+/-/\approx$: instances where the variant is significantly better / worse / not different from the "
            r"reference in the group heading (Wilcoxon rank-sum, $\alpha = 0.05$).")
     return table(cap, "tab:ablation", "lccc", head, rows, size=r"\footnotesize")
@@ -658,7 +664,7 @@ def t_sensitivity_c(S, SC):
             r"Setting & Ours & IMOEA/D & IGD & HV \\"]
     cap = (r"Sensitivity on the five 400-task workflows (data $\times 20$, 10 runs), one setting changed at a time, and "
            r"scalability to 2000 tasks. Last two columns: instances where IMOEA/D is significantly better / worse / not "
-           r"different from \ours{} (Wilcoxon rank-sum, Holm, $\alpha = 0.05$). NSGA-II and the Jin backbone are worse on "
+           r"different from \ours{} (Wilcoxon rank-sum, Holm, $\alpha = 0.05$). NSGA-II and IMOEA-DQN (fixed) are worse on "
            r"every instance in every setting (Table~\Sref{tab:sensitivity} of the supplementary material).")
     return table(cap, "tab:sensitivity", "lcccc", head, rows, size=r"\footnotesize")
 
@@ -689,7 +695,8 @@ def t_learners_c(S):
         rows.append(f"\\quad {LEARN_SHORT[p]} & {igd:.2f} & {hv:.3f} & {w}" + r" \\")
     head = [r"Control of $(\alpha, \beta, \gamma)$ & IGD & HV & IGD $+/-/\approx$ \\"]
     cap = (r"Learned against fixed control of the selection weights on four Suite A instances (4 runs; IGD "
-           r"$\times10^{-2}$). All rows above \ours{} use the Tchebycheff backbone with $T = 20$, $p_{local} = 0.9$. "
+           r"$\times10^{-2}$; normalisation and reference front over the rows of this table except IMOEA-DQN, so the "
+           r"values differ from Tables~\ref{tab:summary} and~\ref{tab:ablation}). All rows above \ours{} use the Tchebycheff backbone with $T = 20$, $p_{local} = 0.9$. "
            r"$+/-/\approx$: instances where the row is significantly better / worse / not different from the fixed action "
            r"$(5/6, 1/6, 0)$ (Wilcoxon rank-sum, $\alpha = 0.05$).")
     return table(cap, "tab:learners", "lccc", head, rows, size=r"\footnotesize")
@@ -816,7 +823,7 @@ def t_params():
                "with probability $1/K$"),
              R("Clone removal", "yes (identical genotypes skipped in selection)" if sel.dedupe_genotypes else "no")]
     rows += S("Protocol")
-    rows += [R("Runs", "30 for \\ours{}, IMOEA/D and the Jin backbone; 10 for the others; paired seeds"),
+    rows += [R("Runs", "30 for \\ours{}, IMOEA/D and IMOEA-DQN (fixed); 10 for the others; paired seeds"),
              R("Metrics", "IGD on midpoints (pooled reference front), HV (mean of lower- and upper-bound HV, "
                "reference 1.1), Imprecision"),
              R("Statistics", "Wilcoxon rank-sum, Holm-corrected, $\\alpha = 0.05$; Friedman with Nemenyi CD"),
@@ -896,7 +903,7 @@ def t_params_c():
             R("Mating $T$ / $p_{local}$", f"{var.neighbours} / {var.p_local:g}"),
             R("$p_c$ / mutation", f"{var.p_c_low:g}, {var.p_c_high:g} / $1/K$"),
             r"\midrule", r"\multicolumn{2}{l}{\textit{Protocol}} \\",
-            R("Runs", "30 (\\ours{}, IMOEA/D, Jin backbone), 10 others"),
+            R("Runs", "30 (\\ours{}, IMOEA/D, IMOEA-DQN (fixed)), 10 others"),
             R("Evaluations per run", f"{N * (G + 1):,}")]
     head = [r"Parameter & Value \\"]
     cap = (r"Main parameters (Jin et al.'s small scenario). All environment values and the remaining settings are in "

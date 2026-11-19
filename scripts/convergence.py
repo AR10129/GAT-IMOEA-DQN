@@ -27,7 +27,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
 from gat_imoea_dqn.metrics import hv_jin, igd, pooled_reference  # noqa: E402
-from stats import LABEL, PAPER, RUN_NAME, load  # noqa: E402
+from stats import LABEL, PAPER, RUN_NAME, load, pretty_instance  # noqa: E402
 
 # colour by method family, line style inside a family (10 series > 8 categorical slots)
 STYLE = {"final": ("#2a78d6", "-", 2.4), "imoead_orig": ("#eb6834", "-", 1.6),
@@ -49,8 +49,13 @@ def normalisation(pool):
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--name", default="e5")
-    ap.add_argument("--instances", nargs="+", required=True, help="instance:experiment:pool1,pool2")
+    ap.add_argument("--instances", nargs="+", help="instance:experiment:pool1,pool2")
+    ap.add_argument("--plot-only", action="store_true", help="redraw the figure from <name>_convergence.csv")
     args = ap.parse_args()
+    if args.plot_only:
+        return plot_from_csv(args.name)
+    if not args.instances:
+        ap.error("--instances is required unless --plot-only is given")
 
     rows, checks, curves = [], [], {}
     for item in args.instances:
@@ -103,22 +108,40 @@ def main() -> int:
                      f" | {hit if hit is not None else 'not reached'} |")
         L.append("")
     (out / f"{args.name}_convergence.md").write_text("\n".join(L), encoding="utf-8")
+    means = {inst: {k: tuple(np.mean(np.asarray(v), axis=0)) for k, v in per.items()} for inst, per in curves.items()}
+    plot(args.name, means)
+    print(f"final fronts identical to pool: {sum(checks)}/{len(checks)}")
+    print("wrote", out / f"{args.name}_convergence.md")
+    return 0
 
+
+def plot_from_csv(name):
+    means = {}
+    with open(ROOT / "results" / "stats" / f"{name}_convergence.csv", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            means.setdefault(r["instance"], {})[(r["policy"], int(r["generation"]))] = (
+                float(r["IGD_mean"]), float(r["HV_jin_mean"]))
+    plot(name, means)
+    return 0
+
+
+def plot(name, means):
+    """means: instance -> {(policy, generation): (mean IGD, mean HV)}."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    n = len(curves)
+    n = len(means)
     fig, axes = plt.subplots(2, n, figsize=(3.6 * n, 6.2), squeeze=False)
-    for j, (inst, per) in enumerate(curves.items()):
+    for j, (inst, per) in enumerate(means.items()):
         for pol in PAPER:
             gens = sorted(g for p, g in per if p == pol)
             if not gens:
                 continue
             c, ls, lw = STYLE[pol]
             for i in (0, 1):
-                y = [np.mean([v[i] for v in per[(pol, g)]]) for g in gens]
+                y = [per[(pol, g)][i] for g in gens]
                 axes[i, j].plot(gens, y, color=c, ls=ls, lw=lw, label=LABEL[pol], zorder=3 if pol == "final" else 2)
-        axes[0, j].set_title(inst.replace("_i0", ""), fontsize=10)
+        axes[0, j].set_title(pretty_instance(inst), fontsize=10)
         axes[0, j].set_yscale("log")
         axes[1, j].set_xlabel("Generation")
         for i in (0, 1):
@@ -127,17 +150,15 @@ def main() -> int:
             ax.spines[["top", "right"]].set_visible(False)
             ax.tick_params(labelsize=8)
     axes[0, 0].set_ylabel("IGD (log scale)")
-    axes[1, 0].set_ylabel("HV$_{jin}$")
+    axes[1, 0].set_ylabel("HV")
     h, lab = axes[0, 0].get_legend_handles_labels()
     fig.legend(h, lab, loc="lower center", ncol=5, fontsize=8, frameon=False)
     fig.tight_layout(rect=(0, 0.08, 1, 1))
     figs = ROOT / "results" / "figures"
     figs.mkdir(parents=True, exist_ok=True)
     for ext in ("png", "pdf"):
-        fig.savefig(figs / f"{args.name}_convergence.{ext}", dpi=200)
-    print(f"final fronts identical to pool: {sum(checks)}/{len(checks)}")
-    print("wrote", out / f"{args.name}_convergence.md", "and", figs / f"{args.name}_convergence.png")
-    return 0
+        fig.savefig(figs / f"{name}_convergence.{ext}", dpi=200)
+    print("wrote", figs / f"{name}_convergence.png")
 
 
 if __name__ == "__main__":

@@ -851,6 +851,23 @@ setting for comparability and three-tier energy as a sensitivity study.
   VERIFY notes removed from printed bib fields (they showed in the reference list). Still open: confirm the
   Shi et al. differences claimed in Related work from the full text; two citation placeholders in Related work.
 
+- [x] W6. Mock referee report (2026-11-19, major revision), text-only fixes done:
+  - M1: interval dominance at 0.5 = Pareto dominance on midpoints, now stated in §3.1, §4.2, intro, abstract, related.
+  - M2/M3 (partial): the existing ablation row "-tch" is R_IN + ICD tie-break + mating (T=20): IGD 6.83 vs 1.35 with
+    the Tchebycheff rank, now cited in §4.2 and §6.5. No public code of Jin et al. found; stated in §4.2 and §7.
+  - M5: containment reframed as holding by construction (abstract, §6.7, §7, conclusion); uniform-sum concentration
+    discussed. M6: edge cost dependency (f·C/f) stated in §3.4; makespan and energy are exact ranges (monotone).
+  - M7: tuning asymmetry acknowledged in §7. M9: 10 references added (Crossref-checked), both \todo cites filled,
+    IMOEA/D now cites Gan et al. (2023).
+  - Minor: Eq. 1 crisp case, R piecewise (Eq. rate), n_u and F1 justified, Suite B idle devices, CPU/RAM/threads,
+    abstract names all eight methods, per-table run counts and normalisation, A12 column in Table 3, family-wise
+    Holm counts in §6.2 (IMOEA/D 42, AWN 41 of 45 in IGD), learner table power caveat, 13% vs 10% clarified.
+  - Presentation: "Jin backbone" renamed IMOEA-DQN (fixed); readable panel titles; HV axis label; Fig. 1 fonts ×1.35
+    at full width; README explains the repo name; PDF author metadata fixed (stray U+2C20).
+  - Still open, need experiments: M2 (NSGA-II/NSGA-III with T-neighbour mating), M4 (validation on Jin's instances,
+    not public), M7 (tune IMOEA/D T and weight count), M8 (MOEA/D, MOEA/DD or theta-DEA on midpoints), more DQN
+    runs. Still open, need the author: corresponding email, ORCID, Zenodo deposit, repo rename, Fig. 4 3-D view.
+
 ## Risks
 
 - C3 judged incremental ("just MSOPS inside Jin et al.") → W1 confirmed the rank is MSOPS's; make the diagnosis (tie

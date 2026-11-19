@@ -1,7 +1,17 @@
 # GAT-IMOEA-DQN
 
-Interval multi-objective DAG workflow offloading via graph-attentive
-evolutionary optimization. The design is in `GAT-IMOEA-DQN_Workflow.pdf`.
+Code and results for the paper *Interval multi-objective offloading of DAG workflows in uncertain
+cloud–edge–end environments via decomposition-ranked three-tier environmental selection*, whose method
+is called **DR-IMOEA** (policy `final` in `scripts/experiment.py`).
+
+**About the repository name.** The project started as GAT-IMOEA-DQN: IMOEA-DQN (Jin et al., 2026)
+extended to DAG workflows, with a graph attention encoder feeding the DQN. The experiments showed that
+learned control of the selection weights, with or without the graph encoder, does not beat a fixed
+action (paper, Section 6.8), so the final method DR-IMOEA uses neither. The GAT and DQN code is kept
+here because the paper reports those experiments. To reproduce the paper, see `scripts/build_paper.py`
+(tables), `scripts/paper_figures.py` (figures) and `scripts/compile_paper.py` (PDF).
+
+The original design document is `GAT-IMOEA-DQN_Workflow.pdf`.
 
 | Part | Where | Status |
 |---|---|---|

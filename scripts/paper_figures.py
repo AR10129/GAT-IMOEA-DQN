@@ -29,9 +29,9 @@ STATS = ROOT / "results" / "stats"
 INK, MUTED, GRID = "#2b2a27", "#6b6a64", "#e4e3dd"
 
 FRONT_METHODS = [("final", "DR-IMOEA", "#2a78d6", "o"), ("imoead_orig", "IMOEA/D", "#eb6834", "s"),
-                 ("nsga2_mid", "NSGA-II (mid)", "#1baf7a", "^"), ("fixed_fav", "Jin backbone", "#c2477a", "D")]
-FRONT_CASES = [("medium_250_i0@x20", "e7_a", "paper_suite_a_runs.csv", "Suite A: medium-250"),
-               ("cybershake_1000@x20", "e7_b", "paper_suite_b_runs.csv", "Suite B: cybershake-1000")]
+                 ("nsga2_mid", "NSGA-II (mid)", "#1baf7a", "^"), ("fixed_fav", "IMOEA-DQN (fixed)", "#c2477a", "D")]
+FRONT_CASES = [("medium_250_i0@x20", "e7_a", "paper_suite_a_runs.csv", "Suite A: Medium-250 (data ×20)"),
+               ("cybershake_1000@x20", "e7_b", "paper_suite_b_runs.csv", "Suite B: Cybershake-1000 (data ×20)")]
 
 
 def _median_seed(csv_name, inst, pol):

@@ -45,9 +45,13 @@ C^U / f^L]$. Intervals are compared by the possibility degree \citep{jin2026imoe
 P(\tilde a \le \tilde b) = \min\Big\{1, \max\Big\{0, \frac{b^U - a^L}{w(\tilde a) + w(\tilde b)}\Big\}\Big\}.
 \label{eq:possibility}
 \end{equation}
-Solution $x$ \emph{interval-dominates} $y$ ($x \prec_{IN} y$) when $P(\tilde F_m(x) \le \tilde F_m(y)) \ge 0.5$ for every
-objective $m$, with strict inequality for at least one. The uncertainty of a solution is measured by $U_1 = \sum_m
-w(\tilde F_m)$ and $U_2 = \prod_m w(\tilde F_m)$ on normalised objectives.
+For two crisp values ($w(\tilde a) + w(\tilde b) = 0$) we set $P(\tilde a \le \tilde b) = 1$ if $a \le b$ and $0$
+otherwise. Solution $x$ \emph{interval-dominates} $y$ ($x \prec_{IN} y$) when $P(\tilde F_m(x) \le \tilde F_m(y)) \ge
+0.5$ for every objective $m$, with strict inequality for at least one. Because $P(\tilde a \le \tilde b) \ge 0.5$ holds
+exactly when $b^U - a^L \ge (w(\tilde a) + w(\tilde b))/2$, that is, when $m(\tilde a) \le m(\tilde b)$, and the strict
+inequalities correspond in the same way, $\prec_{IN}$ is Pareto dominance on the interval midpoints. The widths enter
+the selection only through the uncertainty measures $U_1 = \sum_m w(\tilde F_m)$ and $U_2 = \prod_m w(\tilde F_m)$,
+computed on normalised objectives, and through the crossover probabilities (Section~\ref{sec:variation}).
 
 \subsection{System and application model}
 The system (Fig.~\ref{fig:system_model}) follows \citet{jin2026imoeadqn} and consists of $D$ mobile devices, $n$ edge
@@ -69,7 +73,23 @@ topological order of $\mathcal{G}$ that fixes the dispatch order.
 
 \subsection{Interval critical-path timing}
 Task $k$ runs at $\tilde f_k = \tilde f_d$, $\tilde f_u / n_u$ or $\tilde f_C$ for $n_u$ tasks on server $u$, so it
-computes for $\tilde t_k = \tilde C_k / \tilde f_k$. Visiting the tasks in the order $\mathbf{o}$,
+computes for $\tilde t_k = \tilde C_k / \tilde f_k$. The equal share $\tilde f_u / n_u$ is the edge model of
+\citet{jin2026imoeadqn}, in which all offloaded tasks run at the same time. With dependent tasks it is a conservative
+choice, since it charges the share even to tasks whose executions do not overlap, but it keeps the speed of a task
+independent of the schedule on its server. A variant in which the tasks of a server queue and each runs at full speed
+gives the same ranking of the methods (Section~\ref{sec:sensitivity}). Data on arc $(p, k)$ travel at the rate
+\begin{equation}
+\tilde R(x_p, x_k) = \begin{cases}
+\infty & x_p = x_k,\\
+\tilde R_{d,u} & \{x_p, x_k\} = \{0, u\},\\
+\tilde W_E & x_p, x_k \in \{1..n\},\ x_p \ne x_k,\\
+\tilde W_C & \{x_p, x_k\} = \{u, n+1\},\\
+\tilde R^*_d & \{x_p, x_k\} = \{0, n+1\},
+\end{cases}
+\label{eq:rate}
+\end{equation}
+where $d$ is the device of the application and $u \in \{1..n\}$ an edge server. The device reaches the cloud through
+its nearest edge server $u^*$, at the rate $\tilde R^*_d = (1 / \tilde R_{d,u^*} + 1 / \tilde W_C)^{-1}$. Visiting the tasks in the order $\mathbf{o}$,
 \begin{align}
 \widetilde{AT}_k &= \max\Big\{\tilde\tau^{in}_k, \max_{(p, k) \in E} \Big(\widetilde{FT}_p + \frac{\tilde D_{pk}}{\tilde R(x_p, x_k)}\Big)\Big\}, \label{eq:at}\\
 \widetilde{FT}_k &= \max\{\widetilde{AT}_k, \widetilde{av}(x_k)\} + \tilde t_k, \label{eq:ft}
@@ -89,11 +109,26 @@ The three objectives are the total makespan, the energy of the devices and the m
 \tilde F_3 &= \eta_E \sum_{1 \le x_k \le n} \tilde f_k \tilde t_k + \eta_C \sum_{x_k = n+1} \tilde t_k, \label{eq:f3}
 \end{align}
 where $V_a$ are the tasks of application $a$, $\tilde\tau^{out}_k$ the time to return $k$'s output and $d(k)$ its
-device. The energy $\tilde F_2$ covers local computation, transmission to offloaded tasks and idle waiting. For a task
+device. $\tilde F_1$ adds up the completion times of the applications rather than taking the latest one, so that every
+user's application counts and a fast application cannot hide a slow one. With one task per application it is the
+total latency over all tasks that \citet{jin2026imoeadqn} minimise. The energy $\tilde F_2$ covers local computation, transmission to offloaded tasks and idle waiting. For a task
 sent to the cloud, the device transmits only up to its nearest edge server and idles while the data cross
 $\tilde W_C$. As in \citet{jin2026imoeadqn}, only the energy of the devices is counted, and the energy of all three tiers
 is studied as a sensitivity case in Section~\ref{sec:sensitivity}. The prices $\eta_E$ and $\eta_C$ apply to edge and
-cloud computation. The problem is
+cloud computation.
+
+The input intervals are independent, and the makespan and the energy are monotone in each input. Their boundwise
+evaluation therefore gives the exact range over all inputs within their bounds. The edge cost is the exception. In
+Eq.~\eqref{eq:f3}, $\tilde f_k \tilde t_k = \tilde f_k \tilde C_k / \tilde f_k$ uses $\tilde f_k$ twice, and boundwise
+evaluation gives
+\begin{equation*}
+\big[f^L_k C^L_k / f^U_k,\ f^U_k C^U_k / f^L_k\big] \supset \big[C^L_k, C^U_k\big],
+\end{equation*}
+wider than the exact range by the factor $f^U_k / f^L_k$ at each end (the dependency problem of interval
+arithmetic). We keep the form of Eq.~\eqref{eq:f3}
+because it is the cost model of \citet{jin2026imoeadqn} and it applies to all compared methods alike. Its midpoint
+differs from that of the exact form, so it can change which schedules are preferred on cost, and the cost intervals of
+schedules that use edge servers are wider than necessary. The problem is
 \begin{equation}
 \min_{(\mathbf{x}, \mathbf{o})} \big(\tilde F_1, \tilde F_2, \tilde F_3\big)\ \text{s.t.}\ x_k \in \mathcal{A}_k\, \forall k,\
 \mathbf{o}\ \text{topol.},

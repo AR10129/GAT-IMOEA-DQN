@@ -22,19 +22,29 @@ offline. Following \citet{jin2026imoeadqn}, the main setting counts only the ene
 close when all three tiers are counted (Table~\ref{tab:sensitivity}). All results come from simulation.
 
 \paragraph{Uncertainty}
-The intervals were checked against realised values only for independent uniform draws inside the bounds, and
-correlated fluctuations or values outside the bounds were not tested. The interval widths of the workloads and data
-sizes in Suite B are synthetic (5--30\%). The tasks of Suite A are crisp, as in Jin et al., so their uncertainty comes
-from the resources alone.
+The interval model assumes that every quantity stays within its bounds and that the quantities vary independently.
+Under these assumptions the predicted intervals contain every realised value by construction, so the Monte Carlo study
+tests the ranking of the fronts and the width of the intervals, not their validity. Correlated fluctuations, such as a
+congested link that slows several transfers at once, and values outside the bounds are the cases in which the
+intervals could fail, and they were not tested. The edge cost interval is wider than necessary because of the
+dependency problem (Section~\ref{sec:model}). The interval widths of the workloads and data sizes in Suite B are
+synthetic (5--30\%). The tasks of Suite A are crisp, as in Jin et al., so their uncertainty comes from the resources
+alone. With $\gamma = 0$, \ours{} selects by midpoints alone, and the intervals affect its search only through the
+crossover probabilities.
 
 \paragraph{Baselines and protocol}
 We implemented all baselines from their papers on the same encoding, operators and evaluator, with their published
 settings and without retuning. Where a paper leaves a detail open, we chose the most literal reading. The original
 IP-MOEA paper was not available, so its crowding follows later descriptions that use hypervolume contributions.
 IMaOEACI was left out because its central indicator is defined only in an unpublished thesis, and the replay threshold
-and exploration schedule of IMOEA-DQN, which its paper does not give, were set by us. The parameters of \ours{} were
-chosen on separate training instances. The Wilcoxon tests are Holm-corrected per instance and not across instances,
-and the main methods were run 30 times and the others 10 times.
+and exploration schedule of IMOEA-DQN, which its paper does not give, were set by us. We found no public code
+or instance files of Jin et al., so our reimplementation of IMOEA-DQN could not be checked against their code or
+against their published values on their own instances. Suite A reproduces only the sizes of their instances. The parameters of \ours{} ($T$, $p_{local}$, the number of
+weight vectors and the action) were chosen on separate training instances, and IMOEA-DQN (fixed) uses the same action.
+The other methods were not tuned on these instances, so the tuning favours \ours{}. The ablation limits this concern,
+since even the untuned action $(1, 0, 0)$ and the other neighbourhood sizes and weight-vector counts remain better than
+IMOEA/D (Section~\ref{sec:ablation}), but tuning IMOEA/D's neighbourhood size and number of weight vectors on the same
+training set would be a fairer comparison. The main methods were run 30 times and the others 10 times.
 
 \paragraph{Learned control}
 The negative result of Section~\ref{sec:learned} covers three DQN designs trained for 24--48 episodes, and a different

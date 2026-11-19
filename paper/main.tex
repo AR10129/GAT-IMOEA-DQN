@@ -55,14 +55,16 @@ bandwidth and server capacity are uncertain at planning time. We formulate the o
 (DAG) workflows in cloud--edge--end systems as an interval multi-objective problem that optimises task placement and
 task order for the makespan along the interval critical path, device energy and cost. Extending a recent
 reinforcement-learning-driven interval evolutionary algorithm to this problem, we find that its convergence ranking, an
-interval dominance degree, stops selecting once most of the population is mutually non-dominated, and that learning its
-selection weights does not beat a fixed choice because the per-generation reward is almost pure noise. The proposed
-\ours{} uses an interval best-position Tchebycheff rank as the convergence tier of the three-tier selection, mates
-neighbours in objective space and uses DAG-valid variation. Against four interval evolutionary algorithms, NSGA-II,
-NSGA-III and the learning-driven predecessor, it has the best IGD and hypervolume on all 12 instances of the
-predecessor's sizes and beats the strongest baseline on 43 of 45 scientific-workflow instances in IGD and 42 in
-hypervolume, at a similar running time. At 1000--2000 tasks it keeps the higher hypervolume while IGD is level. A Monte
-Carlo check shows that the predicted intervals contain every realised objective value.
+interval dominance degree that at its threshold amounts to Pareto dominance on interval midpoints, stops selecting once
+most of the population is mutually non-dominated, and that learning its selection weights does not beat a fixed choice
+because the per-generation reward is almost pure noise. The proposed \ours{} ranks convergence by an interval
+best-position Tchebycheff rank, mates neighbours in objective space and uses DAG-valid variation. We compare it with
+eight methods: IMOEA/D, IMOEA/D-AWN, IMEA-IED, IP-MOEA, NSGA-II, NSGA-III, the predecessor IMOEA-DQN and IMOEA-DQN
+with a fixed action. \ours{} has the best IGD and hypervolume on all 12 instances of the predecessor's sizes and beats
+the strongest baseline on 43 of 45 scientific-workflow instances in IGD and 42 in hypervolume, at a similar running
+time. At 1000--2000 tasks it keeps the higher hypervolume while IGD is level. Re-evaluated under sampled realisations,
+the predicted intervals prove conservative, with the central 95\% of realised makespans and energies covering less
+than half of the interval width.
 \end{abstract}
 
 % Highlights are not part of the manuscript PDF: EAAI asks for them as a separate editable file in the submission
@@ -74,6 +76,8 @@ Interval multi-objective optimisation \sep Computation offloading \sep DAG workf
 \end{keywords}
 
 \maketitle
+% The class joins the author list with a trailing ", " that shows up in the PDF properties; set them explicitly.
+\hypersetup{pdfauthor={Ayushi Raj}}
 
 % ---------------------------------------------------------------- body (floats are placed in their sections)
 \input{sections/intro}          % 1   introduction
@@ -81,7 +85,7 @@ Interval multi-objective optimisation \sep Computation offloading \sep DAG workf
 
 \begin{figure*}[pos=tbp]
 \centering
-\includegraphics[width=0.9\textwidth]{figures/system_model.pdf}
+\includegraphics[width=\textwidth]{figures/system_model.pdf}
 \caption{System model. Left: the cloud--edge--end architecture with its interval quantities. Right: an application
 DAG submitted by the origin device, with its tasks coloured by the tier the allocation string assigns them to, a
 priority string, and the interval critical path that determines the makespan.}

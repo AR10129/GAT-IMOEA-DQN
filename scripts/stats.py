@@ -40,10 +40,19 @@ RUN_NAME = re.compile(r"^(?P<wf>.+?)__(?P<pol>[a-z0-9_]+?)(?:__t(?P<t>\d+))?__s(
 # the faithful IMOEA-DQN (imoea_dqn: online MLP DQN, no GAT) replace ip_moea and trained_stable
 PAPER = ["final", "imoead_orig", "imoead_awn", "imea_ied", "ip_moea_hv", "nsga2_mid", "nsga2_int",
          "nsga3_mid", "fixed_fav", "imoea_dqn"]
-LABEL = {"final": "Ours (final)", "imoead_orig": "IMOEA/D", "imoead_awn": "IMOEA/D-AWN", "imea_ied": "IMEA-IED",
+LABEL = {"final": "DR-IMOEA", "imoead_orig": "IMOEA/D", "imoead_awn": "IMOEA/D-AWN", "imea_ied": "IMEA-IED",
          "ip_moea": "IP-MOEA (mid crowding)", "nsga2_mid": "NSGA-II (mid)", "nsga2_int": "NSGA-II (int)",
-         "nsga3_mid": "NSGA-III (mid)", "fixed_fav": "Jin backbone (fixed)", "trained_stable": "IMOEA-DQN, offline GAT",
+         "nsga3_mid": "NSGA-III", "fixed_fav": "IMOEA-DQN (fixed)", "trained_stable": "IMOEA-DQN, offline GAT",
          "ip_moea_hv": "IP-MOEA", "imoea_dqn": "IMOEA-DQN"}
+
+
+def pretty_instance(w: str) -> str:
+    """Readable figure title for an instance id, e.g. 'montage_400@x20' -> 'Montage-400 (data ×20)'."""
+    name, _, mult = w.partition("@x")
+    fam, size = name.replace("_i0", "").rsplit("_", 1)
+    return f"{fam.capitalize()}-{size}" + (f" (data ×{mult})" if mult else "")
+
+
 METRICS = {"IGD": True, "HV_jin": False, "Imprecision": True, "HV_hi": False}    # name -> lower is better
 # Nemenyi q_0.05 for k = 2..10 (Demsar 2006)
 Q05 = {2: 1.960, 3: 2.343, 4: 2.569, 5: 2.728, 6: 2.850, 7: 2.949, 8: 3.031, 9: 3.102, 10: 3.164}

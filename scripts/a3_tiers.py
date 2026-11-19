@@ -29,8 +29,8 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 STALL_CASES = [("medium_250_i0@x20", {"scenario": "default"}), ("montage_400@x20", {"scenario": "jin"})]
-STALL_POLICIES = {"fixed_fav": ("Jin Rank C (R_IN, random ties)", "#c2477a"),
-                  "final": ("Ours: Tchebycheff Rank C (ICD ties)", "#2a78d6")}
+STALL_POLICIES = {"fixed_fav": ("IMOEA-DQN (fixed): $R_{IN}$ (random ties)", "#c2477a"),
+                  "final": ("DR-IMOEA: Tchebycheff $R_C$ (ICD ties)", "#2a78d6")}
 
 
 def tradeoff():
@@ -117,17 +117,34 @@ def stall(seeds: int, G: int, workers: int):
             m = np.mean(recs, axis=0)
             for g, (t, nb) in enumerate(m, start=1):
                 w.writerow([inst, pol, g, f"{t:.4f}", f"{nb:.2f}"])
+    plot_stall({k: np.mean(v, axis=0) for k, v in agg.items()})
+    for (inst, pol), recs in agg.items():
+        m = np.mean(recs, axis=0)
+        print(f"{inst:20s} {pol:10s} tie-decided share: G1-100 {100 * m[:100, 0].mean():5.1f}%  "
+              f"G101-500 {100 * m[100:500, 0].mean():5.1f}%  G501-1000 {100 * m[500:, 0].mean():5.1f}%  "
+              f"n_best at G=1000 {m[-1, 1]:.0f}")
+
+
+def plot_stall(means=None):
+    """Fig. a3_stall from the seed means; without arguments, from results/stats/a3_stall.csv."""
+    if means is None:
+        rows = {}
+        with open(ROOT / "results" / "stats" / "a3_stall.csv", encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                rows.setdefault((r["instance"], r["policy"]), []).append(
+                    (int(r["generation"]), float(r["tie_decided_share"]), float(r["n_best"])))
+        means = {k: np.array([v[1:] for v in sorted(vs)]) for k, vs in rows.items()}
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     fig, axes = plt.subplots(2, len(STALL_CASES), figsize=(4.2 * len(STALL_CASES), 5.6), squeeze=False)
     for j, (inst, _) in enumerate(STALL_CASES):
         for pol, (lab, col) in STALL_POLICIES.items():
-            m = np.mean(agg[(inst, pol)], axis=0)
+            m = means[(inst, pol)]
             g = np.arange(1, len(m) + 1)
             axes[0, j].plot(g, 100 * m[:, 0], color=col, lw=1.6, label=lab)
             axes[1, j].plot(g, m[:, 1], color=col, lw=1.6, label=lab)
-        axes[0, j].set_title(inst.replace("_i0", ""), fontsize=10)
+        axes[0, j].set_title(__import__("stats").pretty_instance(inst), fontsize=10)
         axes[1, j].set_xlabel("Generation")
         for ax in axes[:, j]:
             ax.grid(True, color="#e4e3dd", lw=0.6)
@@ -141,22 +158,20 @@ def stall(seeds: int, G: int, workers: int):
     figs = ROOT / "results" / "figures"
     for ext in ("png", "pdf"):
         fig.savefig(figs / f"a3_stall.{ext}", dpi=200)
-    for (inst, pol), recs in agg.items():
-        m = np.mean(recs, axis=0)
-        print(f"{inst:20s} {pol:10s} tie-decided share: G1-100 {100 * m[:100, 0].mean():5.1f}%  "
-              f"G101-500 {100 * m[100:500, 0].mean():5.1f}%  G501-1000 {100 * m[500:, 0].mean():5.1f}%  "
-              f"n_best at G=1000 {m[-1, 1]:.0f}")
     print("wrote", figs / "a3_stall.png")
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--stall", action="store_true")
+    ap.add_argument("--plot-stall", action="store_true", help="redraw the stall figure from a3_stall.csv")
     ap.add_argument("--seeds", type=int, default=3)
     ap.add_argument("--generations", type=int, default=1000)
     ap.add_argument("--workers", type=int, default=12)
     args = ap.parse_args()
-    if args.stall:
+    if args.plot_stall:
+        plot_stall()
+    elif args.stall:
         stall(args.seeds, args.generations, args.workers)
     else:
         tradeoff()

@@ -10,7 +10,8 @@ as in Jin et al. They are used as given and multiplied by 20 to make communicati
 instances. Another 36 instances generated with different seeds were used only to set the parameters of the method. \emph{Suite B} takes five
 scientific workflow families from WfCommons \citep{coleman2022wfcommons}, namely Cybershake, Epigenomics, Inspiral,
 Montage and Sipht, with 100, 400 and 1000 tasks, submitted by one device in Jin et al.'s small scenario (3 edge servers,
-6 devices). Workloads and data sizes are mapped into Jin et al.'s ranges by an order-preserving logarithmic map, every
+6 devices). The other five devices submit no tasks and take no part in the problem. The scenario supplies the edge
+servers, the cloud and the links of the submitting device. Workloads and data sizes are mapped into Jin et al.'s ranges by an order-preserving logarithmic map, every
 quantity has a relative interval half-width of 5--30\%, and the data sizes are multiplied by 1, 20 or 100 to vary the
 communication-to-computation ratio, giving 45 instances. Fifteen further workflows with 2000 tasks test scalability.
 Table~\ref{tab:params_main} lists the main parameters.
@@ -21,24 +22,24 @@ Table~\ref{tab:params_main} lists the main parameters.
 We compare \ours{} with eight methods, all implemented on the same encoding, variation operators and evaluator and given
 the same population ($N = 105$) and budget of $N(G_{\max}+1)$ evaluations with $G_{\max} = 1000$:
 \begin{itemize}
-\item \emph{IMOEA/D}, the interval decomposition MOEA with weight-vector adaptation, with the original settings reported
-  by \citet{cui2024imeaied} ($T = 10$, adaptation from $G_{\max}/2$ every $G_{\max}/6$);
+\item \emph{IMOEA/D} \citep{gan2023imoead}, the interval decomposition MOEA with reference-vector adaptation, with the
+  settings used by \citet{cui2024imeaied} ($T = 10$, adaptation from $G_{\max}/2$ every $G_{\max}/6$);
 \item \emph{IMOEA/D-AWN} \citep{jin2023imoeadawn}, which adapts weight vectors and neighbourhood sizes by interval sparsity;
 \item \emph{IMEA-IED} \citep{cui2024imeaied}, with information-entropy interval dominance and niche selection;
 \item \emph{IP-MOEA} \citep{limbourg2005ipmoea}, with interval Pareto dominance and hypervolume-contribution crowding;
 \item \emph{NSGA-II} \citep{deb2002nsga2} on interval midpoints (mid) or with interval dominance (int), and
   \emph{NSGA-III} \citep{deb2014nsga3} on midpoints;
 \item \emph{IMOEA-DQN} \citep{jin2026imoeadqn} as published, with an online DQN choosing $(\alpha, \beta, \gamma)$ in every
-  generation; and its \emph{Jin backbone} run with the fixed action $(5/6, 1/6, 0)$, which isolates the effect of
-  Rank C and the mating.
+  generation, and \emph{IMOEA-DQN (fixed)}, the same algorithm run with the fixed action $(5/6, 1/6, 0)$ of \ours{},
+  which isolates the effect of Rank C, its tie-break and the mating.
 \end{itemize}
 Table~\Sref{tab:heuristics} of the supplementary material also reports six list-scheduling heuristics. Three of them
 place all tasks locally, on the nearest edge server or in the cloud, and three HEFT-style schedulers place each task by
 earliest finish time, lowest energy or lowest cost \citep{topcuoglu2002heft}.
 
 \subsection{Performance metrics and statistics}
-Each instance is normalised once, over the final fronts of all compared methods, so that every objective lies in
-$[0, 1]$. With $R$ the non-dominated union of the midpoints of all final fronts, the inverted generational distance of
+Each instance is normalised over the final fronts of the methods compared on it, so that every objective lies in
+$[0, 1]$. With $R$ the non-dominated union of the midpoints of these final fronts, the inverted generational distance of
 a front $P$ is
 \begin{equation}
 \mathrm{IGD}(P) = \frac{1}{|R|} \sum_{r \in R} \min_{x \in P} \lVert r - m(\tilde F(x)) \rVert_2,
@@ -48,8 +49,14 @@ and, as in \citet{jin2026imoeadqn}, the hypervolume is the mean of the hypervolu
 $\mathrm{HV}(P) = \tfrac{1}{2}\big(\mathrm{HV}(\{F^L(x)\}) + \mathrm{HV}(\{F^U(x)\})\big)$, with reference point $1.1$ in
 every objective. IGD measures convergence and coverage (lower is better), and HV measures the dominated volume (higher
 is better). The imprecision $\sum_{x \in P} \sum_m w(\tilde F_m(x))$ measures the width of the predicted intervals.
+The true Pareto fronts are unknown, so IGD measures the distance to the best solutions found by any compared method
+and not to the optimum.
 
-\ours{}, IMOEA/D and the Jin backbone were run 30 times per instance and the other methods 10 times. Each method is
+Each table does this over its own rows, so values from different tables are not comparable. Fig.~\ref{fig:e5_convergence}
+uses the normalisation of Table~\ref{tab:summary}. For the main comparison (Table~\ref{tab:summary}), \ours{}, IMOEA/D and IMOEA-DQN (fixed)
+were run 30 times per instance and the other methods 10 times. The ablation, sensitivity and convergence studies use 10
+runs per variant, the study of learned control 4, and the stall analysis of Fig.~\ref{fig:a3_stall} 3. Each method is
 compared with \ours{} on each instance by the Wilcoxon rank-sum test with Holm's correction \citep{holm1979} over the
-compared methods at $\alpha = 0.05$, and all methods are compared across instances by their mean Friedman ranks with the
-Nemenyi critical difference \citep{demsar2006}.
+compared methods at $\alpha = 0.05$, with the Vargha--Delaney $A_{12}$ as effect size \citep{vargha2000}, and all
+methods are compared across instances by their mean Friedman ranks with the Nemenyi critical difference
+\citep{demsar2006}.

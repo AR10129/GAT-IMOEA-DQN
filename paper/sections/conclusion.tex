@@ -5,16 +5,18 @@
 This paper formulated the offloading of DAG workflows in cloud--edge--end systems with interval-valued resources and
 workloads as an interval multi-objective problem over task placement and task order. The objectives are the makespan
 along the interval critical path, the device energy and the cost. Extending the three-tier selection of IMOEA-DQN to this
-problem showed that its convergence ranking, the interval dominance degree, stops selecting once most of the population
-is mutually non-dominated, and that learning the selection weights does not improve on a fixed choice. \ours{} replaces
+problem showed that its convergence ranking, the interval dominance degree, which at its threshold amounts to Pareto
+dominance on midpoints, stops selecting once most of the population is mutually non-dominated, and that learning the
+selection weights does not improve on a fixed choice. \ours{} replaces
 the convergence ranking with an interval version of the best-position Tchebycheff rank of MSOPS, breaks its ties by
 crowding distance, mates neighbours in objective space and fixes the selection weights on training instances.
 
 On the instance sizes of Jin et al., \ours{} has the best IGD and hypervolume on every instance, with a mean IGD 62\%
 lower than that of IMOEA/D. On five families of scientific workflows with 100 to 1000 tasks, it is better than IMOEA/D,
 the strongest baseline, on 43 of 45 instances in IGD and on 42 in hypervolume, at about the same running time. The
-ablation attributes the gain to the combination of the new rank and neighbourhood mating, and a Monte Carlo check
-confirms that the predicted objective intervals contain every realised value. At 1000 and 2000 tasks the advantage
+ablation attributes the gain to the combination of the new rank and neighbourhood mating. Under sampled realisations
+the methods keep their order, and the predicted intervals turn out conservative, with most realised values in the
+middle half of each interval. At 1000 and 2000 tasks the advantage
 becomes smaller. \ours{} keeps the higher hypervolume, but IMOEA/D reaches cheaper solutions at the cost end of the
 front, and the IGD values become level and depend on the reference front.
 

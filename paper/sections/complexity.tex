@@ -31,9 +31,9 @@ Neither changes the number of evaluations, which is $N(G_{\max} + 1)$ for \ours{
 With $N = 105$ the population terms are about $N^2(M + \log_2 2N) \approx 1.2 \times 10^5$ elementary operations per
 generation, while the evaluation term $N(K + |E|)$ grows from about $3 \times 10^4$ for the 100-task Cybershake
 workflow ($|E| = 192$) to $3 \times 10^5$ at 1000 tasks and $6 \times 10^5$ at 2000. The measured times
-(Table~\ref{tab:timing}) show that \ours{} needs about as long as IMOEA/D and the fixed-action Jin backbone on every
+(Table~\ref{tab:timing}) show that \ours{} needs about as long as IMOEA/D and IMOEA-DQN (fixed) on every
 instance, and that its time grows only 1.8-fold from 100 to 2000 Cybershake tasks: the evaluation loop is compiled and
 has a small constant, so the population terms, which do not depend on $K$, account for most of the run time. The
 learned controller of IMOEA-DQN adds a state computation and a network forward pass every generation and a training
-step every 50 generations; on the same instances this costs 2--52\% more time than the fixed-action backbone, without
+step every 50 generations; on the same instances this costs 2--52\% more time than IMOEA-DQN (fixed), without
 improving the result (see the analysis of learned control in the paper).

@@ -2,7 +2,7 @@
 \begin{table}[!htbp]
 \centering
 \footnotesize
-\caption{Ablation on the 12 Suite A instances (10 runs; IGD $\times10^{-2}$, means over instances). $+/-/\approx$: instances where the variant is significantly better / worse / not different from the reference in the group heading (Wilcoxon rank-sum, $\alpha = 0.05$).}
+\caption{Ablation on the 12 Suite A instances (10 runs; IGD $\times10^{-2}$, means over instances; normalisation and reference front over the rows of this table, so the values differ from Table~\ref{tab:summary}). $+/-/\approx$: instances where the variant is significantly better / worse / not different from the reference in the group heading (Wilcoxon rank-sum, $\alpha = 0.05$).}
 \label{tab:ablation}
 \setlength{\tabcolsep}{3pt}
 \begin{tabular}{lccc}
@@ -10,14 +10,14 @@
 Variant & IGD & HV & IGD $+/-/\approx$ \\
 \midrule
 \multicolumn{4}{l}{\textit{Build-up (vs \ours{})}} \\
-\quad Jin et al.\ backbone & 11.86 & 0.630 & 0/12/0 \\
+\quad IMOEA-DQN (fixed) & 11.86 & 0.630 & 0/12/0 \\
 \quad + Tchebycheff Rank C & 5.76 & 0.760 & 0/12/0 \\
 \quad + ICD tie-break & 4.80 & 0.769 & 0/12/0 \\
 \quad + mating, $T{=}20$, $p{=}0.9$ & 1.35 & 0.806 & 0/9/3 \\
 \quad \ours{} ($T{=}10$, $p{=}1$) & 1.02 & 0.814 & -- \\
 \midrule
 \multicolumn{4}{l}{\textit{Leave one out (vs $T{=}20$)}} \\
-\quad without Tchebycheff & 6.83 & 0.664 & 0/12/0 \\
+\quad without Tchebycheff ($R_{IN}$) & 6.83 & 0.664 & 0/12/0 \\
 \quad without ICD tie-break & 1.63 & 0.801 & 0/8/4 \\
 \quad without mating & 4.80 & 0.769 & 0/12/0 \\
 \midrule
@@ -28,6 +28,9 @@ Variant & IGD & HV & IGD $+/-/\approx$ \\
 \quad $N/2$ weight vectors & 1.80 & 0.803 & 0/12/0 \\
 \quad $2N$ weight vectors & 1.90 & 0.792 & 0/11/1 \\
 \quad action $(1, 0, 0)$ & 1.75 & 0.801 & 0/7/5 \\
+\midrule
+\multicolumn{4}{l}{\textit{Reference (vs $T{=}20$)}} \\
+\quad IMOEA/D & 3.14 & 0.792 & 0/12/0 \\
 \bottomrule
 \end{tabular}
 \end{table}

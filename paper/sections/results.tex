@@ -7,7 +7,7 @@
 Table~\ref{tab:summary} summarises the results on both suites. On Suite A, \ours{} has the best IGD and HV on all 12
 instances, a mean IGD 62\% lower than that of IMOEA/D, which is the strongest baseline, and the first Friedman rank on
 both metrics. On Suite B it is better than IMOEA/D on 43 of the 45 instances in IGD and on 42 in HV. IMEA-IED, IP-MOEA,
-NSGA-III, the Jin backbone and IMOEA-DQN are worse on every instance, and IMOEA/D-AWN is never better. NSGA-II reaches a
+NSGA-III, IMOEA-DQN (fixed) and IMOEA-DQN are worse on every instance, and IMOEA/D-AWN is never better. NSGA-II reaches a
 lower IGD on 4--5 instances, all of them 100-task workflows with data $\times 1$, where the search space is small enough
 for plain non-dominated sorting to converge. It never reaches a higher HV. The per-instance results are given in
 Tables~\Sref{tab:suitea_igd}--\Sref{tab:suiteb_hv_jin} of the supplementary material, and the list-scheduling
@@ -15,7 +15,7 @@ heuristics are 16--33 times worse in IGD than \ours{} (Table~\Sref{tab:heuristic
 
 \input{tables/summary}
 
-The Jin backbone differs from \ours{} only in Rank C and the mating. Its mean IGD on Suite B is six times higher (0.116
+IMOEA-DQN (fixed) differs from \ours{} only in Rank C, its tie-break and the mating. Its mean IGD on Suite B is six times higher (0.116
 against 0.019), and the gap grows with the size of the DAG, from 0.052 at 100 tasks to 0.175 at 1000 tasks, as the
 analysis in Section~\ref{sec:stall} predicts. The published IMOEA-DQN is last on both suites, and its learned controller
 makes it worse than its own backbone with a fixed action. Section~\ref{sec:learned} explains this result.
@@ -31,6 +31,11 @@ Fig.~\ref{fig:cd} shows the mean Friedman ranks of all methods on Suite B. On IG
 better than every method except IMOEA/D and IMOEA/D-AWN, whose ranks lie within the critical difference of 2.02. The
 same holds on HV, where \ours{} has rank 1.09. The per-instance Wilcoxon tests in Table~\ref{tab:summary} also separate
 \ours{} from these two methods, since IMOEA/D is significantly worse on 43 of 45 instances in IGD and IMOEA/D-AWN on 43.
+With Holm's correction over all 405 comparisons of a suite and metric instead of per instance, these counts become 42
+and 41 in IGD and 42 and 44 in HV, and every verdict on Suite A stays the same. The effects are large. The
+Vargha--Delaney $A_{12}$, the probability that a run of \ours{} reaches a lower IGD than a run of the other method
+\citep{vargha2000}, averages 0.93 against IMOEA/D and 0.95 against IMOEA/D-AWN on Suite B and is 1.00 against every
+method on Suite A (Table~\ref{tab:summary}).
 With only 12 instances, the critical difference on Suite A is 3.91 ranks, so the per-instance tests carry the evidence
 there.
 
@@ -93,11 +98,15 @@ Suite B instances (data $\times 20$).}
 
 \subsection{Ablation study}
 \label{sec:ablation}
-Table~\ref{tab:ablation} builds \ours{} step by step from the Jin backbone on the 12 Suite A instances. The Tchebycheff
-Rank C halves the mean IGD (from 0.119 to 0.058), the ICD tie-break lowers it to 0.048, and neighbourhood mating brings
-it to 0.0135. The tuned mating parameters reach 0.0102. The rank and the mating interact, since either one alone
-recovers only part of the gain, while together they are 3.5 times better than the better of the two. The ICD tie-break
-gives a smaller but consistent improvement. Smaller neighbourhoods and always mating locally work better ($T = 40$ and
+Table~\ref{tab:ablation} builds \ours{} step by step from IMOEA-DQN (fixed) on the 12 Suite A instances. Its values are
+normalised over the rows of this table and are therefore not comparable with those of Table~\ref{tab:summary}. The
+Tchebycheff Rank C halves the mean IGD (from 0.119 to 0.058), the ICD tie-break lowers it to 0.048, and neighbourhood
+mating brings it to 0.0135. The tuned mating parameters reach 0.0102. Most of the gain appears only when the rank and
+the mating are combined. With the rank but without mating the IGD is 0.048, and with mating and the ICD tie-break but
+with $R_{IN}$ instead of the rank it is 0.068, while together they reach 0.0135, 3.5 times better than the better of
+the two. Mating with $R_{IN}$ recovers only part of the gain, and its large effect depends on the rank. The
+Pareto-based baselines do not use neighbourhood mating. Whether it would improve them as well is not tested here. The
+ICD tie-break gives a smaller but consistent improvement. Smaller neighbourhoods and always mating locally work better ($T = 40$ and
 $p_{local} = 0.5$ are worse on 11--12 instances), and $N$ weight vectors are better than $N/2$ or $2N$. Even the untuned
 action $(1, 0, 0)$ is better than IMOEA/D (0.0175 against 0.0314), so the advantage does not depend on tuning the
 selection weights.
@@ -120,17 +129,26 @@ two overlap.
 \subsection{Realised values and running time}
 \label{sec:montecarlo}
 \label{sec:runtime}
-To check the predicted intervals against realised values, we re-evaluated every final front under 200 crisp scenarios
-drawn uniformly from the input intervals (Table~\ref{tab:montecarlo_main}). Every realised objective vector lay inside
-its predicted interval, and the order of the methods by realised IGD agrees closely with their order by interval IGD
-(Kendall $\tau$ 0.91--1.00). \ours{} has the lowest realised IGD on three of the four instances. On montage-400 the
+To compare the fronts under realised values, we re-evaluated every final front under 200 crisp scenarios drawn
+uniformly and independently from the input intervals (Table~\ref{tab:montecarlo_main}). Every realised objective
+vector lies inside its predicted interval, but this holds by construction, since the evaluation is monotone in each
+input or, for the edge cost, overestimates the range (Section~\ref{sec:model}). The informative results are the
+ranking and the width. The order of the methods by realised IGD agrees closely with their order by interval IGD
+(Kendall $\tau$ 0.91--1.00), and \ours{} has the lowest realised IGD on three of the four instances. On montage-400 the
 front of IMOEA/D is slightly better under realised values although its interval IGD is slightly worse, so the two
-methods are effectively tied on this instance (Table~\Sref{tab:montecarlo}). The intervals are conservative, since on
-the Suite B workflows the central 95\% of the realised makespans and energies covers only 36--47\% of the interval width.
+methods are effectively tied on this instance (Table~\Sref{tab:montecarlo}). The intervals are conservative. On the
+Suite B workflows the central 95\% of the realised makespans and energies covers only 36--47\% of the interval width.
+An objective sums many independent uncertain terms, so its realised values concentrate around the midpoint, while the
+interval spans the case in which all terms take their extreme values together. The possibility degree of
+Eq.~\eqref{eq:possibility} implicitly treats each interval as uniform, which is accurate for the inputs but not for
+such sums. Selection by midpoints, as in \ours{}, is unaffected by this, whereas measures based on the width, such as
+the imprecision or the uncertainty tier, describe a worst case that rarely occurs.
 
 \input{tables/montecarlo_main}
 
-\ours{} needs 29--62\,s per run on a laptop. This is about as long as IMOEA/D (27--59\,s) and the Jin backbone, less than
+All methods are implemented in Python~3.12 with NumPy and a Numba-compiled evaluator and were timed one run at a
+time, single-threaded, on a laptop with an AMD Ryzen~7 4800H processor and 8\,GB of memory. \ours{} needs 29--62\,s
+per run. This is about as long as IMOEA/D (27--59\,s) and IMOEA-DQN (fixed), less than
 IMOEA/D-AWN and IMEA-IED, and 1.3--1.7 times as long as the NSGA family (Table~\Sref{tab:timing}). The running time
 grows only 1.8-fold from 100 to 2000 tasks, in line with the complexity given in Section~\ref{sec:complexity}.
 
@@ -143,6 +161,10 @@ Jin et al., the second makes one decision per 50 generations with a hypervolume 
 per 25 generations among the 10 actions with $\alpha \ge 1/2$. None of them beats the fixed action
 (Table~\ref{tab:learners}). The best design reaches an IGD of 0.0196 against 0.0143 for the fixed action, close to a
 random choice among the same actions (0.0251), and the graph encoder does not help consistently (Table~\Sref{tab:gat}).
+With four runs on each of four instances, the rank-sum test can reach significance only when the two groups separate
+completely, so the counts in Table~\ref{tab:learners} understate the differences. Every learner has a higher mean IGD
+than the fixed action on all four instances, by at least 19\%, and the learners were trained for only 24--48 episodes, so the table shows
+that learned control brought no gain at this budget rather than that it cannot help.
 
 \input{tables/learners}
 
@@ -150,8 +172,8 @@ Fig.~\ref{fig:reward_audit} explains this result. When each of the 28 actions is
 reward ranks the actions roughly like the final IGD (Spearman 0.90--0.92). After generation 100, however, the reward of
 a single step is mostly noise, and the spread between the mean rewards of the actions is only 0.02--0.08 of its standard
 deviation. The diversity-heavy action $(2/3, 0, 1/3)$, for example, earns the third and fifth highest reward but ranks
-eighth and ninth on IGD. Since the best fixed action is already within about 10\% of the best action on each instance,
-an adaptive schedule has little to gain and too little signal per step to find it. For this reason \ours{} keeps the
+eighth and ninth on IGD. On the two audit instances, the best action for each instance improves the IGD of the fixed
+action $(5/6, 1/6, 0)$ by only about 10\%, so an adaptive schedule has little to gain and too little signal per step to find it. For this reason \ours{} keeps the
 weights fixed.
 
 \begin{figure*}[pos=tbp]

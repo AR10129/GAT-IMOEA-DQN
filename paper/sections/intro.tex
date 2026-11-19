@@ -23,8 +23,10 @@ formulated for independent tasks in a cloud--edge--end system with interval reso
 
 This paper extends that line of work to DAG applications and finds that two parts of the method do not carry over. The
 first is the interval dominance degree, which loses its selection pressure once most of the merged population is
-mutually non-dominated. More pool members then share the best value than there are convergence places, and the
-tie-break fills the tier at random. On our instances this happens for 86--100\% of the convergence places from
+mutually non-dominated. At the possibility threshold of 0.5 interval dominance is Pareto dominance on the interval
+midpoints, so this is the familiar loss of Pareto pressure, but it disables a tier that must fill a fixed number of
+places. More pool members then share the best value than there are convergence places, and the tie-break, which Jin et
+al.\ leave unspecified, decides the tier. On our instances this happens for 86--100\% of the convergence places from
 generation 100 onwards, and at the end of a run 117--121 of the 210 pool members share the best value for 88 places. On
 the 1000-task workflows, the backbone of IMOEA-DQN run with the same fixed action as our method ends with an IGD about
 six times higher. The second is the learned controller of $(\alpha, \beta, \gamma)$, which does not beat a well-chosen
@@ -42,15 +44,16 @@ cloud--edge--end environments. The contributions of this paper are as follows.
 \item An analysis of why the interval dominance degree stalls as a convergence tier, and a remedy that uses an interval
   version of the best-position Tchebycheff rank of MSOPS \citep{hughes2003msops} as the convergence tier, breaks its ties
   by crowding distance and restricts mating to neighbours in objective space (Sections~\ref{sec:stall}
-  and~\ref{sec:rankc}). The rank itself comes from MSOPS. Its use inside a dominance-, diversity- and uncertainty-aware
-  selection, the analysis and the experimental evidence are new.
+  and~\ref{sec:rankc}). The rank comes from MSOPS and the mating restriction from MOEA/D. Their combination inside a
+  dominance-, diversity- and uncertainty-aware selection, the analysis and the experimental evidence are new, and the
+  ablation shows that the gain needs both.
 \item An analysis of learned control of the selection weights with three learner designs, each with and without a
   graph attention network that encodes the DAG, and a reward audit that explains why none of them beats a fixed action
   (Section~\ref{sec:learned}).
 \item An evaluation on 57 instances (Jin et al.'s instance sizes and five scientific workflow families with up to 1000
   tasks), plus 15 instances with 2000 tasks for scalability, against four interval evolutionary algorithms, NSGA-II,
   NSGA-III, IMOEA-DQN and list-scheduling heuristics. It includes a robustness check of the normalisation, a Monte Carlo
-  check of the interval objectives against realised values, and an account of where the method is weaker
+  study of how conservative the interval objectives are, and an account of where the method is weaker
   (Sections~\ref{sec:experiments} and~\ref{sec:discussion}).
 \end{enumerate}
 

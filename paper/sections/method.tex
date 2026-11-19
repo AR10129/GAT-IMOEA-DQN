@@ -34,13 +34,18 @@ interval crowding distance (ICD) over the $\mathrm{round}(\sqrt{2N})$ most simil
 dominance on $(U_1, U_2)$. The next population takes the best $\mathrm{round}(\alpha N)$ solutions by Rank C, then
 $\mathrm{round}(\beta N)$ by Rank D and the rest by Rank U, skipping duplicates.
 
-$R_{IN}$ separates solutions only while some of them dominate others. Overlapping intervals are often incomparable, so
-after a few hundred generations most of the pool has $R_{IN} = 0$. Once more than $\alpha N$ solutions share the best
-value, the convergence places are filled by the tie-break, which Jin et al.\ leave unspecified and which is random in a
-literal implementation. Fig.~\ref{fig:a3_stall} measures this effect. With $R_{IN}$, the tie-break decides 86--100\% of
+$R_{IN}$ separates solutions only while some of them dominate others. Since $\prec_{IN}$ is Pareto dominance on
+midpoints (Section~\ref{sec:intervals}), this is the familiar loss of Pareto pressure, and after a few hundred
+generations most of the pool has $R_{IN} = 0$. Once more than $\alpha N$ solutions share the best value, the
+convergence places are filled by the tie-break. Jin et al.\ do not specify it, and we found no public implementation,
+so our implementation of IMOEA-DQN breaks ties at random. A crowding-distance tie-break, as in NSGA-II, is the
+obvious alternative, and the ablation tests it. With $R_{IN}$, an ICD tie-break and neighbourhood mating, the mean IGD
+on Suite A is still five times that of the same configuration with the Tchebycheff rank (Table~\ref{tab:ablation},
+row ``without Tchebycheff''), so the stall is not an artefact of the random tie-break.
+Fig.~\ref{fig:a3_stall} measures this effect. With $R_{IN}$, the tie-break decides 86--100\% of
 the convergence places after generation 100, and at the end of the run 117--121 of the 210 pool members share
 $R_{IN} = 0$ for 88 places. The convergence tier therefore draws at random from the first front, and the population
-drifts along it. The effect grows with the size of the DAG. The fixed-action Jin backbone reaches a mean IGD of 0.052 on
+drifts along it. The effect grows with the size of the DAG. IMOEA-DQN (fixed) reaches a mean IGD of 0.052 on
 the 100-task workflows and 0.175 on the 1000-task workflows (Section~\ref{sec:results}).
 
 \begin{figure}[pos=htbp]
@@ -53,7 +58,7 @@ the best Rank C value (bottom), for the $R_{IN}$ of Jin et al.\ and the Tchebych
 
 \subsection{Tchebycheff Rank C}
 \label{sec:rankc}
-\ours{} uses a rank that orders every solution. Let $W$ be a set of $N$ Das--Dennis weight vectors and let $G^L, G^U$
+\ours{} uses a rank that orders every solution. Let $W$ be a set of $N$ Das--Dennis weight vectors \citep{das1998nbi} and let $G^L, G^U$
 be the objectives scaled to $[0, 1]$ over the pool. Each $\mathbf{w} \in W$ defines the interval Tchebycheff value
 \begin{equation}
 \tilde g(x \mid \mathbf{w}) = \big[\max_m w_m G^L_m(x),\ \max_m w_m G^U_m(x)\big].
