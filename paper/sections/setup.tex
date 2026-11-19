@@ -4,10 +4,10 @@
 \label{sec:setup}
 
 \subsection{Benchmark instances}
-\emph{Suite A} reproduces the instance sizes of \citet{jin2026imoeadqn}: 3, 6 or 10 edge servers, 100, 300 or 500 tasks,
-and 20--250 devices that each submit a layered random DAG. Workloads are 1--5 Gcycles and data 500--3000 KB as in Jin et
-al., used as given and multiplied by 20 to make communication matter, which gives 12 test instances; 36 further
-instances generated with other seeds were used only to set the method's parameters. \emph{Suite B} takes five
+\emph{Suite A} reproduces the instance sizes of \citet{jin2026imoeadqn}, with 3, 6 or 10 edge servers, 100, 300 or 500
+tasks, and 20--250 devices that each submit a layered random DAG. Workloads are 1--5 Gcycles and data sizes 500--3000 KB
+as in Jin et al. They are used as given and multiplied by 20 to make communication matter, which gives 12 test
+instances. Another 36 instances generated with different seeds were used only to set the parameters of the method. \emph{Suite B} takes five
 scientific workflow families from WfCommons \citep{coleman2022wfcommons}, namely Cybershake, Epigenomics, Inspiral,
 Montage and Sipht, with 100, 400 and 1000 tasks, submitted by one device in Jin et al.'s small scenario (3 edge servers,
 6 devices). Workloads and data sizes are mapped into Jin et al.'s ranges by an order-preserving logarithmic map, every
@@ -32,9 +32,9 @@ the same population ($N = 105$) and budget of $N(G_{\max}+1)$ evaluations with $
   generation; and its \emph{Jin backbone} run with the fixed action $(5/6, 1/6, 0)$, which isolates the effect of
   Rank C and the mating.
 \end{itemize}
-Six list-scheduling heuristics are reported in Table~\Sref{tab:heuristics} of the supplementary material: all tasks
-local, on the nearest edge server or in the cloud, and three HEFT-style schedulers that place each task by earliest
-finish time, lowest energy or lowest cost \citep{topcuoglu2002heft}.
+Table~\Sref{tab:heuristics} of the supplementary material also reports six list-scheduling heuristics. Three of them
+place all tasks locally, on the nearest edge server or in the cloud, and three HEFT-style schedulers place each task by
+earliest finish time, lowest energy or lowest cost \citep{topcuoglu2002heft}.
 
 \subsection{Performance metrics and statistics}
 Each instance is normalised once, over the final fronts of all compared methods, so that every objective lies in
@@ -46,8 +46,8 @@ a front $P$ is
 \end{equation}
 and, as in \citet{jin2026imoeadqn}, the hypervolume is the mean of the hypervolumes of the lower and the upper bounds,
 $\mathrm{HV}(P) = \tfrac{1}{2}\big(\mathrm{HV}(\{F^L(x)\}) + \mathrm{HV}(\{F^U(x)\})\big)$, with reference point $1.1$ in
-every objective. IGD measures convergence and coverage (lower is better), HV the dominated volume (higher is better).
-The imprecision $\sum_{x \in P} \sum_m w(\tilde F_m(x))$ measures the width of the predicted intervals.
+every objective. IGD measures convergence and coverage (lower is better), and HV measures the dominated volume (higher
+is better). The imprecision $\sum_{x \in P} \sum_m w(\tilde F_m(x))$ measures the width of the predicted intervals.
 
 \ours{}, IMOEA/D and the Jin backbone were run 30 times per instance and the other methods 10 times. Each method is
 compared with \ours{} on each instance by the Wilcoxon rank-sum test with Holm's correction \citep{holm1979} over the

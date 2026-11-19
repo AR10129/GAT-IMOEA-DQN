@@ -5,7 +5,7 @@
 \label{sec:model}
 
 This section defines the interval quantities, the system and application model, the decision variables and the three
-objectives; Table~\ref{tab:notation} summarises the notation.
+objectives. Table~\ref{tab:notation} summarises the notation.
 
 \begin{table}
 \caption{Main notation.}
@@ -50,21 +50,22 @@ objective $m$, with strict inequality for at least one. The uncertainty of a sol
 w(\tilde F_m)$ and $U_2 = \prod_m w(\tilde F_m)$ on normalised objectives.
 
 \subsection{System and application model}
-The system (Fig.~\ref{fig:system_model}) follows \citet{jin2026imoeadqn}: $D$ mobile devices, $n$ edge servers and a
-cloud. Device $d$ has CPU frequency $\tilde f_d$, energy per cycle $\tilde e_d$, transmit power $p_d$ and idle power
+The system (Fig.~\ref{fig:system_model}) follows \citet{jin2026imoeadqn} and consists of $D$ mobile devices, $n$ edge
+servers and a cloud. Device $d$ has CPU frequency $\tilde f_d$, energy per cycle $\tilde e_d$, transmit power $p_d$ and idle power
 $p^{idle}_d$, and reaches the edge servers within its range at the wireless rate $\tilde R_{d,u} = \tilde B \log_2(1 + p_d
 g / v_0)$. Edge server $u$ shares its frequency $\tilde f_u$ equally among the tasks placed on it, and the cloud gives
-every task $\tilde f_C$. Edge servers are linked to each other and to the cloud at rates $\tilde W_E$ and $\tilde W_C$; a
-device reaches the cloud through its nearest edge server.
+every task $\tilde f_C$. Edge servers are linked to each other and to the cloud at rates $\tilde W_E$ and $\tilde W_C$,
+and a device reaches the cloud through its nearest edge server.
 
-Each device submits one application, a DAG of tasks; together they form $\mathcal{G} = (V, E)$ with $K = |V|$. Task $k$
+Each device submits one application, which is a DAG of tasks. Together, the applications form $\mathcal{G} = (V, E)$
+with $K = |V|$ tasks. Task $k$
 has workload $\tilde C_k$ cycles, arc $(p, k)$ carries $\tilde D_{pk}$ bits, and a task may read input from and return
 output to its device. A task starts only after all its predecessors have finished and their data have arrived. With one
 task per application the model reduces to that of \citet{jin2026imoeadqn}.
 
 A solution is a pair $(\mathbf{x}, \mathbf{o})$. The allocation string $\mathbf{x} \in \{0, \dots, n+1\}^K$ places each
-task on its device ($0$), an edge server ($1..n$) or the cloud ($n+1$); the priority string $\mathbf{o}$ is a topological
-order of $\mathcal{G}$ that fixes the dispatch order.
+task on its device ($0$), an edge server ($1..n$) or the cloud ($n+1$). The priority string $\mathbf{o}$ is a
+topological order of $\mathcal{G}$ that fixes the dispatch order.
 
 \subsection{Interval critical-path timing}
 Task $k$ runs at $\tilde f_k = \tilde f_d$, $\tilde f_u / n_u$ or $\tilde f_C$ for $n_u$ tasks on server $u$, so it
@@ -75,11 +76,11 @@ computes for $\tilde t_k = \tilde C_k / \tilde f_k$. Visiting the tasks in the o
 \end{align}
 where $\tilde\tau^{in}_k$ is the upload time of $k$'s input if $k$ is offloaded, transfers between co-located tasks
 take no time, and $\widetilde{av}(x_k)$ is the finish time of the previous task on the same device, since a device runs
-one task at a time. Maxima are taken boundwise; the chain that sets the latest finish time is the \emph{interval
+one task at a time. Maxima are taken boundwise, and the chain that sets the latest finish time is the \emph{interval
 critical path}.
 
 \subsection{Objectives and problem}
-The objectives are the total makespan, the devices' energy and the monetary cost:
+The three objectives are the total makespan, the energy of the devices and the monetary cost,
 \begin{align}
 \tilde F_1 &= \sum_{a} \max_{k \in V_a} \big(\widetilde{FT}_k + \tilde\tau^{out}_k\big), \label{eq:f1}\\
 \tilde F_2 &= \sum_{x_k = 0} \tilde C_k \tilde e_{d(k)} \nonumber\\
@@ -88,15 +89,16 @@ The objectives are the total makespan, the devices' energy and the monetary cost
 \tilde F_3 &= \eta_E \sum_{1 \le x_k \le n} \tilde f_k \tilde t_k + \eta_C \sum_{x_k = n+1} \tilde t_k, \label{eq:f3}
 \end{align}
 where $V_a$ are the tasks of application $a$, $\tilde\tau^{out}_k$ the time to return $k$'s output and $d(k)$ its
-device. $\tilde F_2$ counts local computation, transmission to offloaded tasks (for the cloud, up to the nearest edge
-server, idling while the data cross $\tilde W_C$) and idle waiting, i.e.\ the devices'
-energy only, as in \citet{jin2026imoeadqn} (all-tier energy is a sensitivity case in Section~\ref{sec:sensitivity});
-$\eta_E$ and $\eta_C$ are the edge and cloud prices. The problem is
+device. The energy $\tilde F_2$ covers local computation, transmission to offloaded tasks and idle waiting. For a task
+sent to the cloud, the device transmits only up to its nearest edge server and idles while the data cross
+$\tilde W_C$. As in \citet{jin2026imoeadqn}, only the energy of the devices is counted, and the energy of all three tiers
+is studied as a sensitivity case in Section~\ref{sec:sensitivity}. The prices $\eta_E$ and $\eta_C$ apply to edge and
+cloud computation. The problem is
 \begin{equation}
 \min_{(\mathbf{x}, \mathbf{o})} \big(\tilde F_1, \tilde F_2, \tilde F_3\big)\ \text{s.t.}\ x_k \in \mathcal{A}_k\, \forall k,\
 \mathbf{o}\ \text{topol.},
 \label{eq:problem}
 \end{equation}
-where $\mathcal{A}_k$ are the nodes reachable from $k$'s device; we seek the solutions that no other solution
+where $\mathcal{A}_k$ are the nodes reachable from the device of task $k$. We seek the solutions that no other solution
 interval-dominates. Scheduling a DAG on heterogeneous processors is NP-hard even with crisp data
 \citep{topcuoglu2002heft}, which motivates an evolutionary approach.
