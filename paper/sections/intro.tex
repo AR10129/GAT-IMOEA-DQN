@@ -32,8 +32,8 @@ learns from is almost pure noise.
 We propose \ours{}, an interval multi-objective evolutionary algorithm for offloading DAG workflows in uncertain
 cloud--edge--end environments. Its contributions are:
 \begin{enumerate}
-\item An interval critical-path model of DAG offloading over devices, edge servers and the cloud, with makespan, device
-  energy and cost as interval objectives, task placement and task order as decision variables, and data transfer along
+\item An interval critical-path model of DAG offloading to the device, edge servers and the cloud, which has makespan,
+  device energy and cost as interval objectives, task placement and task order as decision variables, and data transfer along
   every dependency. For single-task applications it reduces exactly to the model of \citet{jin2026imoeadqn}
   (Section~\ref{sec:model}).
 \item A DAG-valid two-string encoding with precedence-preserving crossover and mutation, so that every offspring is
@@ -43,8 +43,8 @@ cloud--edge--end environments. Its contributions are:
   convergence tier inside the three-tier selection, together with mating among neighbours in objective space
   (Sections~\ref{sec:stall} and~\ref{sec:rankc}). The rank itself is not new; its use inside the dominance-, diversity-
   and uncertainty-aware selection, the diagnosis and the evidence are.
-\item An analysis of learned control of the selection weights: three learner designs with and without a
-  graph-attention encoder of the DAG, and a reward audit that explains why none of them beats a fixed action
+\item An analysis of learned control of the selection weights: three learner designs, each with and without a graph
+  attention network that encodes the DAG, and a reward audit that explains why none of them beats a fixed action
   (Section~\ref{sec:learned}).
 \item An evaluation on 57 instances (Jin et al.'s instance sizes and five scientific workflow families with up to 1000
   tasks), plus 15 instances with 2000 tasks for scalability, against four interval evolutionary algorithms, NSGA-II,

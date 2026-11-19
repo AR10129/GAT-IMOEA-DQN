@@ -1,0 +1,7 @@
+Highlights (EAAI: 3-5 bullet points, max. 85 characters each, uploaded as a separate editable file)
+
+- Interval critical-path model for DAG workflow offloading in cloud-edge-end systems
+- Interval dominance degree loses selection pressure; a Tchebycheff rank restores it
+- Best IGD and hypervolume on all 12 instances of the predecessor's sizes
+- Beats IMOEA/D on 43 of 45 workflow instances in IGD at a similar running time
+- Learned DQN control of the selection weights does not beat a fixed choice
