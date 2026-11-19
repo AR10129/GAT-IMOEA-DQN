@@ -124,7 +124,8 @@ GAT_PAIRS = [("jin", "suite_a_main", "trained_stable", "trained_nogat_stable",
 
 FIGURES = {"e5_convergence": "scripts/convergence.py (E5)", "a3_stall": "scripts/a3_tiers.py --stall (A3)",
            "a3_tradeoff": "scripts/a3_tiers.py (A3)", "d1_reward_audit": "scripts/d1_learning.py (D1)",
-           "d1_training": "scripts/d1_learning.py (D1)", "system_model": "scripts/system_figure.py (R2)"}
+           "d1_training": "scripts/d1_learning.py (D1)", "system_model": "scripts/system_figure.py (R2)",
+           "fronts": "scripts/paper_figures.py", "cd_diagram": "scripts/paper_figures.py"}
 # hand-written LaTeX the preview also inputs (paths relative to paper/)
 STATIC = ["algorithms/drimoea", "sections/complexity", "sections/discussion"]
 
@@ -888,7 +889,7 @@ def t_params_c():
             R("Prices $\\eta_E$ / $\\eta_C$", f"{price['edge_usd_per_ghz_s']:g} \\$/(GHz\\,s) / {price['cloud_usd_per_s']:g} \\$/s"),
             R("Workload / data", "1--5 Gcycles / 500--3000 KB"),
             r"\midrule", r"\multicolumn{2}{l}{\textit{\ours{}}} \\",
-            R("$N$ / $G_{\max}$", f"{N} / {G}"),
+            R(r"$N$ / $G_{\max}$", f"{N} / {G}"),
             R("$(\\alpha, \\beta, \\gamma)$", "$(5/6, 1/6, 0)$"),
             R("Weight vectors", f"{N} (Das--Dennis, $q = {q}$)"),
             R("ICD neighbours $k$", f"{int(round(np.sqrt(2 * N)))}"),

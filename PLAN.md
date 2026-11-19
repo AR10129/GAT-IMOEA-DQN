@@ -831,6 +831,19 @@ setting for comparability and three-tier energy as a sensitivity study.
     citation placeholders in Related work; VERIFY entries in refs.bib; rename DR-IMOEA (ours macro in
     main.tex and supplement.tex).
 
+- [x] W4. Standard journal structure, 13 pages (2026-11-19). Sections: 1 Introduction, 2 Related work, 3 Problem
+  formulation (+ notation table), 4 Proposed method, 5 Experimental setup (benchmarks, compared algorithms with one
+  line each, metrics with the IGD / HV definitions, statistics), 6 Results and discussion (overall comparison,
+  statistical significance with a critical-difference diagram, Pareto front analysis, convergence, ablation,
+  sensitivity and scalability, realised values and running time, learned control), 7 Limitations, 8 Conclusion.
+  New figures from scripts/paper_figures.py: fronts (median-IGD run of DR-IMOEA, IMOEA/D, NSGA-II mid, Jin backbone
+  on medium-250 and cybershake-1000, makespan-energy and makespan-cost projections; palette checked with the dataviz
+  validator, NSGA-II green instead of amber) and cd_diagram (Suite B IGD and HV, Nemenyi CD 2.02). Reading of the
+  fronts: on medium-250 DR-IMOEA reaches lower cost at almost every makespan and far slower / cheaper schedules,
+  with slightly more energy in the makespan-energy projection; on cybershake-1000 the fronts overlap in the middle and
+  IMOEA/D reaches the cheapest schedules. 6 figures, 7 tables, 1 algorithm in the body; supplement 14 pages.
+  sections/experiments.tex replaced by sections/setup.tex and sections/results.tex.
+
 ## Risks
 
 - C3 judged incremental ("just MSOPS inside Jin et al.") → W1 confirmed the rank is MSOPS's; make the diagnosis (tie

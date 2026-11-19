@@ -4,6 +4,37 @@
 \section{Problem formulation}
 \label{sec:model}
 
+This section defines the interval quantities, the system and application model, the decision variables and the three
+objectives; Table~\ref{tab:notation} summarises the notation.
+
+\begin{table}
+\caption{Main notation.}
+\label{tab:notation}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}l>{\raggedright\arraybackslash}p{0.74\columnwidth}@{}}
+\toprule
+Symbol & Meaning \\
+\midrule
+$\tilde a = [a^L, a^U]$ & interval with midpoint $m(\tilde a)$ and width $w(\tilde a)$ \\
+$D, n$ & numbers of mobile devices and edge servers \\
+$\mathcal{G} = (V, E)$, $K$ & union of the application DAGs, number of tasks \\
+$\tilde C_k$, $\tilde D_{pk}$ & workload of task $k$, data on arc $(p, k)$ \\
+$\tilde f_d, \tilde f_u, \tilde f_C$ & CPU frequency of a device, an edge server, the cloud \\
+$\tilde R$, $\tilde W_E$, $\tilde W_C$ & wireless rate, edge--edge and edge--cloud link rates \\
+$\tilde e_d$, $p_d$, $p^{idle}_d$ & device energy per cycle, transmit and idle power \\
+$\eta_E$, $\eta_C$ & edge and cloud prices \\
+$\mathbf{x}$, $\mathbf{o}$ & allocation string, priority string (topological order) \\
+$\widetilde{AT}_k$, $\widetilde{FT}_k$ & arrival and finish time of task $k$ \\
+$\tilde F_1, \tilde F_2, \tilde F_3$ & makespan, device energy, monetary cost \\
+$\prec_{IN}$, $U_1, U_2$ & interval dominance, sum and product of objective widths \\
+$N$, $G_{\max}$, $T$ & population size, generations, mating neighbourhood size \\
+$(\alpha, \beta, \gamma)$ & shares of the convergence, diversity and uncertainty tiers \\
+$R_{IN}$, $R_C$, ICD & interval dominance degree, Tchebycheff rank, interval crowding distance \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{Interval numbers}
 \label{sec:intervals}
 An uncertain quantity is an interval $\tilde a = [a^L, a^U]$ with midpoint $m(\tilde a)$ and width $w(\tilde a) =
